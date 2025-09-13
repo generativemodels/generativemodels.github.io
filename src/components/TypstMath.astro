@@ -1,0 +1,29 @@
+---
+// Hiding typst<->html interaction complexity in this component
+//import 'astro-typst/styles/typst.css'
+import { Typst } from 'astro-typst/src/components'
+const props = Astro.props
+const raw = props.raw ?? false // non-math
+
+let content = await Astro.slots.render('default') ?? ''
+content = content.replace(/&lt;/g, '<')
+content = content.replace(/&amp;/g, '&')
+content = (props.v ?? '') + content
+
+const code = (space: string, dollar: string) => `
+    #set page(margin: 0pt, width: auto, height: auto)
+    ${dollar}${space}${content}${space}${dollar}
+    `
+
+const codeInline = raw ? () => code('', '') : () => code('', '$')
+const codeBlock = raw ? () => code('', '') : () => code(' ', '$')
+---
+
+{
+    props.block ?
+    <Typst code={ codeBlock() } width="100%" />
+    :
+    <div class="inline-typst">
+        <Typst code={ codeInline()} />
+    </div>
+}

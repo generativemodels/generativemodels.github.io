@@ -1,0 +1,14 @@
+---
+import T from './TypstMath.astro'
+const props = Astro.props
+
+---
+
+<T raw { ...props } v={`
+#import "@preview/cetz:0.4.2"
+#import "@preview/cetz-venn:0.1.4"
+#cetz.canvas({
+    import cetz.draw: *;
+    ${props.v ?? ''}
+})
+`} />

@@ -1,0 +1,148 @@
+---
+title: 'Variational Autoencoders (VAE)'
+description: 'On variational autoencoders and their core principles'
+pubDate: '2025-09-09'
+heroImage: '../../assets/blog-placeholder-3.jpg'
+---
+
+import T from '../../components/TypstMath.astro'
+
+It this lesson, we will derive the core principles behind Variational Autoencoders (VAEs) and understand how they work.
+
+### Generative Models by Autoencoding
+
+The goal is to learn a generative model in the form of:
+
+- a low-dimensional latent space
+- a decoder that maps from the latent space to the data space
+
+To achieve this, the an autoencoder will also learn a corresponding encoder that maps from the data space to the latent space.
+
+### Plain Autoencoders
+
+Plain autoencoders jointly learn an encoder $e_\phi(x)$ and a decoder $d_\theta(z)$ by minimizing the reconstruction error:
+
+$$
+\mathcal{L}(\phi, \theta) = \sum_{x \in \text{data}} \| x - d_\theta(e_\phi(x)) \|^2
+$$
+
+(or in typst) <T block v='cal(L)(phi, theta) = sum_(x in "data") || x - d_(theta)(e_(phi)(x)) ||^2' />
+
+### A Probabilistic Interpretation of Autoencoders
+
+As in most cases where a squared error is minimized, we can interpret the decoder as a Gaussian likelihood model:
+
+$$
+p_\theta(x|z) = \mathcal{N}(x; d_\theta(z), I)
+$$
+
+(or in typst) <T block v='p_(theta)(x|z) = N(x; d_(theta)(z), I)' />
+
+With words, we assume that the decoder predicts the mean of a Gaussian distribution (of fixed identity covariance).
+
+
+We have the equivalence between minimizing the reconstruction error and maximizing the log-likelihood:
+
+$$
+\arg\min_{\phi, \theta} \sum_{x \in \text{data}} \| x - d_\theta(e_\phi(x)) \|^2
+=
+\arg\max_{\phi, \theta} \sum_{x \in \text{data}} \log p_\theta(x|z = e_\phi(x))
+$$
+
+(or in typst) <T block v='arg min_(phi, theta) sum_(x in "data") || x - d_(theta)(e_(phi)(x)) ||^2 = arg max_(phi, theta) sum_(x in "data") log p_(theta)(x|z = e_(phi)(x))' />
+
+<details>
+<summary>Derivations on the equivalence</summary>
+<div>
+We start with the log-likelihood:
+$$
+\begin{align*}
+\log p_\theta(x|z)
+& = \log \mathcal{N}(x; d_\theta(z), I) \\
+& = \log \left( (2\pi)^{-\frac{D}{2}} \exp\left( -\frac{1}{2} \| x - d_\theta(z) \|^2 \right) \right) \\
+& = -\frac{D}{2} \log(2\pi) - \frac{1}{2} \| x - d_\theta(z) \|^2
+\end{align*}
+$$
+(or in typst) <T block v='
+log p_(theta)(x|z)
+& = log N(x; d_(theta)(z), I) \
+& = log ((2pi)^(-D/2) exp(-1/2 || x - d_(theta)(z) ||^2)) \
+& = -D/2 log(2pi) - 1/2 || x - d_(theta)(z) ||^2
+' />
+
+where $D$ is the dimensionality of $x$.
+Ignoring the constant term and factor, we have:
+
+$$
+\log p_\theta(x|z) \propto - \| x - d_\theta(z) \|^2 + K
+$$
+
+($$\propto$$ means proportional to)
+
+Thus, maximizing the log-likelihood is equivalent to minimizing the squared error, i.e.:
+
+$$
+\arg\min_{\phi, \theta} \sum_{x \in \text{data}} \| x - d_\theta(e_\phi(x)) \|^2
+=
+\arg\max_{\phi, \theta} \sum_{x \in \text{data}} \log p_\theta(x|z = e_\phi(x))
+$$
+</div>
+</details>
+
+### Overview of Variational Autoencoders (VAEs)
+
+In Variational Autoencoders (VAEs), the position $z_i$ in the latent space (for a data point $x_i$) is supposed to be a random variable.
+Indeed, there is technically some uncertainty on the exact position of $z_i$ that best explains $x_i$, especially given that we consider all points jointly.
+In a VAE, on thus manipulates, for each point $x_i$, a distribution on its latent position $z_i$, that aims at best approximating the true-unknown-tricky posterior distribution $p_\theta(z_i|X)$ of this latent variable given all the training set.
+
+We will now decompose the construction of the VAE, starting with formulations that have only the decoder.
+The encoder will be introduced later as a trick (i.e., amortization).
+
+### MAP Estimation of the Latent Variables
+
+We are interesting in estimating both the decoder parameters $\theta$ and the latent variables $z_i$ for each data point $x_i$.
+
+One could think of optimizing over $Z = \{z_i\}_{i=1}^N$ (all the latent positions) the log-likelihood of the data:
+
+$$
+\log p_\theta(X|Z) = \sum_{i=1}^N \log p_\theta(x_i|z_i)
+$$
+
+<details>
+<summary>Decomposable loss from i.i.d. assumption</summary>
+<div>
+Assuming that the data points are i.i.d. given the latent variables, we have:
+$$
+p_\theta(X|Z) = \prod_{i=1}^N p_\theta(x_i|z_i)
+$$
+and hence:
+$$
+\log p_\theta(X|Z) = \log \prod_{i=1}^N p_\theta(x_i|z_i) = \sum_{i=1}^N \log p_\theta(x_i|z_i)
+$$
+</div>
+</details>
+
+
+One could think of doing this :
+
+$$
+\log p_\theta(X, Z) = \sum_{i=1}^N \log p_\theta(x_i|z_i) + \log p(z_i)
+$$
+
+//(or in typst) <T block v='log p_(theta)(X, Z) = sum_(i=1)^N log p_(theta)(x_i|z_i) + log p(z_i)' />
+//
+//where $p(z_i)$ is a prior distribution on the latent variables (e.g., a standard Gaussian).
+//
+//We could then maximize this joint log-likelihood w.r.t. both $\theta$ and $Z = \{z_i\}_{i=1}^N$.
+//
+//However, this would lead to overfitting, as we could always increase the likelihood by increasing the capacity of the decoder and setting $z_i$ to arbitrary values.
+
+
+### Variational Inference
+
+### Reparameterization Trick
+
+### Doubly Stochastic Variational Inference
+
+### Prior and latent space misconception
+

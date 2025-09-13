@@ -1,0 +1,177 @@
+---
+title: 'Bayesian Principle'
+description: 'On the bayes rule and Bayesian principles'
+pubDate: '2025-09-08'
+heroImage: '../../assets/blog-placeholder-3.jpg'
+---
+
+import T from '../../components/TypstMath.astro'
+import Cetz from '../../components/TypstCetz.astro'
+
+
+This lesson introduces the principles of Bayesian inference, going from the Bayes rule and its meaning with respect to (machine) learning.
+
+### All you need to know about probabilities
+
+There are just two rules in probabilities: the sum rule and the product rule.
+
+We start with binary random variables / events $A$ and $B$, but the rule extends to more outcomes and also to continuous random variables.
+
+#### Disclaimer on notation, what the $p$?
+
+Considering two events $A$ and $B$, we can write for instance write the joint probability as $$P(A, B)$$.
+In some contexts, you might also see the notation $$p(A, B)$$ or $$p_{A,B}(a, b)$$ for the same thing.
+
+The notation $$p_{A,B}(a, b)$$ is the most explicit, as it indicates that $p_{A,B}$ is a function (the probability distribution) for the random variables $A$ and $B$, and evaluated at the outcomes $a$ and $b$.
+
+The notation $$p(A,B)$$ hides many things
+
+- it aliases $p$ (the same exact symbol will be used for different distributions, e.g. $$p_A$$ and $$p_B$$, which can be confusing),
+- it hides the fact that $p$ is a function (the probability distribution) evaluated at some values $a$ and $b$.
+
+In practice this last notation is more compact and used heavily, when no ambiguity arises.
+It additionally implies some quantification, e.g. $$p(A)$$ can mean $$p_A(a)$$ for some specific value $a$, or it can mean $$p_A(A)$$ for all possible values of $A$.
+
+As such, for instance, the following rough symbol equivalences hold:
+
+- $$p(A) \equiv p_A(a) \equiv p(A=a)$$
+- $$p(A | B) \equiv p_{A|B}(a | b) \equiv p(A=a | B=b)$$
+
+And, for example stating the independence of random variables $A$ and $B$ can in practice appear in multiple ways:
+
+- $$\forall a,b, \;\;\; p_{A,B}(a,b) = p_A(a)p_B(b)$$
+- $$\forall a,b, \;\;\; p(A=a, B=b) = p(A=a)p(B=b)$$
+- $$p_{A,B}(a,b) = p_A(a)p_B(b)$$
+- $$p(A=a, B=b) = p(A=a)p(B=b)$$
+- $$p(A,B) = p(A)p(B)$$
+- $$p(a,b) = p(a)p(b)$$
+
+The last one is the most compact, but also among the most ambiguous, but it is often used in practice.
+
+#### Sum rule
+
+The sum rule states that, for a binary event $B$:
+
+$$
+P(A) = P(A, B) + P(A, \neg B)
+$$
+
+(or in typst) <T block v='P(A) = P(A, B) + P(A, not B)' />
+
+
+More generally, the sum rule can be written as:
+
+$$
+P(A) = \sum_{b \in \text{outcomes of } B} P(A, b)
+$$
+
+(or in typst) <T block v='P(A) = sum_(b in "outcomes of " B) P(A, B=b)' />
+
+or more compactly:
+
+$$
+P(A) = \sum_{b} P(A, B=b)
+$$
+
+or even more compactly:
+
+$$
+P(A) = \sum_{B} P(A, B)
+$$
+
+or even:
+
+$$
+p(a) = \sum_{b} p(a, b)
+$$
+
+or, more generally, as an integral, that with proper formalism covers both discrete and continuous random variables:
+
+$$
+P(a) = \int P(a, b) \, db
+$$
+
+or sometimes
+
+$$
+p(a) = \int_b p(a, b)
+$$
+
+#### Product rule
+
+The product rule states that:
+
+$$
+\begin{align*}
+P(A, B)
+& = P(A|B) P(B) \\
+& = P(B) P(A|B)
+\end{align*}
+$$
+
+(or in typst) <T block v='
+P(A, B)
+& = P(A|B) P(B) \
+& = P(B) P(A|B)
+' />
+
+This can be illustrated with the following Venn diagram:
+
+<Cetz block v='
+let base = teal;
+cetz-venn.venn2(
+    name: "venn",
+    b-stroke: base.darken(20%),
+    ab-stroke: base.darken(20%),
+    ab-fill: base,
+    ab-layer: 1,
+    b-fill: base.lighten(50%),
+    a-stroke: gray,
+)
+on-layer(2, content("venn.a", [A]));
+on-layer(2, content("venn.b", [B]));
+on-layer(2, content("venn.ab", [AB]));
+' />
+
+The product rule can be used in both directions, so we also have:
+
+$$
+P(A, B) = P(B|A) P(A)
+$$
+
+
+### Bayes rule
+
+Using both directions of the product rule we can derive the Bayes rule.
+
+$$
+P(A|B) = \frac{P(B|A) P(A)}{P(B)}
+$$
+
+(or in typst) <T block v='P(A|B) = (P(B|A) P(A)) / P(B)' />
+
+Other forms of the Bayes rule can be obtained by applying the sum rule (and potentially the product rule again) to the denominator:
+
+$$
+\begin{align*}
+P(A|B)
+& = \frac{P(B|A) P(A)}{\sum_{a} p(B, A=a) } \
+& = \frac{P(B|A) P(A)}{\sum_{a} P(B|A=a) P(A=a)} \
+\end{align*}
+$$
+
+or with the ambiguous notation:
+
+$$
+\begin{align*}
+p(b|a) &= \frac{p(a|b) p(b)}{p(a)} \
+&= \frac{p(a|b) p(b)}{\sum_{b'} p(a|b') p(b')} \
+&= \frac{p(a|b) p(b)}{\int_{b'} p(a|b') p(b')} \
+\end{align*}
+$$
+
+(or in typst) <T block v="
+p(b|a) = (p(a|b) p(b)) / p(a)
+& = (p(a|b) p(b)) / (sum_(b') p(a|b') p(b'))
+& = (p(a|b) p(b)) / (integral_(b') p(a|b') p(b'))
+" />
