@@ -1,0 +1,203 @@
+---
+title: 'Introduction to Generative Models'
+description: 'Introduction to Generative Models'
+pubDate: '2025-09-11'
+heroImage: '../../assets/blog-placeholder-3.jpg'
+---
+
+import T from '../../components/TypstMath.astro'
+
+This Lecture is an general introduction to generative modelling.
+
+### Introduction
+
+This is an introduction to the main settings encountered in generative modelling. The first Lectures will introduce the main algorithms and concept for the vanilla unconditional generative modelling task.
+At the end of the course, we will make excursions to class-conditional and text-conditional generative modelling.
+
+
+#### Unconditional Generative Modelling
+
+**What** In *unconditional* generative modelling, we are given a set of unlabelled data
+
+<T block v='text("Data: ") underbrace({x_1, x_2, x_3,dots, x_n}, n "observations") in bb(R)^d .' />
+
+
+export const catGallery = [
+  {
+    url: "https://images.pexels.com/photos/57416/cat-sweet-kitty-animals-57416.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x1",
+    alt: "Cute cat 1"
+  },
+  {
+    url: "https://images.pexels.com/photos/20787/pexels-photo.jpg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x2",
+    alt: "Cute cat 2"
+  },
+  {
+    url: "https://images.pexels.com/photos/1183434/pexels-photo-1183434.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x3",
+    alt: "Cute cat 3"
+  },
+  {
+    url: "https://images.pexels.com/photos/979247/pexels-photo-979247.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x4",
+    alt: "Cute cat 4"
+  },
+  {
+    url: "https://images.pexels.com/photos/2558605/pexels-photo-2558605.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x5",
+    alt: "Cute cat 5"
+  },
+  {
+    url: "https://images.pexels.com/photos/1276553/pexels-photo-1276553.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x6",
+    alt: "Cute cat 5"
+  }
+]
+
+<figure>
+  <div style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "1rem",
+    alignItems: "start"
+  }}>
+    {catGallery.map((cat, idx) => (
+      <figure key={idx} style={{ margin: 0 }}> {/* remove default margin */}
+        <img
+          src={cat.url}
+          alt={cat.alt}
+          style={{ width: "100%", height: "auto", objectFit: "cover", display: "block" }}
+        />
+        <figcaption style={{
+          textAlign: "center",
+          fontSize: "0.85rem",
+          color: "#6b7280",
+          margin: 0,             // remove figcaption margin
+          marginTop: "0.25rem"   // optional small spacing
+        }}>
+          {cat.caption}
+        </figcaption>
+      </figure>
+    ))}
+  </div>
+
+  <figcaption style={{
+    textAlign: "center",
+    marginTop: "1rem",
+    fontStyle: "italic",
+    color: "#6b7280"
+  }}>
+    A dataset of cat photos (source, Pexels.com).
+  </figcaption>
+</figure>
+
+**Assumption** The core underlying assumption of generative modelling is that the data $x_1, \dots, x_n$, is drawn from some *unknown* underlying distribution $p_{data}$: for all $i \in 1, \dots, n$
+
+<T block v='x_i ~ underbrace(p_"data", "unknown") .' />
+
+**Goal** Using the empirical data distribution $x_1, \dots, x_n \sim p_{data}$, the goal is to *generate* new samples $x^{\text{new}}$ that look like they were drawn from the same *unknown* distribution $p_{data}$
+
+
+<T block v='x^"new" ~ p_"data" .' />
+
+
+#### Class-Conditional Generative Modelling
+
+**What** In *class-conditional* generative modelling, we are given a set of labelled data
+
+<T block v='text("Data: ") underbrace({(x_1, y_1),dots, (x_n, y_n)}, n "labelled observations") in bb(R)^d times bb(R) .' />
+
+
+export const catDogGallery = [
+  {
+    url: "https://images.pexels.com/photos/57416/cat-sweet-kitty-animals-57416.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x1, y1=cat",
+    alt: "Cute cat 1"
+  },
+  {
+    url: "https://images.pexels.com/photos/20787/pexels-photo.jpg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x2, y2=cat",
+    alt: "Cute cat 2"
+  },
+  {
+    url: "https://images.pexels.com/photos/1183434/pexels-photo-1183434.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x3, y3=cat",
+    alt: "Cute cat 3"
+  },
+  {
+    url: "https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x4, y4=dog",
+    alt: "Cute cat 4"
+  },
+  {
+    url: "https://images.pexels.com/photos/731022/pexels-photo-731022.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x5, y5=dog",
+    alt: "Cute cat 5"
+  },
+  {
+    url: "https://images.pexels.com/photos/551628/pexels-photo-551628.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x6, y6=dog",
+    alt: "Cute cat 5"
+  }
+]
+
+<figure>
+  <div style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "1rem",
+    alignItems: "start"
+  }}>
+    {catDogGallery.map((cat, idx) => (
+      <figure key={idx} style={{ margin: 0 }}> {/* remove default margin */}
+        <img
+          src={cat.url}
+          alt={cat.alt}
+          style={{ width: "100%", height: "auto", objectFit: "cover", display: "block" }}
+        />
+        <figcaption style={{
+          textAlign: "center",
+          fontSize: "0.85rem",
+          color: "#6b7280",
+          margin: 0,             // remove figcaption margin
+          marginTop: "0.25rem"   // optional small spacing
+        }}>
+          {cat.caption}
+        </figcaption>
+      </figure>
+    ))}
+  </div>
+
+  <figcaption style={{
+    textAlign: "center",
+    marginTop: "1rem",
+    fontStyle: "italic",
+    color: "#6b7280"
+  }}>
+    A labelled dataset of cat and dog photos (source, Pexels.com).
+  </figcaption>
+</figure>
+
+
+**Assumption** The core underlying assumption of generative modelling is that the data $x_1, \dots, x_n$, is drawn from some *unknown* underlying distribution $p_{data}( \cdot | y_i)$: for all $i \in 1, \dots, n$
+
+<T block v='x_i ~ underbrace(p_"data" (dot | y_i), "unknown") .' />
+
+**Goal** Using the empirical data distribution $x_i \sim p_{data}(\cdot | y_i)$, the goal is to *generate* new samples $x^{\text{new}}$ that look like they were drawn from the same *unknown* distribution $p_{data}$
+
+
+<T block v='x^"new cat" ~ p_"data" (dot | y="cat") ,' />
+<T block v='x^"new dog" ~ p_"data" (dot | y="dog") .' />
+
+#### Text-Conditional Generative Modelling
+
+### Unconditional Generative Modelling
+
+#### 1 and 2-Dimensional Examples
+
+#### Maximum Likelihood
+
+### References
+- https://people.cs.umass.edu/~domke/courses/sml/10probabilistic.pdf
+- https://people.cs.umass.edu/~domke/courses/sml/11em.pdf
