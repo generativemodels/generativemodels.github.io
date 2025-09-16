@@ -1,0 +1,43 @@
+---
+
+const { data, caption } = Astro.props;
+
+---
+
+
+<figure>
+  <div style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "1rem",
+    alignItems: "start"
+  }}>
+    {data.map((cat, idx) => (
+      <figure key={idx} style={{ margin: 0 }}> {/* remove default margin */}
+        <img
+          src={cat.url}
+          alt={cat.alt}
+          style={{ width: "100%", height: "auto", objectFit: "cover", display: "block" }}
+        />
+        <figcaption style={{
+          textAlign: "center",
+          fontSize: "0.85rem",
+          color: "#6b7280",
+          margin: 0,             // remove figcaption margin
+          marginTop: "0.25rem"   // optional small spacing
+        }}>
+          {cat.caption}
+        </figcaption>
+      </figure>
+    ))}
+  </div>
+
+  <figcaption style={{
+    textAlign: "center",
+    marginTop: "1rem",
+    fontStyle: "italic",
+    color: "#6b7280"
+  }}>
+    {caption}
+  </figcaption>
+</figure>

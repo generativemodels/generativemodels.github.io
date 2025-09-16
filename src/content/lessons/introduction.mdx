@@ -6,6 +6,7 @@ heroImage: '../../assets/blog-placeholder-3.jpg'
 ---
 
 import T from '../../components/TypstMath.astro'
+import TypicalGallery from '../../components/TypicalGallery.astro'
 
 
 ### Introduction
@@ -21,7 +22,6 @@ The goal of this Lecture is to understand the relationship between vanilla uncon
 **What** In *unconditional* generative modelling, we are given a set of unlabelled data
 
 <T block v='text("Data: ") underbrace({x_1, x_2, x_3,dots, x_n}, n "observations") in bb(R)^d .' />
-
 
 export const catGallery = [
   {
@@ -56,42 +56,7 @@ export const catGallery = [
   }
 ]
 
-<figure>
-  <div style={{
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-    gap: "1rem",
-    alignItems: "start"
-  }}>
-    {catGallery.map((cat, idx) => (
-      <figure key={idx} style={{ margin: 0 }}> {/* remove default margin */}
-        <img
-          src={cat.url}
-          alt={cat.alt}
-          style={{ width: "100%", height: "auto", objectFit: "cover", display: "block" }}
-        />
-        <figcaption style={{
-          textAlign: "center",
-          fontSize: "0.85rem",
-          color: "#6b7280",
-          margin: 0,             // remove figcaption margin
-          marginTop: "0.25rem"   // optional small spacing
-        }}>
-          {cat.caption}
-        </figcaption>
-      </figure>
-    ))}
-  </div>
-
-  <figcaption style={{
-    textAlign: "center",
-    marginTop: "1rem",
-    fontStyle: "italic",
-    color: "#6b7280"
-  }}>
-    A dataset of cat photos (source, Pexels.com).
-  </figcaption>
-</figure>
+<TypicalGallery data={catGallery} caption="A dataset of cat photos (source, Pexels.com)." />
 
 
 
@@ -145,42 +110,8 @@ export const catDogGallery = [
   }
 ]
 
-<figure>
-  <div style={{
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-    gap: "1rem",
-    alignItems: "start"
-  }}>
-    {catDogGallery.map((cat, idx) => (
-      <figure key={idx} style={{ margin: 0 }}> {/* remove default margin */}
-        <img
-          src={cat.url}
-          alt={cat.alt}
-          style={{ width: "100%", height: "auto", objectFit: "cover", display: "block" }}
-        />
-        <figcaption style={{
-          textAlign: "center",
-          fontSize: "0.85rem",
-          color: "#6b7280",
-          margin: 0,             // remove figcaption margin
-          marginTop: "0.25rem"   // optional small spacing
-        }}>
-          {cat.caption}
-        </figcaption>
-      </figure>
-    ))}
-  </div>
+<TypicalGallery data={catDogGallery} caption="A labelled dataset of cat and dog photos (source, Pexels.com)." />
 
-  <figcaption style={{
-    textAlign: "center",
-    marginTop: "1rem",
-    fontStyle: "italic",
-    color: "#6b7280"
-  }}>
-    A labelled dataset of cat and dog photos (source, Pexels.com).
-  </figcaption>
-</figure>
 
 
 **Assumption** For *class-conditional* generative models, the assumption is that the data $x_1, \dots, x_n$, is drawn from some *unknown* underlying conditional probability distribution**s** $p_{data}( \cdot | y = y_i)$: for all $i \in 1, \dots, n$
@@ -240,42 +171,7 @@ export const catDogTextGallery = [
   }
 ]
 
-<figure>
-  <div style={{
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-    gap: "1rem",
-    alignItems: "start"
-  }}>
-    {catDogTextGallery.map((cat, idx) => (
-      <figure key={idx} style={{ margin: 0 }}> {/* remove default margin */}
-        <img
-          src={cat.url}
-          alt={cat.alt}
-          style={{ width: "100%", height: "auto", objectFit: "cover", display: "block" }}
-        />
-        <figcaption style={{
-          textAlign: "center",
-          fontSize: "0.85rem",
-          color: "#6b7280",
-          margin: 0,             // remove figcaption margin
-          marginTop: "0.25rem"   // optional small spacing
-        }}>
-          {cat.caption}
-        </figcaption>
-      </figure>
-    ))}
-  </div>
-
-  <figcaption style={{
-    textAlign: "center",
-    marginTop: "1rem",
-    fontStyle: "italic",
-    color: "#6b7280"
-  }}>
-    A dataset of cat and dog photos, and their text description (source, Pexels.com).
-  </figcaption>
-</figure>
+<TypicalGallery data={catDogTextGallery} caption="A dataset of cat and dog photos, and their text description (source, Pexels.com)." />
 
 
 For instance, [Stable Diffusion](https://stabledifffusion.com/) was trained on the [LAION-5B dataset](https://laion.ai/blog/laion-5b/), a dataset of 5 billion images and their textual description.
