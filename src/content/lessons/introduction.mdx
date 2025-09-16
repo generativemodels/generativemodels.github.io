@@ -13,6 +13,8 @@ import T from '../../components/TypstMath.astro'
 This is an introduction to the main settings encountered in generative modelling. The first Lectures will introduce the main algorithms and concept for the vanilla unconditional generative modelling task.
 At the end of the course, we will make excursions to class-conditional and text-conditional generative modelling.
 
+The goal of this Lecture is to understand the relationship between vanilla unconditional generative modelling and industrial generative models such as DALL-E, Stable Diffusion, GPT, etc.
+
 
 #### Unconditional Generative Modelling
 
@@ -90,6 +92,8 @@ export const catGallery = [
     A dataset of cat photos (source, Pexels.com).
   </figcaption>
 </figure>
+
+
 
 **Assumption** The core underlying assumption of generative modelling is that the data $x_1, \dots, x_n$, is drawn from some *unknown* underlying distribution $p_{data}$: for all $i \in 1, \dots, n$
 
@@ -179,17 +183,121 @@ export const catDogGallery = [
 </figure>
 
 
-**Assumption** The core underlying assumption of generative modelling is that the data $x_1, \dots, x_n$, is drawn from some *unknown* underlying distribution $p_{data}( \cdot | y_i)$: for all $i \in 1, \dots, n$
+**Assumption** For *class-conditional* generative models, the assumption is that the data $x_1, \dots, x_n$, is drawn from some *unknown* underlying conditional probability distribution**s** $p_{data}( \cdot | y = y_i)$: for all $i \in 1, \dots, n$
 
-<T block v='x_i ~ underbrace(p_"data" (dot | y_i), "unknown") .' />
+<T block v='x_i ~ underbrace(p_"data" (dot | y = y_i), "unknown"), y_i in {"cat", "dog"}.' />
 
-**Goal** Using the empirical data distribution $x_i \sim p_{data}(\cdot | y_i)$, the goal is to *generate* new samples $x^{\text{new}}$ that look like they were drawn from the same *unknown* distribution $p_{data}$
+**Goal** Using the empirical data distributions $(x_1, y_1), \dots, (x_n, y_n) $, the goal is to *generate* new samples $x^{\text{new}}$ that look like they were drawn from the same *unknown* distributions $p_{data}(\cdot | y)$. More precisely, we want to be able to generate new images of cats $x^{\text{new cat}}$ and dogs $x^{\text{new dog}}$ that follow the conditional probability distributions
 
 
 <T block v='x^"new cat" ~ p_"data" (dot | y="cat") ,' />
 <T block v='x^"new dog" ~ p_"data" (dot | y="dog") .' />
 
+**Remark i)**
+To train class-conditional generative models, we could split the dataset into two parts, one with all the cat images and one with all the dog images, and train two separate unconditional generative models. However, this would not leverage similarities between the two classes: both cats and dogs have four legs, a tail, fur, etc. Class-conditional generative models can share information across classes.
+
+**Remark ii)**
+*Generative modelling is a very different task than standard supervised learning*. The usual classification task is the following, given an empirical labelled data distribution $(x_1, y_1), \dots, (x_n, y_n)$, the goal is to estimate the probability a given new image $x$ is a cat or a dog, i.e. we want to estimate $p_{data}(y = cat | x)$.
+On the opposite, in class-conditional generative modelling, we are given a class (e.g. cat), and we want to estimate the probability distribution of images of cats $p_{data}(x | y = cat)$, and sample new images from this distribution.
+
 #### Text-Conditional Generative Modelling
+
+**What** In *text-conditional* generative modelling, we are given a set of data (e.g. images) and their text description
+
+<T block v='text("Data: ") underbrace({(x_1, y_1),dots, (x_n, y_n)}, n "images" x_i "and their text description " y_i)  .' />
+
+
+export const catDogTextGallery = [
+  {
+    url: "https://images.pexels.com/photos/57416/cat-sweet-kitty-animals-57416.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x1, y1='A cat licking his hand'",
+    alt: "Cute cat 1"
+  },
+  {
+    url: "https://images.pexels.com/photos/20787/pexels-photo.jpg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x2, y2='A cat starring into the camera'",
+    alt: "Cute cat 2"
+  },
+  {
+    url: "https://images.pexels.com/photos/1183434/pexels-photo-1183434.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x3, y3='A cat yawning'",
+    alt: "Cute cat 3"
+  },
+  {
+    url: "https://images.pexels.com/photos/58997/pexels-photo-58997.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x4, y4='A dog running'",
+    alt: "Cute cat 4"
+  },
+  {
+    url: "https://images.pexels.com/photos/731022/pexels-photo-731022.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x5, y5='A dog sleeping'",
+    alt: "Cute cat 5"
+  },
+  {
+    url: "https://images.pexels.com/photos/551628/pexels-photo-551628.jpeg?auto=compress&cs=tinysrgb&w=800",
+    caption: "x6, y6='A dog starring into the camera.'",
+    alt: "Cute cat 5"
+  }
+]
+
+<figure>
+  <div style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: "1rem",
+    alignItems: "start"
+  }}>
+    {catDogTextGallery.map((cat, idx) => (
+      <figure key={idx} style={{ margin: 0 }}> {/* remove default margin */}
+        <img
+          src={cat.url}
+          alt={cat.alt}
+          style={{ width: "100%", height: "auto", objectFit: "cover", display: "block" }}
+        />
+        <figcaption style={{
+          textAlign: "center",
+          fontSize: "0.85rem",
+          color: "#6b7280",
+          margin: 0,             // remove figcaption margin
+          marginTop: "0.25rem"   // optional small spacing
+        }}>
+          {cat.caption}
+        </figcaption>
+      </figure>
+    ))}
+  </div>
+
+  <figcaption style={{
+    textAlign: "center",
+    marginTop: "1rem",
+    fontStyle: "italic",
+    color: "#6b7280"
+  }}>
+    A dataset of cat and dog photos, and their text description (source, Pexels.com).
+  </figcaption>
+</figure>
+
+
+For instance, [Stable Diffusion](https://stabledifffusion.com/) was trained on the [LAION-5B dataset](https://laion.ai/blog/laion-5b/), a dataset of 5 billion images and their textual description.
+
+**Assumption** For *text-conditional* generative models, the assumption is that the data $x_1, \dots, x_n$, is drawn from some *unknown* underlying conditional probability distribution**s** $p_{data}( \cdot | y = y_i)$: for all $i \in 1, \dots, n$
+
+<T block v='x_i ~ underbrace(p_"data" (dot | y = y_i), "unknown"), y_i "is a text description".' />
+
+The main difference with class-conditional is that the conditioning variable $y_i$ is now a text description, not a fixed number of classes.
+
+
+**Goal** Using the data and their text description $(x_1, y_1), \dots, (x_n, y_n) $, the goal is to *generate* new samples $x^{\text{new}}$, given a text description.
+More precisely, given a text description $y^{new}$ we want to be able to generate new images $x^{\text{new}}$ that follow the conditional probability distributions
+
+<T block v='x^"new" ~ p_"data" (dot | y=y^"new") ,' />
+
+
+**Remark** Text-conditional generative modelling is very challenging regarding multiple aspects:
+- one usually observes only one sample $x_i$ per textual description $y_i$, i.e., one has to leverage similarities between text descriptions to learn the conditional distributions $p_{data}(\cdot | y)$.
+- one has to handle *new text descriptions* $y^{new}$ that were not seen during training.
+- text descriptions complex objects, that are not easy to handle (multiple sequence size). Handling text requires a lot of engineering and is out of the scope of this Lecture (tokenization, embeddings, transformers, etc.).
+
 
 ### Unconditional Generative Modelling
 
