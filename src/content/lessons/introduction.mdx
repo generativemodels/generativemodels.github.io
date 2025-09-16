@@ -293,13 +293,20 @@ More precisely, given a text description $y^{new}$ we want to be able to generat
 <T block v='x^"new" ~ p_"data" (dot | y=y^"new") ,' />
 
 
-**Remark** Text-conditional generative modelling is very challenging regarding multiple aspects:
-- one usually observes only one sample $x_i$ per textual description $y_i$, i.e., one has to leverage similarities between text descriptions to learn the conditional distributions $p_{data}(\cdot | y)$.
-- one has to handle *new text descriptions* $y^{new}$ that were not seen during training.
-- text descriptions complex objects, that are not easy to handle (multiple sequence size). Handling text requires a lot of engineering and is out of the scope of this Lecture (tokenization, embeddings, transformers, etc.).
+**Remark iii)** Text-conditional generative modelling is very challenging regarding multiple aspects:
+- one usually observes only one sample $x_i$ per textual description $y_i$, i.e., one has to leverage similarities between text descriptions $y_i$ to learn the conditional distributions $p_{data}(\cdot | y=y_i)$.
+- one has to handle *new text descriptions* $y^{new}$ that *were not seen during training*, i.e., the model needs to be able to generalize to new text.
+- text descriptions are complex objects, that are not easy to handle (discrete objects with variable sequence length). Handling text conditioning requires a lot of engineering and is out of the scope of this introduction Lecture (tokenization, embeddings, transformers, etc.).
 
+**Remark iv)** Even if text-conditional generative modelling is very challenging, conceptually, the tools, algorithms, and concepts used for unconditional generative modelling are the same for text-conditional generative modelling.
 
-### Unconditional Generative Modelling
+#### Other Applications of Generative Modelling
+
+##### Scientific Discovery
+
+##### Inverse Problems
+
+##### Robotics
 
 #### 1 and 2-Dimensional Examples
 
