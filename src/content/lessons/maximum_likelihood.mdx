@@ -1,0 +1,33 @@
+---
+title: 'Maximum Likelihood Estimation'
+description: 'Maximum Likelihood Estimation'
+pubDate: '2025-09-11'
+heroImage: '../../assets/blog-placeholder-3.jpg'
+---
+
+import T from '../../components/TypstMath.astro'
+import TypicalGallery from '../../components/TypicalGallery.astro'
+
+
+### Reminder
+
+One has access to $n$ samples $x_1, \dots, x_n$ drawn from an unknown data distribution $p_{\mathrm{data}}$:
+
+<T block v=' x_1,dots, x_n ~ p_"data" .' />
+
+The goal is to generate new samples drawn from $p_{\mathrm{data}}$.
+
+#### Maximum Log-Likelihood Estimation (MLE)
+
+The main idea of maximum likelihood is the following:
+- one restricts the search for a model to a family of distributions $p(\cdot | \theta)$ parameterized by $\theta$.
+- for each parameter $\theta$, one evaluates the density $p( \cdot | \theta)$ on the data points $x_1, \dots, x_n$: $p(x_1, \dots, x_n | \theta)$
+- then one chose the parameter $\theta$ that maximizes the likelihood of the observed data $p(x_1, \dots, x_n | \theta)$.
+
+<T block v='cal(L)^"ML" (theta) := log p(x_1, dots, x_n | theta)'/>
+
+<T block v=' := log p(x_1 | theta) times dots times p(x_n | theta) '/>
+
+<T block v=' := sum_(i=1)^n log p(x_i | theta) '/>
+
+#### Examples
