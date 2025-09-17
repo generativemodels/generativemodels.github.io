@@ -3,6 +3,15 @@ import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+
+	const schedule = [
+	{ date: "Wed Sept 10", description: "Cancelled", material: "TBD" },
+	{ date: "Thurs Sept 11", description: "Overview, <a href='lessons/introduction'>introduction to generative models</a>, <a href='lessons/maximum_likelihood'>maximum likelihood</a>, Expectation Maximization", material: "TBD" },
+	{ date: "Wed Sept 17", description: "Variational autoencoders, variational inference, reparametrization trick", material: "TBD" },
+	{ date: "Thurs Sept 18", description: "GANs, Wasserstein GANs and gradient penalty", material: "TBD" },
+	{ date: "Wed Sept 24", description: "Lab 2, WGANs", material: "TBD" },
+	{ date: "Thur Sept 25", description: "Normalizing Flows", material: "TBD" },
+	];
 ---
 
 <!doctype html>
@@ -12,39 +21,55 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 	</head>
 	<body>
 		<Header />
+
+
 		<main>
-			<h1>🧑‍🚀 Hello, Astronaut!</h1>
-			<p>
-				Welcome to the official <a href="https://astro.build/">Astro</a> blog starter template. This
-				template serves as a lightweight, minimally-styled starting point for anyone looking to build
-				a personal website, blog, or portfolio with Astro.
-			</p>
-			<p>
-				This template comes with a few integrations already configured in your
-				<code>astro.config.mjs</code> file. You can customize your setup with
-				<a href="https://astro.build/integrations">Astro Integrations</a> to add tools like Tailwind,
-				React, or Vue to your project.
-			</p>
-			<p>Here are a few ideas on how to get started with the template:</p>
-			<ul>
-				<li>Edit this page in <code>src/pages/index.astro</code></li>
-				<li>Edit the site header items in <code>src/components/Header.astro</code></li>
-				<li>Add your name to the footer in <code>src/components/Footer.astro</code></li>
-				<li>Check out the included blog posts in <code>src/content/blog/</code></li>
-				<li>Customize the blog post page layout in <code>src/layouts/BlogPost.astro</code></li>
-			</ul>
-			<p>
-				Have fun! If you get stuck, remember to
-				<a href="https://docs.astro.build/">read the docs</a>
-				or <a href="https://astro.build/chat">join us on Discord</a> to ask questions.
-			</p>
-			<p>
-				Looking for a blog template with a bit more personality? Check out
-				<a href="https://github.com/Charca/astro-blog-template">astro-blog-template</a>
-				by <a href="https://twitter.com/Charca">Maxi Ferreira</a>.
-			</p>
-		</main>
-		<main>
+			<h2>Attempted Schedule</h2>
+			<table style="border-collapse: collapse; width: 100%;">
+			  <thead>
+				<tr style="background-color: #f3f4f6; color: #374151;">
+				  <th style="padding: 8px; text-align: left;">Date</th>
+				  <th style="padding: 8px; text-align: left;">Description</th>
+				  <th style="padding: 8px; text-align: left;">Material</th>
+				</tr>
+			  </thead>
+			  <tbody>
+				{schedule.map((item, index) => (
+				  <tr style={`background-color: ${index % 2 === 0 ? "#ffffff" : "#f9fafb"};`}>
+					<td style="padding: 8px;">{item.date}</td>
+					<td style="padding: 8px;">
+					  <div set:html={item.description}></div>
+					</td>
+					<td style="padding: 8px;">{item.material}</td>
+				  </tr>
+				))}
+			  </tbody>
+			</table>
+		  </main>
+
+	<!-- <main>
+	<h2>Attempted Schedule</h2>
+	<table style="border-collapse: collapse; width: 100%;">
+		<thead>
+		<tr style="background-color: #f3f4f6; color: #374151;">
+			<th style="padding: 8px; text-align: left;">Date</th>
+			<th style="padding: 8px; text-align: left;">Description</th>
+			<th style="padding: 8px; text-align: left;">Material</th>
+		</tr>
+		</thead>
+		<tbody>
+		{schedule.map((item, index) => (
+			<tr style={`background-color: ${index % 2 === 0 ? "#ffffff" : "#f9fafb"};`}>
+			<td style="padding: 8px;">{item.date}</td>
+			<td style="padding: 8px;" dangerouslySetInnerHTML={{ __html: item.description }}></td>
+			<td style="padding: 8px;">{item.material}</td>
+			</tr>
+		))}
+		</tbody>
+	</table>
+	</main> -->
+
+		<!-- <main>
 			<h2>Attempted Schedule </h2>
 			<table style="border-collapse: collapse; width: 100%;">
 			  <thead>
@@ -62,7 +87,7 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 				</tr>
 				<tr style="background-color: #ffffff;">
 				  <td style="padding: 8px;">Thurs Sept 11</td>
-				  <td style="padding: 8px;">Overview, introduction to generative models, maximum likelihood, Expectation Maximization</td>
+				  <td style="padding: 8px;">Overview, <a href="lessons/introduction"> introduction to generative models </a>, <a href="lessons/maximum_likelihood"> maximum likelihood </a>, Expectation Maximization</td>
 				  <td style="padding: 8px;">TBD</td>
 				</tr>
 				<tr style="background-color: #f9fafb;">
@@ -87,7 +112,7 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 				</tr>
 			  </tbody>
 			</table>
-		  </main>
+		  </main> -->
 		<Footer />
 	</body>
 </html>
