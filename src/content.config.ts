@@ -13,6 +13,9 @@ const lessons = defineCollection({
 			pubDate: z.coerce.date(),
 			updatedDate: z.coerce.date().optional(),
 			heroImage: image().optional(),
+			order: z.number().optional(),
+			tags: z.array(z.string()).optional(),
+			menu: z.string().optional(),
 		}),
 });
 
