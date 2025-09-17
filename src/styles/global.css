@@ -177,3 +177,45 @@ details {
   }
 }
 
+/* Menu that unfolds on click (no javascript, pure-css, checkbox-based hack) */
+.nav-link-folder {
+	&, label {
+		cursor: pointer;
+	}
+	&.active label {
+		font-weight: bold;
+	}
+	display: inline-flex;
+	flex-direction: column;
+	align-items: left;
+
+	input:not(:checked) + & {
+		label::before {
+			content: "▸";
+			margin-right: 0.2em;
+		}
+		.nav-link {
+			display: none;
+		}
+	}
+	input:checked + & {
+		label::before {
+			content: "▾";
+			margin-right: 0.2em;
+		}
+		.nav-link {
+			opacity: 1;
+			margin: 0 -20vw 0 0.15em;
+			background-color: white;
+			z-index: 10;
+			text-decoration: none;
+			color: rgb(var(--black));
+
+			padding-left: .6em;
+			border-left: 4px solid rgba(var(--black), 15%);
+			&.active {
+				border-left-color: var(--accent);
+			}
+		}
+	}
+}

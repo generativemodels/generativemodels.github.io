@@ -1,0 +1,29 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import HeaderLink from './HeaderLink.astro';
+import { getCollection } from 'astro:content';
+
+const { class: className, title, ...props } = Astro.props;
+
+const pathname = Astro.url.pathname.replace(import.meta.env.BASE_URL, '');
+const prefix = 'lessons';
+const isActive = pathname === prefix || pathname.startsWith(prefix + '/')
+const id = pathname.replace(/.*\//g, '')
+
+const lessons = (await getCollection('lessons')).filter(
+	(l) => !(l.data.tags ?? []).includes('draft')
+).sort(
+	(a, b) => (a.data.order ?? 1000) - (b.data.order ?? 1000),
+);
+
+---
+
+<input type="checkbox" id="lessons-folder-toggle" style="display: none" />
+<div class:list={['nav-link-folder', className, { active: isActive}]}  {...props}>
+	<label for="lessons-folder-toggle">{ title }</label>
+	{
+		lessons.map(entry => (
+			<HeaderLink href={`/${prefix}/${entry.id}`} class:list={['nav-link', { active: id === entry.id} ]} >{entry.data.menu ?? entry.data.title}</HeaderLink>
+		))
+	}
+</div>

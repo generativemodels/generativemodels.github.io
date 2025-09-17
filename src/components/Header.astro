@@ -1,5 +1,6 @@
 ---
 import { SITE_TITLE } from '../consts';
+import HeaderLessonsFolder from './HeaderLessonsFolder.astro';
 import HeaderLink from './HeaderLink.astro';
 ---
 
@@ -8,7 +9,7 @@ import HeaderLink from './HeaderLink.astro';
 		<h2><a href="/">{SITE_TITLE}</a></h2>
 		<div class="internal-links">
 			<HeaderLink href="/">Home</HeaderLink>
-			<HeaderLink href="/lessons">Lessons</HeaderLink>
+			<HeaderLessonsFolder title="Lessons" />
 			<HeaderLink href="/project">Project</HeaderLink>
 		</div>
 		<div class="social-links">
@@ -65,13 +66,13 @@ import HeaderLink from './HeaderLink.astro';
 		align-items: center;
 		justify-content: space-between;
 	}
-	nav a {
+	nav :is(a,.nav-link-folder) {
 		padding: 1em 0.5em;
 		color: var(--black);
 		border-bottom: 4px solid transparent;
 		text-decoration: none;
 	}
-	nav a.active {
+	nav :is(a,.nav-link-folder).active {
 		text-decoration: none;
 		border-bottom-color: var(--accent);
 	}
