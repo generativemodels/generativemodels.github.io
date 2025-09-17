@@ -60,11 +60,11 @@ export const catGallery = [
 
 
 
-**Assumption** The core underlying assumption of generative modelling is that the data $x_1, \dots, x_n$, is drawn from some *unknown* underlying distribution $p_{data}$: for all $i \in 1, \dots, n$
+**Assumption** The core underlying assumption of generative modelling is that the data $x_1, \dots, x_n$, is drawn from some *unknown* underlying distribution $p_{\mathrm{data}}$: for all $i \in 1, \dots, n$
 
 <T block v='x_i ~ underbrace(p_"data", "unknown") .' />
 
-**Goal** Using the empirical data distribution $x_1, \dots, x_n \sim p_{data}$, the goal is to *generate* new samples $x^{\text{new}}$ that look like they were drawn from the same *unknown* distribution $p_{data}$
+**Goal** Using the empirical data distribution $x_1, \dots, x_n \sim p_{\mathrm{data}}$, the goal is to *generate* new samples $x^{\text{new}}$ that look like they were drawn from the same *unknown* distribution $p_{\mathrm{data}}$
 
 
 <T block v='x^"new" ~ p_"data" .' />
@@ -114,11 +114,11 @@ export const catDogGallery = [
 
 
 
-**Assumption** For *class-conditional* generative models, the assumption is that the data $x_1, \dots, x_n$, is drawn from some *unknown* underlying conditional probability distribution**s** $p_{data}( \cdot | y = y_i)$: for all $i \in 1, \dots, n$
+**Assumption** For *class-conditional* generative models, the assumption is that the data $x_1, \dots, x_n$, is drawn from some *unknown* underlying conditional probability distribution**s** $p_{\mathrm{data}}( \cdot | y = y_i)$: for all $i \in 1, \dots, n$
 
 <T block v='x_i ~ underbrace(p_"data" (dot | y = y_i), "unknown"), y_i in {"cat", "dog"}.' />
 
-**Goal** Using the empirical data distributions $(x_1, y_1), \dots, (x_n, y_n) $, the goal is to *generate* new samples $x^{\text{new}}$ that look like they were drawn from the same *unknown* distributions $p_{data}(\cdot | y)$. More precisely, we want to be able to generate new images of cats $x^{\text{new cat}}$ and dogs $x^{\text{new dog}}$ that follow the conditional probability distributions
+**Goal** Using the empirical data distributions $(x_1, y_1), \dots, (x_n, y_n) $, the goal is to *generate* new samples $x^{\text{new}}$ that look like they were drawn from the same *unknown* distributions $p_{\mathrm{data}}(\cdot | y)$. More precisely, we want to be able to generate new images of cats $x^{\text{new cat}}$ and dogs $x^{\text{new dog}}$ that follow the conditional probability distributions
 
 
 <T block v='x^"new cat" ~ p_"data" (dot | y="cat") ,' />
@@ -128,8 +128,8 @@ export const catDogGallery = [
 To train class-conditional generative models, we could split the dataset into two parts, one with all the cat images and one with all the dog images, and train two separate unconditional generative models. However, this would not leverage similarities between the two classes: both cats and dogs have four legs, a tail, fur, etc. Class-conditional generative models can share information across classes.
 
 **Remark ii)**
-*Generative modelling is a very different task than standard supervised learning*. The usual classification task is the following, given an empirical labelled data distribution $(x_1, y_1), \dots, (x_n, y_n)$, the goal is to estimate the probability a given new image $x$ is a cat or a dog, i.e. we want to estimate $p_{data}(y = cat | x)$.
-On the opposite, in class-conditional generative modelling, we are given a class (e.g. cat), and we want to estimate the probability distribution of images of cats $p_{data}(x | y = cat)$, and sample new images from this distribution.
+*Generative modelling is a very different task than standard supervised learning*. The usual classification task is the following, given an empirical labelled data distribution $(x_1, y_1), \dots, (x_n, y_n)$, the goal is to estimate the probability a given new image $x$ is a cat or a dog, i.e. we want to estimate $p_{\mathrm{data}}(y = cat | x)$.
+On the opposite, in class-conditional generative modelling, we are given a class (e.g. cat), and we want to estimate the probability distribution of images of cats $p_{\mathrm{data}}(x | y = cat)$, and sample new images from this distribution.
 
 #### Text-Conditional Generative Modelling
 
@@ -176,7 +176,7 @@ export const catDogTextGallery = [
 
 For instance, [Stable Diffusion](https://stabledifffusion.com/) was trained on the [LAION-5B dataset](https://laion.ai/blog/laion-5b/), a dataset of 5 billion images and their textual description.
 
-**Assumption** For *text-conditional* generative models, the assumption is that the data $x_1, \dots, x_n$, is drawn from some *unknown* underlying conditional probability distribution**s** $p_{data}( \cdot | y = y_i)$: for all $i \in 1, \dots, n$
+**Assumption** For *text-conditional* generative models, the assumption is that the data $x_1, \dots, x_n$, is drawn from some *unknown* underlying conditional probability distribution**s** $p_{\mathrm{data}}( \cdot | y = y_i)$: for all $i \in 1, \dots, n$
 
 <T block v='x_i ~ underbrace(p_"data" (dot | y = y_i), "unknown"), y_i "is a text description".' />
 
@@ -190,11 +190,11 @@ More precisely, given a text description $y^{new}$ we want to be able to generat
 
 
 **Remark iii)** Text-conditional generative modelling is very challenging regarding multiple aspects:
-- one usually observes only one sample $x_i$ per textual description $y_i$, i.e., one has to leverage similarities between text descriptions $y_i$ to learn the conditional distributions $p_{data}(\cdot | y=y_i)$.
+- one usually observes only one sample $x_i$ per textual description $y_i$, i.e., one has to leverage similarities between text descriptions $y_i$ to learn the conditional distributions $p_{\mathrm{data}}(\cdot | y=y_i)$.
 - one has to handle *new text descriptions* $y^{new}$ that *were not seen during training*, i.e., the model needs to be able to generalize to new text.
 - text descriptions are complex objects, that are not easy to handle (discrete objects with variable sequence length). Handling text conditioning requires a lot of engineering and is out of the scope of this introduction Lecture (tokenization, embeddings, transformers, etc.).
 
-**Remark iv)** Even if text-conditional generative modelling is very challenging, conceptually, the tools, algorithms, and concepts used for unconditional generative modelling are the same for text-conditional generative modelling.
+**Remark iv)** Even if text-conditional generative modelling is very challenging, the tools, algorithms, and concepts used for unconditional generative modelling are the same.
 
 #### Other Applications of Generative Modelling
 
