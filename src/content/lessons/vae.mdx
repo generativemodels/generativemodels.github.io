@@ -7,52 +7,44 @@ heroImage: '../../assets/blog-placeholder-3.jpg'
 
 import T from '../../components/TypstMath.astro'
 
-It this lesson, we will derive the core principles behind Variational Autoencoders (VAEs) and understand how they work.
+It this Lecture, we will derive the core principles behind Variational Autoencoders (VAEs).
+The goal is to learn a generative model through: i) a low-dimensional latent space, ii) a decoder that maps from the latent space to the data space.
 
-### Generative Models by Autoencoding
+{/* To achieve this, the an autoencoder will also learn a corresponding encoder that maps from the data space to the latent space. */}
 
-The goal is to learn a generative model in the form of:
+### Autoencoders
 
-- a low-dimensional latent space
-- a decoder that maps from the latent space to the data space
-
-To achieve this, the an autoencoder will also learn a corresponding encoder that maps from the data space to the latent space.
-
-### Plain Autoencoders
-
-Plain autoencoders jointly learn an encoder $e_\phi(x)$ and a decoder $d_\theta(z)$ by minimizing the reconstruction error:
+**Idea** The core idea of vanilla autoencoders id to *jointly* learn an *encoder* $e_\varphi$, and a *decoder* $d_\theta$. The encoder maps a data point $x \in \mathbb{R}^d$ to a low-dimensional *latent representation* $e_\varphi(x)$, and the decoder maps back this latent representation $d_\theta(e_\varphi(x))$ to the data space $\mathbb{R}^d$.
+The parameters of the encoder and the decoder are learned by minimizing the error between a data point $x$ and its reconstruction $d_\theta(e_\varphi(x))$:
 
 $$
-\mathcal{L}(\phi, \theta) = \sum_{x \in \text{data}} \| x - d_\theta(e_\phi(x)) \|^2
+\mathcal{L}(\phi, \theta) = \sum_{x \in \text{data}} \| \underbrace{x}_{\mathrm{sample}} - \underbrace{d_\theta(e_\varphi(x))}_{ \substack{ \mathrm{sample} \\ \mathrm{reconstruction} } } \|^2 \enspace.
 $$
 
-(or in typst) <T block v='cal(L)(phi, theta) = sum_(x in "data") || x - d_(theta)(e_(phi)(x)) ||^2' />
+{/* (or in typst) <T block v='cal(L)(phi, theta) = sum_(x in "data") || x - d_(theta)(e_(phi)(x)) ||^2' /> */}
 
-### A Probabilistic Interpretation of Autoencoders
+#### A Probabilistic Interpretation of Autoencoders
 
 As in most cases where a squared error is minimized, we can interpret the decoder as a Gaussian likelihood model:
 
 $$
-p_\theta(x|z) = \mathcal{N}(x; d_\theta(z), I)
+p(x|z, \theta) = \underbrace{\mathcal{N}(x; d_\theta(z), I)}_{\substack{\text{density of a Gaussian variable with mean } d_\theta(z) \\ \text{ and identity covariance, evaluated at point } x } } \enspace.
 $$
 
-(or in typst) <T block v='p_(theta)(x|z) = N(x; d_(theta)(z), I)' />
+{/* (or in typst) <T block v='p_(theta)(x|z) = cal(N)(x; d_(theta)(z), I)' /> */}
 
-With words, we assume that the decoder predicts the mean of a Gaussian distribution (of fixed identity covariance).
-
-
-We have the equivalence between minimizing the reconstruction error and maximizing the log-likelihood:
+In other  words, the decoder predicts the mean of a Gaussian distribution, which is equivalent to maximize the log-likelihood:
 
 $$
-\arg\min_{\phi, \theta} \sum_{x \in \text{data}} \| x - d_\theta(e_\phi(x)) \|^2
+\arg\min_{\phi, \theta} \sum_{x \in \text{data}} \| x - d_\theta(e_\varphi(x)) \|^2
 =
-\arg\max_{\phi, \theta} \sum_{x \in \text{data}} \log p_\theta(x|z = e_\phi(x))
+\arg\max_{\phi, \theta} \sum_{x \in \text{data}} \log p_\theta(x|z = e_\varphi(x))
 $$
 
 (or in typst) <T block v='arg min_(phi, theta) sum_(x in "data") || x - d_(theta)(e_(phi)(x)) ||^2 = arg max_(phi, theta) sum_(x in "data") log p_(theta)(x|z = e_(phi)(x))' />
 
 <details>
-<summary>Derivations on the equivalence</summary>
+<summary>"Proof" of the equivalence</summary>
 <div>
 We start with the log-likelihood:
 $$
@@ -82,14 +74,14 @@ $$
 Thus, maximizing the log-likelihood is equivalent to minimizing the squared error, i.e.:
 
 $$
-\arg\min_{\phi, \theta} \sum_{x \in \text{data}} \| x - d_\theta(e_\phi(x)) \|^2
+\arg\min_{\phi, \theta} \sum_{x \in \text{data}} \| x - d_\theta(e_\varphi(x)) \|^2
 =
-\arg\max_{\phi, \theta} \sum_{x \in \text{data}} \log p_\theta(x|z = e_\phi(x))
+\arg\max_{\phi, \theta} \sum_{x \in \text{data}} \log p_\theta(x|z = e_\varphi(x))
 $$
 </div>
 </details>
 
-### Overview of Variational Autoencoders (VAEs)
+#### Overview of Variational Autoencoders (VAEs)
 
 In Variational Autoencoders (VAEs), the position $z_i$ in the latent space (for a data point $x_i$) is supposed to be a random variable.
 Indeed, there is technically some uncertainty on the exact position of $z_i$ that best explains $x_i$, especially given that we consider all points jointly.
@@ -98,7 +90,7 @@ In a VAE, on thus manipulates, for each point $x_i$, a distribution on its laten
 We will now decompose the construction of the VAE, starting with formulations that have only the decoder.
 The encoder will be introduced later as a trick (i.e., amortization).
 
-### MAP Estimation of the Latent Variables
+#### MAP Estimation of the Latent Variables
 
 We are interesting in estimating both the decoder parameters $\theta$ and the latent variables $z_i$ for each data point $x_i$.
 
@@ -138,11 +130,10 @@ $$
 //However, this would lead to overfitting, as we could always increase the likelihood by increasing the capacity of the decoder and setting $z_i$ to arbitrary values.
 
 
-### Variational Inference
+#### Variational Inference
 
-### Reparameterization Trick
+#### Reparameterization Trick
 
-### Doubly Stochastic Variational Inference
+#### Doubly Stochastic Variational Inference
 
-### Prior and latent space misconception
-
+#### Prior and latent space misconception
