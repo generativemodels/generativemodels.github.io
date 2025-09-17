@@ -24,10 +24,9 @@ The main idea of maximum likelihood is the following:
 - for each parameter $\theta$, one evaluates the density $p( \cdot | \theta)$ on the data points $x_1, \dots, x_n$: $p(x_1, \dots, x_n | \theta)$
 - then one chose the parameter $\theta$ that maximizes the likelihood of the observed data $p(x_1, \dots, x_n | \theta)$.
 
-<T block v='cal(L)^"ML" (theta) := log p(x_1, dots, x_n | theta)'/>
-
-<T block v=' := log p(x_1 | theta) times dots times p(x_n | theta) '/>
-
-<T block v=' := sum_(i=1)^n log p(x_i | theta) '/>
+<T block v='cal(L)^"ML" (theta)
+        & := log p(x_1, dots, x_n | theta) \
+        & = log p(x_1 | theta) times dots times p(x_n | theta) \
+        & := sum_(i=1)^n log p(x_i | theta) '/>
 
 #### Examples
