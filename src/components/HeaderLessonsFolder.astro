@@ -8,7 +8,7 @@ const { class: className, title, ...props } = Astro.props;
 const pathname = Astro.url.pathname.replace(import.meta.env.BASE_URL, '');
 const prefix = 'lessons';
 const isActive = pathname === prefix || pathname.startsWith(prefix + '/')
-const id = pathname.replace(/.*\//g, '')
+const id = pathname.replace(/\/$/, '').replace(/.*\//g, '')
 
 const lessons = (await getCollection('lessons')).filter(
 	(l) => !(l.data.tags ?? []).includes('draft')
