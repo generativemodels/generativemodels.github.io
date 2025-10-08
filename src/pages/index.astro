@@ -5,15 +5,21 @@ import Header from '../components/Header.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
 	const schedule = [
-	{ date: "Wed Sept 10", description: "Cancelled", material: "TBD" },
-	{ date: "Thurs Sept 11", description: "Overview, <a href='lessons/introduction'>introduction to generative models</a>, <a href='lessons/maximum_likelihood'>maximum likelihood</a>, Expectation Maximization", material: "TBD" },
-	{ date: "Wed Sept 17", description: `
+	{ date: "Wed Sept 10th", description: "Cancelled", material: "TBD" },
+	{ date: "Thurs Sept 11th", description: "Overview, <a href='lessons/introduction'>introduction to generative models</a>, <a href='lessons/maximum_likelihood'>maximum likelihood</a>, Expectation Maximization", material: "TBD" },
+	{ date: "Wed Sept 17th", description: `
 	Back to GMM (<a href="https://dl.heeere.com/2025-genmod-02/">slides</a>, <a href="https://dl.heeere.com/2025-genmod-02.pdf">pdf</a>),
 	Bayesianism, variational inference, Variational autoencoders, (reparametrization trick)
 	`, material: "TBD" },
-	{ date: "Thurs Sept 18", description: "Cancelled", material: "TBD" },
-	{ date: "Wed Sept 24", description: "Normalizing Flows", material: "TBD" },
-	{ date: "Thur Sept 25", description: "Lab 1: simple generative models, numpy+pytorch, autoencoders", material: "TBD" },
+	{ date: "Thurs Sept 18th", description: "Cancelled", material: "TBD" },
+	{ date: "Wed Sept 24th", description: "Normalizing Flows", material: "TBD" },
+	{ date: "Thur Sept 25th", description: "Lab 1: simple generative models, numpy+pytorch, autoencoders", material: "TBD" },
+	{ date: "Wed Oct 1st", description: "Generative Adversarial Networks", material: "TBD" },
+	{ date: "Thurs Oct 2nd", description: "Wasserstein Generative Adversarial Networks + Lab 2", material: "TBD" },
+	{ date: "Wed Oct 8th", description: "Diffusion", material: `
+	<a href="https://neurips.cc/virtual/2024/invited-talk/101133">Arnaud Doucet invited talk at NeurIPS 2024</a>
+	`},
+	{ date: "Thurs Oct 9th", description: "Introduction to sequence modelling", material: "TBD" }
 	];
 ---
 
@@ -43,7 +49,9 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 					<td style="padding: 8px;">
 					  <div set:html={item.description}></div>
 					</td>
-					<td style="padding: 8px;">{item.material}</td>
+					<td style="padding: 8px;">
+						<div set:html={item.material}></div>
+					</td>
 				  </tr>
 				))}
 			  </tbody>
