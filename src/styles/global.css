@@ -219,3 +219,12 @@ details {
 		}
 	}
 }
+
+
+figure figcaption {
+	font-size: 0.9em;
+	color: rgb(var(--gray));
+	text-align: center;
+	margin-top: 0.5em;
+	font-style: italic;
+}
