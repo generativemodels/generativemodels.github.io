@@ -3,3 +3,6 @@
 
 export const SITE_TITLE = 'Generative Models Course';
 export const SITE_DESCRIPTION = 'Welcome to the Generative Models blog"!';
+
+
+export const typstable = ['em', 'del', 'strong', 'code', 'pre'] as const;

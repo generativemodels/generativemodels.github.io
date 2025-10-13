@@ -1,6 +1,6 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
-import { typstable } from './pages/lessons/[...slug].astro';
+import { typstable } from './consts';
 
 const lessons = defineCollection({
 	// Load Markdown and MDX files in the `src/content/lessons/` directory.
@@ -17,7 +17,7 @@ const lessons = defineCollection({
 			order: z.number().optional(),
 			tags: z.array(z.string()).optional(),
 			menu: z.string().optional(),
-			typst: z.union([z.enum(typstable), z.array(z.enum(typstable)).optional()]),
+			typst: z.union([z.enum(typstable), z.array(z.enum(typstable))]).optional(),
 		}),
 });
 
