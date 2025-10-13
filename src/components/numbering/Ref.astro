@@ -6,5 +6,5 @@ const counterId = getCounterId(type, name);
 const counterText = getCounterText(type, name);
 ---
 
-<a href={'#' + counterId}>{counterText}</a>
+<a href={'#' + counterId} class={`counter-ref--${type}`} data-type={type} data-name={name}>{counterText}</a>
 

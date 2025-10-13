@@ -7,5 +7,5 @@ incrementCounter(type, name)
 const counterText = getCounterText(type, name)
 ---
 
-<span id={counterId}>{counterText}</span>
+<span id={counterId} class={`counter--${type}`} data-type={type} data-name={name} data-text={counterText}>{counterText}</span>
 

@@ -33,3 +33,26 @@ export function resetCounters() {
 export function resetCounter(type: string) {
   delete counters[type];
 }
+
+
+
+////
+
+export const jsSetupCounteurs = function(type: string) {
+  const texts = {} as Record<string, string>;
+  document.querySelectorAll(`.counter--${type}`).forEach(el => {
+    const label = `${el.getAttribute('data-type')}:${el.getAttribute('data-name')}`;
+    texts[label] = el.getAttribute('data-text') || '';
+  });
+  document.querySelectorAll(`.counter-ref--${type}`).forEach(el => {
+    const label = `${el.getAttribute('data-type')}:${el.getAttribute('data-name')}`;
+    if (texts[label]) {
+      el.textContent = texts[label];
+      el.setAttribute('data-text', texts[label]);
+    }
+  });
+}
+
+export const jsOnLoadSetupCounters = function(type: string) {
+  return `window.addEventListener('load', () => { (${jsSetupCounteurs.toString()})('${type}') })`;
+}
