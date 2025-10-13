@@ -6,9 +6,14 @@ import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
 
+import '../styles/diffusion.css';
+import { resetCounters } from '../components/numbering/CountersTools';
+
 type Props = CollectionEntry<'blog'>['data'];
 
 const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
+
+resetCounters();
 ---
 
 <html lang="en">
