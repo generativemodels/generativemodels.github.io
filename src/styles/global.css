@@ -268,3 +268,12 @@ figure {
 	border-left: 4px solid var(--accent);
 	z-index: 100;
 }
+
+.lesson-in-beta {
+	background: #fffae6;
+	color: #663c00;
+	border: 1px solid #ffecb3;
+	padding: 0.5em 1em;
+	text-align: center;
+	font-weight: bold;
+}

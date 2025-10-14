@@ -10,7 +10,8 @@ import { resetCounters, jsOnLoadSetupCounters } from '../components/numbering/Co
 
 type Props = CollectionEntry<'lessons'>['data'];
 
-const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, tags } = Astro.props;
+const beta = (tags ?? []).includes('beta');
 
 resetCounters();
 const onload = jsOnLoadSetupCounters('fig');
@@ -64,6 +65,13 @@ const onload = jsOnLoadSetupCounters('fig');
 		<Header />
 		<main>
 			<script set:html={onload}></script>
+			{
+				beta ? <div class="lesson-in-beta">
+						This lesson is currently in <em>beta</em>. It may contain inaccuracies or
+						incomplete information. Please give feedback on any issues or suggestions for
+						improvement!
+				</div> : undefined
+			}
 			<article>
 				<div class="hero-image">
 					{heroImage && <Image width={1020} height={510} src={heroImage} alt="" />}
