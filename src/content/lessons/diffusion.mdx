@@ -5,7 +5,7 @@ pubDate: '2025-10-08'
 heroImage: '../../assets/blog-placeholder-3.jpg'
 order: 510
 tags: ['draft', 'Diffusion', 'Flow Matching']
-typst: 'del'
+typst: ['del', 'code']
 ---
 
 import T from '../../components/TypstMath.astro'
@@ -25,6 +25,19 @@ Test
 - T <T>(a+b) / 2</T>
 */ }
 
+
+<div class="glossary">
+<label><input type="checkbox" checked /> Keep visible</label>
+- **~beta_t~** ((choice)) small added noise variance at step ~t~
+- **~alpha_t := 1 - beta_t~** signal retention factor at step ~t~
+- **~overline(alpha)_ t := product_(s=1)^t alpha_s~** overall signal retention factor from the start to step ~t~
+- **~1 - overline(alpha)_t~** overall noise variance added from the start to step ~t~
+- **~sigma_t^2~** ((choice)) variance of the backward step at step ~t~
+- **~q(x_t | x_(t-1))~** ~!:= cal(N)(sqrt(1 - beta_t)x_(t-1), beta_t I)~ forward/noising step distribution
+- **~q(x_t | x_0)~**      ~!= cal(N)(sqrt(overline(alpha)_t)  x_0, (1 - overline(alpha)_t)  I)~ big-jump forward/noising step distribution
+- **~q(x_(t-1)|x_0)~**    ~!= cal(N)(sqrt(overline(alpha)_ (t-1))x_0, (1 - overline(alpha)_(t-1))I)~ big-jump for step ~t-1~
+</div>
+
 This lesson introduces the principles of diffusion models.
 The aim is to clearly explain, with both the intuition and the detailed derivation, the original Denoising Diffusion Probabilistic Models (DDPM).
 
@@ -38,6 +51,12 @@ This allows to supervise the generative/denoising process (a continuous normaliz
 To achieve this, diffusion models imagine a forward noising process, which progressively adds noise to the data until it becomes pure noise.
 The generative process is then trained to reverse this noising process, and denoise the data step by step.
 
+
+
+
+
+
+
 ## Common knowledge about Gaussians / normal distributions
 
 The goal here is not to define the normal distribution, nor to explain all its properties.
@@ -49,6 +68,8 @@ The KL divergence between two normal distributions ~cal(N)(mu_1, sigma_1^2)~ and
 
 ~!"KL"(cal(N)(mu_1, sigma_1^2) || cal(N)(mu_2, sigma_2^2)) = (mu_1 - mu_2)^2 / (2 sigma_2^2) + (sigma_1^2 / (2 sigma_2^2)) - 1/2 + log(sigma_2 / sigma_1)~
 
+In the case we will use it, only the first term will be useful: it will be the only term depending on the variable of interest.
+
 ### Product of two normal densities
 
 The product of two normal densities ~cal(N)(mu_1, sigma_1^2)~ and ~cal(N)(mu_2, sigma_2^2)~ is proportional to another normal density:
@@ -57,10 +78,41 @@ The product of two normal densities ~cal(N)(mu_1, sigma_1^2)~ and ~cal(N)(mu_2, 
 
 or more explicitly,
 
-~! exists K_1, forall x: cal(N)(mu_1, sigma_1^2)(x) times cal(N)(mu_2, sigma_2^2)(x) = K_1 times cal(N)(tilde(mu), tilde(sigma))(x)~
+~! exists K_1, mu, sigma, forall x: cal(N)(mu_1, sigma_1^2)(x) times cal(N)(mu_2, sigma_2^2)(x) = K_1 times cal(N)(mu, sigma)(x)~
 
-with ~!tilde(mu) = (mu_1 / sigma_1^2 + mu_2 / sigma_2^2) / (1 / sigma_1^2 + 1 / sigma_2^2) = (sigma_2^2 mu_1 + sigma_1^2 mu_2) / (sigma_1^2 + sigma_2^2)~
-and ~!tilde(sigma)^2 = 1 / (1 / sigma_1^2 + 1 / sigma_2^2) = (sigma_1^2  sigma_2^2) / (sigma_1^2 + sigma_2^2)~
+with ~!mu = (mu_1 / sigma_1^2 + mu_2 / sigma_2^2) / (1 / sigma_1^2 + 1 / sigma_2^2) = (sigma_2^2 mu_1 + sigma_1^2 mu_2) / (sigma_1^2 + sigma_2^2)~
+and ~!sigma^2 = 1 / (1 / sigma_1^2 + 1 / sigma_2^2) = (sigma_1^2  sigma_2^2) / (sigma_1^2 + sigma_2^2)~
+
+<details>
+<summary>Proof</summary>
+<div>
+We work on the log space, focusing/keeping only the terms depending on ~x~ (the rest is the normalization constant of a Gaussian).
+More generally, the log of a gaussian density ~cal(N)(mu, sigma^2)~ can be expanded as:
+<T block v='
+ln(cal(N)(mu, sigma^2)(x)) & = -1/2 ((x - mu)^2 / sigma^2) + C_1 \
+& = -1/2 (x^2 / sigma^2 - 2 (mu x) / sigma^2 + mu^2 / sigma^2) + C_1 \
+& = -1/(2 sigma^2) (x^2 - 2 mu x) + C_2 \
+'/>
+
+This formula is useful for identifying the parameters of a Gaussian density from its expanded log density.
+
+For the product of two Gaussian densities, we have:
+<T block v='
+& ln(cal(N)(mu_1, sigma_1^2)(x) times cal(N(mu_2, sigma_2^2)(x))) \
+& = - 1/2 ((x - mu_1)^2 / sigma_1^2 + (x - mu_2)^2 / sigma_2^2) + C_3 \
+& "(developing)" \
+& = -1/2 (x^2 / sigma_1^2 - 2 (mu_1 x) / sigma_1^2 + mu_1^2 / sigma_1^2 + x^2 / sigma_2^2 - 2 (mu_2 x) / sigma_2^2 + mu_2^2 / sigma_2^2) + C_3 \
+& "(factorizing and pushing constant terms in the constant)" \
+& = -1/2 ((1 / sigma_1^2 + 1 / sigma_2^2) x^2 - 2 (mu_1 / sigma_1^2 + mu_2 / sigma_2^2) x) + C_4 \
+& = -1/2 (x^2 / sigma^2 - 2 (mu / sigma^2) x) + C_4 \
+'/>
+We can identify ~sigma^2~ directly, and then deduce ~mu~:
+<T block v='
+sigma^2 & = 1 / (1 / sigma_1^2 + 1 / sigma_2^2) = (sigma_1^2 sigma_2^2) / (sigma_1^2 + sigma_2^2) \
+mu & = sigma^2 (mu_1 / sigma_1^2 + mu_2 / sigma_2^2) = (sigma_2^2 mu_1 + sigma_1^2 mu_2) / (sigma_1^2 + sigma_2^2) \
+'/>
+</div>
+</details>
 
 ### Identities on normal mean
 
@@ -68,53 +120,249 @@ and ~!tilde(sigma)^2 = 1 / (1 / sigma_1^2 + 1 / sigma_2^2) = (sigma_1^2  sigma_2
 - ~cal(N)(a mu, sigma^2)(x) = cal(N)(mu, sigma^2 / a^2)(x / a)~
 - combining both: ~cal(N)(a x, sigma^2)(mu) = cal(N)(mu / a, sigma^2 / a^2)(x)~
 
-## Description and properties of the forward/noising process
+
+
+
+
+
+## The forward/noising process
+
+In this section, we introduce the forward/noising process, and derive all properties that are necessary afterwards.
+
+
+### Global view
+
+The forward/noising process progressively adds noise to the data until it becomes pure noise.
+As shown in Fig. <Ref label="fig:global-noise"/>, the forward process starts from data points
+~forall i, x^i_0 tilde.op q(x_0)~ (e.g. images from the training set, also named ~hat(p)_"data"~).
+The forward process progressively adds Gaussian noise to these data points, until they are completely shuffled and become close to pure noise.
+The total process is run for a finite (but high) number of steps ~T~, and we obtain ~forall i, x^i_T tilde.op cal(N)(0,I)~.
 
 <figure>
     <InlineSvg asset="diffusion" hide='#FORWARD, #BACKWARD, #forward, #backward , #more, #bigkl' />
     <figcaption>[<Counter label="fig:global-noise"/>] global forward noising process.</figcaption>
 </figure>
 
-See Fig. <Ref label="fig:one-step-noise"/> for an illustration of the forward/noising process.
+### Local view
+
+The forward/noising process is defined as a Markov chain, where each step adds a bit of Gaussian noise to the previous step.
+As shown in Fig. <Ref label="fig:one-step-noise"/> the position at step ~t~ depends only on the position at step ~t-1~ (hence the Markov property).
+More precisely, the forward/noising process is defined as:
+
+<T block v="
+x_0 & tilde.op q(x_0) \
+forall t in [1..T], x_t & tilde.op q(x_t | x_(t-1)) \
+"/>
+
+Even more precisely:
+- we can decide on a variance addition schedule ~beta_1, ..., beta_T~ saying how much noise variance to add at each step,
+- as we add noise at each step, the distribution would be more and more spread along time steps (~t~) and would not reach a gaussian noise with identity covariance,
+- to avoid this, we also rescale the signal at each step by a factor ~sqrt(1 - beta_t)~.
+
+The goal of the rescaling is to ensure that the variance at step ~t~ is always ~1~, whatever ~t~.
+Overall the forward/noising process is defined as:
+
+<T block v="
+x_0 & tilde.op q(x_0) \
+forall t in [1..T], x_t & tilde.op q(x_t | x_(t-1)) = cal(N)(sqrt(1 - beta_t) x_(t-1), beta_t I) \
+"/>
 
 <figure>
     <InlineSvg asset="diffusion" hide='#BACKWARD, #qt, #qtt0, #forward, #backward , #more, #bigkl' />
     <figcaption>[<Counter label="fig:one-step-noise"/>] One-step noising process.</figcaption>
 </figure>
 
-See Fig. <Ref label="fig:global-noise"/> for an illustration of the forward/noising process.
+
+### Big-jump view
+
+Thanks to the properties of Gaussians, we can express the distribution at step ~t~ as a function of the initial data point ~x_0~.
+Indeed, since each step is a Gaussian distribution, the composition of all the steps is also a Gaussian distribution as shown in Fig. <Ref label="fig:multi-step-noise"/>.
+More precisely, we have:
+
+<T block v="
+forall t in [1..T], x_t & tilde.op q(x_t | x_0) = cal(N)(sqrt(overline(alpha)_t) x_0, (1 - overline(alpha)_t) I) \
+"/>
 
 <figure>
     <InlineSvg asset="diffusion" hide='#BACKWARD, #qtt0, #backward, #more, #bigkl' />
     <figcaption>[<Counter label="fig:multi-step-noise"/>] Multi-step noising process.</figcaption>
 </figure>
 
-See Fig. <Ref label="fig:multi-step-noise"/> for an illustration of the forward/noising process.
+
+### Sandwich view
+
+We can also express the distribution at step ~t-1~ as a function of the position at step ~t~ and the initial data point ~x_0~.
+This is illustrated in Fig. <Ref label="fig:sandwich-noise"/>:
+- the two densities in blue correspond to the information on ~x_(t-1)~ that we have thanks to ~x_t~ (the peaky one) and ~x_0~ (the wide one),
+- their product (in pink), once renormalized, gives us the distribution of ~x_(t-1)~ knowing both ~x_t~ and ~x_0~
+
+More precisely, we have:
+
+<T block v="
+forall t in [1..T], q(x_(t-1) | x_t, x_0) & prop q(x_(t-1) | x_t) times q(x_(t-1) | x_0) \
+"/>
+
+We will show that we can derive a closed-form expression for this distribution:
+
+<T block v='
+forall t in [1..T], q(x_(t-1) | x_t, x_0) & prop cal(N)(tilde(mu), tilde(beta)^2 I) \
+"with" \
+tilde(mu)(x_0, t, x_t) & = (sqrt(overline(alpha)_(t-1)) beta_t)/ (1 - overline(alpha)_t) x_0 + (sqrt(alpha_t) (1- overline(alpha)_(t-1))) / (1 - overline(alpha)_t) x_t \
+tilde(beta)(t) & = (1 - overline(alpha)_(t-1)) / (1 - overline(alpha)_t) beta_t \
+'/>
+
+The proof relies on showing that ~q(x_(t-1) | x_t)~ (the anti-forward step) is proportional to a Gaussian density, and then using the product-of-two-Gaussians property that we derived in the preliminaries.
+
+
+
+<details>
+<summary>Derivation</summary>
+<div>
+
+Knowing ~x_0~, we can express the anti-forward step ~q(x_(t-1) | x_t, x_0)~ using the Bayes rule.
+Remembering that this is a distribution over ~x_(t-1)~, we can focus on the factors that depend on it (and thus drop $q(x_t)$ below):
+
+<T block v='
+forall t in [1..T], q(x_(t-1) | x_t, x_0) & = q(x_t | x_(t-1), x_0) q(x_(t-1) | x_0) / q(x_t | x_0) \
+& prop q(x_t | x_(t-1)) q(x_(t-1) | x_0) \
+& prop cal(N)(sqrt(1 - beta_t) x_(t-1), beta_t I)(x_t) times q(x_(t-1) | x_0) \
+cal(N)(a x,sigma^2)(mu) => cal(N)(μ/a, σ^2/a^2)(x) "   "
+& prop cal(N)(x_t / sqrt(1 - beta_t), beta_t / (1 - beta_t) I)(x_(t-1)) \
+& " " times cal(N)(sqrt(overline(alpha)_(t-1)) x_0, (1 - overline(alpha)_(t-1)) I)(x_(t-1)) \
+"(prod. of gaussian densities)   "
+& prop cal(N)(tilde(mu), tilde(beta))(x_(t-1)) \
+
+"with" \
+tilde(beta)
+& = (( beta_t / (1 - beta_t) ) ( 1 - overline(alpha)_(t-1))) / (( beta_t / (1 - beta_t) ) + ( 1 - overline(alpha)_(t-1))) \
+& = (1 - overline(alpha)_(t-1)) / (beta_t + (1-beta_t)(1 - overline(alpha)_t)) beta_t \
+& = (1 - overline(alpha)_(t-1)) / (1 - alpha_t + alpha_t (1 - overline(alpha)_t)) beta_t \
+& = (1 - overline(alpha)_(t-1)) / (1 - overline(alpha)_t) beta_t \
+
+"and" \
+tilde(mu) & = ((x_t / sqrt(1 - beta_t)) (1 - overline(alpha)_(t-1)) + (sqrt(overline(alpha)_(t-1)) x_0) (beta_t / (1 - beta_t))) / (( beta_t / (1 - beta_t) ) + ( 1 - overline(alpha)_(t-1))) \
+"(as for "mu", pass "1 - beta_t" down)   "
+& = (sqrt(alpha_(t-1)) beta_t) / (1 - overline(alpha)_t) x_0
+  + (sqrt(alpha_t) (1 - overline(alpha)_(t-1))) / (1 - overline(alpha)_t) x_t \
+'/>
+
+
+</div>
+</details>
 
 <figure>
     <InlineSvg asset="diffusion" hide='#BACKWARD, #backward, #more, #bigkl' lighten="#qt, #qtt" />
-    <figcaption>[D] Closed-form conditional backward step.</figcaption>
+    <figcaption>[<Counter label="fig:sandwich-noise"/>] Closed-form conditional backward step.</figcaption>
 </figure>
+
+## The learnable backward process
+
+Inspired by the forward/noising process, we define a backward/denoising process that will have parameters so that we can learn it to reverse the forward/noising process.
+As shown in Fig. <Ref label="fig:learnable-backward"/>, the backward/denoising process starts from some random noise.
+It is also defined as a Markov chain, where each step ~t-1~ only depends on the previous step ~t~.
+
+Said differently, the process is defined by the distributions ~p_theta (x_(t-1) | x_t)~ for ~t in [1..T]~, where ~theta~ are the learnable parameters of the model.
+The form of ~p_theta~ is actually a gaussian distribution, with a mean predicted by a neural network, and a variance that can be fixed or learned.
+We typically have, with a fixed denoising variance schedule ~sigma_1, ..., sigma_T~, and finally write:
+
+<T block v='
+x_T & tilde.op p(x_T) = cal(N)(0, I) \
+forall t in [1..T], x_(t-1) & tilde.op p_theta(x_(t-1) | x_t) = cal(N)(mu_theta (x_t, t), sigma_t^2 I) \
+'/>
+
 
 <figure>
     <InlineSvg asset="diffusion" hide='#FORWARD, #forward, #kl, #more, #bigkl' />
-    <figcaption>[E] Learnable backward process.</figcaption>
+    <figcaption>[<Counter label="fig:learnable-backward"/>] Learnable backward process.</figcaption>
 </figure>
+
+
+### The overall objective
+
+The parameters ~theta~ of the backward/denoising process will be learned by fitting the backward steps to the forward steps.
+More precisely, we want to minimize the KL divergence between the distribution induced by the forward step ~q(x_(0:T))~ and one induced by the backward step  ~p_theta (x_(0:T))~, as hinted in Fig. <Ref label="fig:fitting-process"/>.
 
 <figure>
     <InlineSvg asset="diffusion" hide='#BACKWARD, #FORWARD'/>
-    <figcaption>[F] Fitting the forward process with the backward process.</figcaption>
+    <figcaption>[<Counter label="fig:fitting-process"/>] Fitting the forward process with the backward process.</figcaption>
 </figure>
+
+
+## From a global to a local objective
+
+We will now show that we can simplify the global objective into a sum of local objectives, one for each step, with the proper conditioning.
+We will follow a few steps:
+- starting by writing the KL divergence between the two joint distributions of the Markov chains, both backward in time,
+- decomposing the KL divergence as a sum of KL divergences between each step, being careful on the writting, expeactations and conditionings,
+- using the "sandwich view" to "reverse" the forward noising process.
+
+<T block v='
+cal(L)
+& := "KL"(q(x_(0:T)) || p_theta(x_(0:T))) \
+& = EE_(x_(0:T) tilde.op q(x_(0:T))) [ln (q(x_(0:T)) / (p_theta (x_(0:T))))] \
+& = EE_(x_(0:T) tilde.op q(x_(0:T))) [ln (q(x_T) times product_(t=1)^T q(x_(t-1) | x_t)) - ln (p_theta (x_T) times product_(t=1)^T p_theta (x_(t-1) | x_t))] \
+& = EE_(x_(0:T) tilde.op q(x_(0:T))) [ln (q(x_T) / (p_theta (x_T)) + sum_(t=1)^T ln ( q(x_(t-1) | x_t)) / (p_theta (x_(t-1) | x_t)))] \
+& = EE_(x_T tilde.op q(x_T)) [ln (q(x_T) / (p_theta (x_T)))] + sum_(t=1)^T EE_(x_t tilde.op q(x_t)) EE_(x_(t-1) tilde.op q(x_(t-1) | x_t)) [ln ( q(x_(t-1) | x_t)) / (p_theta (x_(t-1) | x_t))] \
+//& = "KL"(q(x_T) || p_theta (x_T)) + sum_(t=1)^T EE_(x_t tilde.op q(x_t)) ["KL"(q(x_(t-1) | x_t) || p_theta (x_(t-1) | x_t))] \
+'/>
+
+We will use ~p(A) = sum_B p(A | B) p(B) = EE_B [p(A|B)]~ to introduce ~x_0~ and get the sandwich view (that we pre-solved earlier).
+
+TODO not sure how to deal with log and EE
+
+<T block v='
+q(x_(t-1) | x_t)
+& = EE_(x_0 tilde.op q(x_0)) [q(x_(t-1) | x_t, x_0)] \
+'/>
+
+
 
 <figure>
     <InlineSvg asset="diffusion" hide='#forward, #backward, #more, #bigkl, #qt, #qtt' />
-    <figcaption>[G] Temporal locality of the learning process.</figcaption>
+    <figcaption>[<Counter label="fig:temporal-locality"/>] Temporal locality of the learning process.</figcaption>
 </figure>
 
 
+## Full visual recap
+
+Fig. <Ref label="fig:all-together"/> summarizes all the pieces together.
 
 <figure>
-    <InlineSvg asset="diffusion" hide='#more, #backward' />
-    <figcaption>[Z] All together.</figcaption>
+    <InlineSvg asset="diffusion" hide='#more, #backward' />"KL"(q(x_(0:T)) || p_theta(x_(0:T)))
+
+    <figcaption>[<Counter label="fig:all-together"/>] All together.</figcaption>
 </figure>
+
+
+## Aside: Bayes rule over a Markov chain
+
+Even though the forward/noising process is defined forward in time, we can also express it in the opposite direction.
+It corresponds to a different decomposition of the joint distribution of the Markov chain $q(x_0, ..., x_T)$:
+
+<T block v='
+& q(x_(0:T))
+& = q(x_0) times product_(t=1)^T q(x_t | x_(t-1)) \
+"(anti-forward)" 
+&& = q(x_T) times product_(t=1)^T q(x_(t-1) | x_t) \
+'/>
+
+<details>
+<summary>A different view / proof</summary>
+<div>
+We can develop the markov chain, and apply the Bayes rule at each step:
+
+<T block v='
+ln q(x_(0:T))
+& := ln ( q(x_0) times product_(t=1)^T q(x_t | x_(t-1)) ) \
+& = ln q(x_0) + sum_(t=1)^T ln q(x_t | x_(t-1)) \
+& = ln q(x_0) + sum_(t=1)^T ln ( (q(x_(t-1) | x_t) q(x_t)) / q(x_(t-1)) ) \
+& = ln q(x_0) + sum_(t=1)^T ln q(x_(t-1) | x_t) + sum_(t=1)^T ln q(x_t) - sum_(t=1)^T ln q(x_(t-1)) \
+& = ln q(x_0) + sum_(t=1)^T ln q(x_(t-1) | x_t) + sum_(t=1)^T ln q(x_t) - sum_(t=0)^(T-1) ln q(x_t) \
+& = ln q(x_0) + sum_(t=1)^T ln q(x_(t-1) | x_t) + ln q(x_T) - ln q(x_0) \
+& = sum_(t=1)^T ln q(x_(t-1) | x_t) + ln q(x_T) \
+'/>
+</div>
+</details>
+
+
 

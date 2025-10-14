@@ -1,0 +1,119 @@
+---
+import { renderToSVGString, renderToHTML } from "astro-typst/src//lib/typst.js";
+import { unified } from "unified";
+import type { Parser } from "unified";
+import rehypeStringify from "rehype-stringify";
+
+import type { TypstDocInput } from "../lib/prelude.js";
+
+export type Props = (
+    | { code: string }
+    | { src: string }
+    | { input: TypstDocInput }
+) &
+    TypstOptions;
+
+export type TypstOptions = {
+    /**
+     * Whether to add default style for anchors to function.
+     *
+     * If you have multiple svg elements in the same page,
+     * you may want to set this to `false`, and import
+     * the stylesheet manually.
+     *
+     * @default true
+     */
+    style?: boolean;
+    /**
+     * The width of the SVG element.
+     * If not set, the width will be calculated based on the content.
+     * You may want to set this to `"100%"` to fit the container.`
+     *  @default undefined */
+    width?: string | number;
+    /**
+     * The height of the SVG element.
+     * If not set, the height will be calculated based on the content.
+     * You may want to set this to `"auto"` to fit the container.
+     *  @default undefined */
+    height?: string | number;
+    /** @default {} */
+    props?: Record<string, string>;
+    /** @default 16 */
+    remPx?: number;
+    /** @default 2 */
+    scale?: number;
+    /** @default "svg" */
+    target?: "svg" | "html";
+};
+
+const options = Astro.props;
+let input: TypstDocInput =
+    "src" in options
+        ? { mainFilePath: options.src }
+        : "code" in options
+          ? { mainFileContent: options.code }
+          : options.input;
+
+let renderResult: string;
+
+if (options.target === "html") {
+    //@ts-ignore
+    const hast = (await renderToHTML({ ...input, body: "hast" }, options)).html;
+    const slotContents: Record<string, import("unist").Node> = {};
+
+    for (const slotName of Object.keys(Astro.slots)) {
+        const htmlString = await Astro.slots.render(slotName);
+
+        // Create a raw HTML node directly instead of parsing
+        const fragmentNode = {
+            type: "raw",
+            value: htmlString.trim(),
+        };
+
+        slotContents[slotName] = fragmentNode;
+    }
+
+    // Custom plugin to handle default slots (slots without name attribute)
+    function rehypeAllSlots() {
+        return (tree: any) => {
+            function visit(node: any) {
+                if (node.type === "element" && node.tagName === "slot") {
+                    const slotName = node.properties?.name || "default";
+
+                    // Replace slot with content if it exists
+                    if (slotContents[slotName]) {
+                        // Copy all properties from the replacement node
+                        Object.assign(node, slotContents[slotName]);
+                    }
+                }
+
+                if (node.children) {
+                    node.children.forEach(visit);
+                }
+            }
+
+            visit(tree);
+        };
+    }
+
+    function parser() {
+        // @ts-ignore
+        this.parser = parser as Parser;
+
+        function parser() {
+            return hast;
+        }
+    }
+
+    renderResult = await unified()
+        .use(parser)
+        .use(rehypeAllSlots)
+        .use(rehypeStringify, { allowDangerousHtml: true })
+        .process(hast)
+        .then(String);
+} else {
+    renderResult = (await renderToSVGString(input, options)).svg;
+}
+---
+
+<span set:html={renderResult} />

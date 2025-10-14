@@ -7,18 +7,22 @@ type Counter = {
 
 let counters = {} as Record<string, Counter>;
 
-export function incrementCounter(type: string, name: string) {
+export function ensureCounter(type: string) {
   if (!counters[type]) {
     counters[type] = { map: {}, counter: 0, values: "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('') };
   }
-  const ct = counters[type];
+  return counters[type];
+}
+
+export function incrementCounter(type: string, name: string) {
+  const ct = ensureCounter(type);
   ct.map[name] = ct.counter;
   ct.counter++;
   return ct.counter;
 }
 
 export function getCounterText(type: string, name: string) {
-  const ct = counters[type]
+  const ct = ensureCounter(type);
   return ct.values[ct.map[name] ?? 0] ?? '?';
 }
 

@@ -2,6 +2,7 @@
 // Hiding typst<->html interaction complexity in this component
 //import 'astro-typst/styles/typst.css'
 import { Typst } from 'astro-typst/src/components'
+import TypstButSpan from './TypstButSpan.astro'
 const props = Astro.props
 const raw = props.raw ?? false // non-math
 let block = props.block ?? false // block math
@@ -31,7 +32,7 @@ const codeBlock = raw ? () => code('', '') : () => code(' ', '$')
     block ?
     <Typst code={ codeBlock() } width="100%" />
     :
-    <div class="inline-typst">
-        <Typst code={ codeInline()} />
-    </div>
+    <span class="inline-typst">
+        <TypstButSpan code={ codeInline()} />
+    </span>
 }

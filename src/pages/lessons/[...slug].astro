@@ -15,6 +15,7 @@ type Props = CollectionEntry<'lessons'>;
 
 const lesson = Astro.props;
 const { Content } = await render(lesson);
+
 const components = {} as Record<string, any>
 const typst = typeof lesson.data.typst === 'string' ? [lesson.data.typst] : lesson.data.typst as string[] ?? []
 for (const k of typstable) {

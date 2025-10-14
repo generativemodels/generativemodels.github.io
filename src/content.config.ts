@@ -1,6 +1,6 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
-import { typstable } from './consts';
+import { typstable } from './consts.ts';
 
 const lessons = defineCollection({
 	// Load Markdown and MDX files in the `src/content/lessons/` directory.
