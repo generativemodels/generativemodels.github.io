@@ -321,10 +321,12 @@ q(x_(t-1) | x_t)
 '/>
 
 <details>
-<summary>The case of ~t=1~</summary>
+<summary>The case of ~t=1~ (empty sandwich)</summary>
 <div>
 The case of ~t=1~ is a bit special, as we ~x_(t-1) eq x_0~ and so no "sandwich" (the sandwich equation gives ~q(x_0 | x_1, x_0)~ which is a Dirac).
 The initial term is directly ~q(x_0 | x_1)~, i.e., ~q(x_0 | x_1) = cal(N)(1 / sqrt(1 - beta_1) x_t, beta_1 / (1 - beta_1) I)~.
+
+To avoid having handling this special case below, we override ~tilde(mu)(x_0, t=0, x_t) := 1 / sqrt(1 - beta_1) x_t~ and ~tilde(beta)(t=0) := beta_1 / (1 - beta_1)~.
 </div>
 </details>
 
@@ -357,14 +359,18 @@ We thus get a closed-form expression of the upper bound of the loss, involving s
 
 <T block v='
 cal(L)
-& <= "KL"(cal(N)(0,I) || cal(N)(0,I)) \
-& + "KL"(cal(N)(tilde(mu)(x_0, 1, x_1), tilde(beta)(1)^2 I) || cal(N)(mu_theta (x_1, 1), sigma_1^2 I)) \
-& + sum_(t=2)^T EE_(x_t tilde.op q(x_t)) EE_(x_0 tilde.op q(x_0)) ["KL"(cal(N)(tilde(mu)(x_0, t, x_t), tilde(beta)(t)^2 I) || cal(N)(mu_theta (x_t, t), sigma_t^2 I))] \
-& = 0 \
-& + 1/(2 sigma_1^2) EE_(x_1 tilde.op q(x_1)) EE_(x_0 tilde.op q(x_0)) [(tilde(mu)(x_0, 1, x_1) - mu_theta (x_1, 1))^2] + C_1 \
-& + sum_(t=2)^T 1/(2 sigma_t^2) EE_(x_t tilde.op q(x_t)) EE_(x_0 tilde.op q(x_0)) [(tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t))^2] + C_t \
+&<=&& "KL"(cal(N)(0,I) || cal(N)(0,I)) \
+//& & & + "KL"(cal(N)(tilde(mu)(x_0, 1, x_1), tilde(beta)(1)^2 I) || cal(N)(mu_theta (x_1, 1), sigma_1^2 I)) \
+& & & + sum_(t=2)^T EE_(x_t tilde.op q(x_t)) EE_(x_0 tilde.op q(x_0)) ["KL"(cal(N)(tilde(mu)(x_0, t, x_t), tilde(beta)(t)^2 I) || cal(N)(mu_theta (x_t, t), sigma_t^2 I))] \
+& <= 0 \
+//& & & + 1/(2 sigma_1^2) EE_(x_1 tilde.op q(x_1)) EE_(x_0 tilde.op q(x_0)) [(tilde(mu)(x_0, 1, x_1) - mu_theta (x_1, 1))^2] + C_1 \
+& & & + sum_(t=2)^T [ 1/(2 sigma_t^2) EE_(x_t tilde.op q(x_t)) EE_(x_0 tilde.op q(x_0)) [(tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t))^2] + C_t ]\
+&<=&& sum_(t=1)^T lambda_t EE_(x_t tilde.op q(x_t)) EE_(x_0 tilde.op q(x_0)) [(tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t))^2] + C \
+&<=&& sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(x_t tilde.op q(x_t|x_0)) [(tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t))^2] + C \
 '/>
 
+with ~lambda_t = 1/(2 sigma_t^2)~.
+The last line obtained by replacing the independent sampling of ~x_0~ and ~x_t~ with a conditional sampling of ~x_t | x_0~.
 
 <figure>
     <InlineSvg asset="diffusion" hide='#forward, #backward, #more, #bigkl, #qt, #qtt' />
@@ -389,8 +395,57 @@ cal(L)
 
 The above derivations reason in terms of fitting the means of the backward steps ~mu_theta (x_t, t)~.
 
-TBD
+We can reparametrize the sampling of ~x_t~ as a function of ~x_0~ and some noise ~epsilon~:
 
+<T block v='
+x_t & = sqrt(overline(alpha)_t) x_0 + sqrt(1 - overline(alpha)_t) epsilon \
+epsilon & tilde.op cal(N)(0,I) \
+'/>
+
+We can further use the formula of ~x_t~ to rewrite ~tilde(mu)~ as a function of ~x_0~ and ~epsilon~ only (which will help re-interpret and reparametrize the loss):
+
+TODO redo/check exact simplifications
+
+<T block v='
+tilde(mu)(x_0, t, x_t) 
+& = tilde(mu)(x_0, t, sqrt(overline(alpha)_t) x_0 + sqrt(1 - overline(alpha)_t) epsilon) \
+& = (sqrt(overline(alpha)_(t-1)) beta_t)/ (1 - overline(alpha)_t) x_0 + (sqrt(alpha_t) (1- overline(alpha)_(t-1))) / (1 - overline(alpha)_t) (sqrt(overline(alpha)_t) x_0 + sqrt(1 - overline(alpha)_t) epsilon) \
+& = (sqrt(overline(alpha)_(t-1)) beta_t + sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(overline(alpha)_t)) / (1 - overline(alpha)_t) x_0 + (sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(1 - overline(alpha)_t)) / (1 - overline(alpha)_t) epsilon \
+& = 1 / sqrt(overline(alpha)_t) x_0 + (sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(1 - overline(alpha)_t)) / (1 - overline(alpha)_t) epsilon \
+
+'/>
+
+
+
+
+This allows to rewrite the loss as:
+
+<T block v='
+cal(L)
+& <= sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) [(tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t))^2] + C \
+& = sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) [(tilde(mu)(x_0, t, sqrt(overline(alpha)_t) x_0 + sqrt(1 - overline(alpha)_t) epsilon) - mu_theta (x_t))^2] + C \
+'/>
+
+
+Where we developed ~x_t~ in ~tilde(mu)~ to be able to simplify the formula (but kept it in ~mu_theta~ as we will keep it untouched).
+By substituting the expression of ~tilde(mu)~, we get:
+
+<T block v='
+cal(L)
+& <= sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) [((sqrt(overline(alpha)_(t-1)) beta_t)/ (1 - overline(alpha)_t) x_0 + (sqrt(alpha_t) (1- overline(alpha)_(t-1))) / (1 - overline(alpha)_t) (sqrt(overline(alpha)_t) x_0 + sqrt(1 - overline(alpha)_t) epsilon) - mu_theta (x_t, t))^2] + C \
+& = sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) [((sqrt(overline(alpha)_(t-1)) beta_t + sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(overline(alpha)_t)) / (1 - overline(alpha)_t) x_0 + (sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(1 - overline(alpha)_t)) / (1 - overline(alpha)_t) epsilon - mu_theta (x_t, t))^2] + C \
+& = sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) [(1 / sqrt(overline(alpha)_t) x_0 + (sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(1 - overline(alpha)_t)) / (1 - overline(alpha)_t) epsilon - mu_theta (x_t, t))^2] + C \
+& = sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) [epsilon - ( (1 - overline(alpha)_t) / (sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(1 - overline(alpha)_t)) (mu_theta (x_t, t) - 1 / sqrt(overline(alpha)_t) x_0) )^2] + C \
+'/>
+
+
+
+Substituting to get rid of ~x_0~ and use only ~x_t~ as a parameter of ~epsilon_theta~, we get:
+
+<T block v='
+cal(L)
+& <= sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) [ ( epsilon - ( (1 - overline(alpha)_t) / (sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(1 - overline(alpha)_t)) (mu_theta (sqrt(overline(alpha)_t) x_0 + sqrt(1 - overline(alpha)_t) epsilon, t) - 1 / sqrt(overline(alpha)_t) x_0) )^2] + C \
+'/>
 
 ## Aside: Bayes rule over a Markov chain
 
