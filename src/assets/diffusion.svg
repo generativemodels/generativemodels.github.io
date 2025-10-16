@@ -22,15 +22,15 @@
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
      showgrid="false"
-     inkscape:zoom="3.818087"
-     inkscape:cx="605.27694"
-     inkscape:cy="368.24724"
+     inkscape:zoom="0.47726088"
+     inkscape:cx="211.6243"
+     inkscape:cy="391.81925"
      inkscape:window-width="1920"
      inkscape:window-height="1011"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
-     inkscape:current-layer="g15258"
+     inkscape:current-layer="BACKWARD"
      inkscape:snap-global="false" />
   <g
      id="g8638"
@@ -13225,7 +13225,7 @@
        inkscape:groupmode="layer"
        id="forward"
        inkscape:label="forward"
-       style="display:none">
+       style="display:inline">
       <g
          id="g4446"
          style="display:inline"
@@ -13619,7 +13619,7 @@
        inkscape:groupmode="layer"
        id="more"
        inkscape:label="morefwdbck"
-       style="display:none">
+       style="display:inline">
       <g
          id="g40112"
          style="display:inline"
