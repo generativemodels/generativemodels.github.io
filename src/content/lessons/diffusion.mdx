@@ -51,8 +51,6 @@ To achieve this, diffusion models imagine a forward noising process, which progr
 The generative process is then trained to reverse this noising process, and denoise the data step by step.
 
 
-{/*
-
 
 
 
@@ -288,8 +286,6 @@ More precisely, we want to minimize the KL divergence between the distribution i
 </figure>
 
 
-*/}
-
 ## From global to local KL
 
 This part details the key insight of how to transform a global KL loss into a sum of local ones, eventually expressed as square errors.
@@ -374,8 +370,6 @@ cal(L) &  = C + EE_(x_0 tilde.op q(x_0)) sum_(t=1)^T lambda_t ||tilde(mu)(x_0, t
 
 with ~lambda_t = 1/(2 sigma_t^2)~.
 
-
-{/*
 
 <figure>
     <InlineSvg asset="diffusion" hide='#forward, #backward, #more, #bigkl, #qt, #qtt' />
@@ -464,7 +458,6 @@ It corresponds to a different decomposition of the joint distribution of the Mar
 && = q(x_T) times product_(t=1)^T q(x_(t-1) | x_t) \
 '/>
 
-*/}
 
 <T defines='
 #let x0 = $add(x_0)$;
