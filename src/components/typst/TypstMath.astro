@@ -3,9 +3,15 @@
 //import 'astro-typst/styles/typst.css'
 import { Typst } from 'astro-typst/src/components'
 import TypstButSpan from './TypstButSpan.astro'
+import { addDefine, getDefines } from './typst-context'
 const props = Astro.props
 const raw = props.raw ?? false // non-math
 let block = props.block ?? false // block math
+const defines = props.defines ?? ''
+
+if (defines) {
+    addDefine(defines)
+}
 
 let content = await Astro.slots.render('default') ?? ''
 content = content.replace(/&lt;/g, '<')
@@ -21,6 +27,7 @@ if (content.startsWith('!')) {
 
 const code = (space: string, dollar: string) => `
     #set page(margin: 0pt, width: auto, height: auto)
+    ${getDefines()}
     ${dollar}${space}${content}${space}${dollar}
     `
 

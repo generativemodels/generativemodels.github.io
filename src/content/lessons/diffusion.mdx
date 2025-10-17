@@ -9,14 +9,20 @@ tags: ['beta', 'Diffusion', 'Flow Matching']
 typst: ['del', 'code']
 ---
 
-import T from '../../components/TypstMath.astro'
-import Cetz from '../../components/TypstCetz.astro'
+import T from '../../components/typst/TypstMath.astro'
+import Cetz from '../../components/typst/TypstCetz.astro'
 import { Image } from 'astro:assets'
 import diffusion from '../../assets/diffusion.svg'
 import InlineSvg from '../../components/InlineSvg.astro'
 import Counter from '../../components/numbering/Counter.astro'
 import Ref from '../../components/numbering/Ref.astro'
 
+<T defines='
+#let anno(t) = $text(#luma(100), size: #10pt, (#t))$;
+#let c = blue;
+#let add(txt) = $text(#c, txt)$
+#let KL(a,b) = $"KL"(#(a) || #(b))$;
+'/>
 
 <div class="glossary">
 <label><input type="checkbox" checked /> Glossary (keep visible)</label>
@@ -45,7 +51,7 @@ To achieve this, diffusion models imagine a forward noising process, which progr
 The generative process is then trained to reverse this noising process, and denoise the data step by step.
 
 
-
+{/*
 
 
 
@@ -282,6 +288,8 @@ More precisely, we want to minimize the KL divergence between the distribution i
 </figure>
 
 
+*/}
+
 ## From global to local KL
 
 This part details the key insight of how to transform a global KL loss into a sum of local ones, eventually expressed as square errors.
@@ -290,9 +298,10 @@ This part details the key insight of how to transform a global KL loss into a su
 
 We will show that we can simplify the global objective into a sum of local objectives, one for each step, with the proper conditioning.
 We will follow a few steps:
-- starting by writing the KL divergence between the two joint distributions of the Markov chains, both backward in time,
-- decomposing the KL divergence as a sum of KL divergences between each step, being careful on the writting, expectations and conditionings,
-- "reversing" the forward noising process and making it tractable by conditioning on some ~x_0~ (and using the "sandwich view").
+- starting by writing the KL divergence between the two joint distributions of the Markov chains, in their natural direction (forward for the noising process, backward for the learned process),
+- re-introducing an expectation on ~x_0~ to make it the expression tractable (using the "sandwich view"),
+- "reversing" the conditional forward noising process,
+- using the closed-form of the KL between Gaussians to get a final closed-form loss.
 
 The final terms involved in the loss are KL divergences between two Gaussian distributions, which can be computed in closed form.
 These are illustrated in Fig. <Ref label="fig:temporal-locality"/>.
@@ -300,77 +309,73 @@ These are illustrated in Fig. <Ref label="fig:temporal-locality"/>.
 ### Goal: KL divergence between the forward and backward processes
 
 We decompose the global KL divergence between the forward noising process and the backward learnable process.
+A big part of these derivations are also detailed at the end of this page, in isolation of the rest.
+
+NB: seems ok but need to be chunked better.
 
 <T block v='
-cal(L)
-& := "KL"(q(x_(0:T)) || p_theta(x_(0:T))) \
+cal(L) & := "KL"(q(x_(0:T)) || p_theta (x_(0:T))) \
 & = EE_(x_(0:T) tilde.op q(x_(0:T))) [ln (q(x_(0:T)) / (p_theta (x_(0:T))))] \
-& = EE_(x_(0:T) tilde.op q(x_(0:T))) [ln (q(x_T) times product_(t=1)^T q(x_(t-1) | x_t)) - ln (p_theta (x_T) times product_(t=1)^T p_theta (x_(t-1) | x_t))] \
-& = EE_(x_(0:T) tilde.op q(x_(0:T))) [ln (q(x_T) / (p_theta (x_T)) + sum_(t=1)^T ln ( q(x_(t-1) | x_t)) / (p_theta (x_(t-1) | x_t)))] \
-& = EE_(x_T tilde.op q(x_T)) [ln (q(x_T) / (p_theta (x_T)))] + sum_(t=1)^T EE_(x_t tilde.op q(x_t)) EE_(x_(t-1) tilde.op q(x_(t-1) | x_t)) [ln ( q(x_(t-1) | x_t)) / (p_theta (x_(t-1) | x_t))] \
-//& = "KL"(q(x_T) || p_theta (x_T)) + sum_(t=1)^T EE_(x_t tilde.op q(x_t)) ["KL"(q(x_(t-1) | x_t) || p_theta (x_(t-1) | x_t))] \
+& = EE_(x_(0:T) tilde.op q(x_(0:T))) [ln ((q(x_0) product_(t=1)^T q(x_t | x_(t-1))) / (p_theta (x_T) product_(t=1)^T p_theta (x_(t-1) | x_t)))] \
+& = EE_(x_(0:T) tilde.op q(x_(0:T))) [ln q(x_0) - ln p_theta (x_T) + sum_(t=1)^T ln q(x_t | x_(t-1)) - sum_(t=1)^T ln p_theta (x_(t-1) | x_t)] \
+& anno("removing constant expectations, all expectations are in" q()) \
+& = underbrace(EE_(x_0) [ln q(x_0)] - EE_(x_T) [ln p_theta (x_T)], A_1)
++ sum_(t=1)^T EE_(x_(t-1), x_t) [ln q(x_t | x_(t-1))]
+- underbrace(sum_(t=1)^T EE_(x_(t-1), x_t) [ln p_theta (x_(t-1) | x_t)], A_2) \
+& anno(#[using independence of $x_t$ and $x_0$, given $x_(t-1)$, to introduce a conditioning on $add(x_0)$]) \
+& = A_1 - add(EE_(x_0)) A_2 + add(EE_(x_0)) sum_(t=1)^T EE_(x_(t-1), x_t) [ln q(x_t | x_(t-1), add(x_0))] \
+& anno("taking out the particular case "t=1) \
+& = A_1 - EE_(x_0) A_2
++ EE_(x_0) EE_(x_1) [ln q(x_1 | x_0)]
++ EE_(x_0) sum_(t=2)^T EE_(x_(t-1), x_t) [ln q(x_t | x_(t-1), x_0)] \
+& anno("using the bayes rule to reverse "q(add(x_t | x_(t-1)), x_0)) \
+& = A_1 - EE_(x_0) A_2
++ EE_(x_0) EE_(x_1) [ln (q(add(x_0 | x_1)) q(x_1)) / q(x_0)]
++ EE_(x_0) sum_(t=2)^T EE_(x_(t-1), x_t) [ln (q(add(x_(t-1) | x_t), x_0) q(x_t | x_0)) / q(x_(t-1) | x_0)] \
+& anno("unpacking logs, expectations and "A_2) \
+& = A_1 - EE_(x_0) sum_(t=1)^T EE_(x_(t-1), x_t) [ln p_theta (x_(t-1) | x_t)] \
+& + " "EE_(x_0) EE_(x_1) ln q(x_0 | x_1) + EE_(x_1) ln q(x_1) - EE_(x_0) ln q(x_0) \
+& + " "EE_(x_0) sum_(t=2)^T EE_(x_(t-1), x_t) ln q(x_(t-1) | x_t, x_0) + EE_(x_0) sum_(t=2)^T EE_(x_t) ln q(x_t|x_0) - EE_(x_0) sum_(t=2)^T EE_(x_(t-1)) ln q(x_(t-1) | x_0) \
+& anno("splitting first sum, grouping terms for KL, colliding the two last sums") \
+& = A_1 + EE_(x_1) ln q(x_1) - EE_(x_0) ln q(x_0) + EE_(x_0) EE_(x_T) ln q(x_T | x_0) - EE_(x_0) EE_(x_1) ln q(x_1 | x_0) \
+&+ " "EE_(x_1) EE_(x_0) [ ln (q(x_0 | x_1) / (p_theta (x_0 | x_1)))] 
++ " "EE_(x_0) sum_(t=2)^T EE_(x_t) EE_(x_(t-1)) [ ln (q(x_(t-1) | x_t, x_0) / (p_theta (x_(t-1) | x_t)))] \
+& anno(#[NB: averaging over all $x_1$ and $x_0$, is the same as averaging over all $x_1$ and $x_0$ given $x_1$]) \
+& anno(#[we can thus have e.g. $EE_(x_1) EE_(x_0) = EE_(x_1) EE_(x_0|x_1)$ so that it matches the numerator in the log]) \
+& = 
+EE_(x_1) ln q(x_1) - EE_(x_T) ln p_theta (x_T) \
+& - " "EE_(x_0) EE_(x_1) ln q(x_1 | x_0) + EE_(x_0) EE_(x_T) ln q(x_T | x_0)  \
+& + " "EE_(x_1) KL(q(x_0 | x_1), p_theta (x_0 | x_1)) \
+& + " "EE_(x_0) sum_(t=2)^T EE_(x_t) [KL(q(x_(t-1) | x_t, x_0), p_theta (x_(t-1) | x_t))] \
+& anno("again some KL and simplifying") \ 
+& = underbrace(EE_(x_0) KL(q(x_T|x_0), p_theta (x_T)), C)
++ EE_(x_1) KL(q(x_0|x_1), p_theta (x_0|x_1)) \
+& + " "EE_(x_0) sum_(t=2)^T EE_(x_t) [KL(q(x_(t-1) | x_t, x_0), p_theta (x_(t-1) | x_t))] \
 '/>
 
-### Making it tractable with sandwiches
-
-We will use ~p(A) = sum_B p(A | B) p(B) = EE_B [p(A|B)]~ to introduce ~x_0~ and get the sandwich view (that we pre-solved earlier).
-
-<T block v='
-q(x_(t-1) | x_t)
-& = EE_(x_0 tilde.op q(x_0)) [q(x_(t-1) | x_t, x_0)] \
-'/>
+All involved distributions are either fixed (at ~t=T~, constant $C$) or Gaussian with known closed-form (the others).
 
 <details>
-<summary>The case of ~t=1~ (empty sandwich)</summary>
+<summary>The empty sandwich, overriding ~tilde(mu)~ (case of ~t=1~)</summary>
 <div>
 The case of ~t=1~ is a bit special, as we ~x_(t-1) eq x_0~ and so no "sandwich" (the sandwich equation gives ~q(x_0 | x_1, x_0)~ which is a Dirac).
 The initial term is directly ~q(x_0 | x_1)~, i.e., ~q(x_0 | x_1) = cal(N)(1 / sqrt(1 - beta_1) x_t, beta_1 / (1 - beta_1) I)~.
 
-To avoid having handling this special case below, we override ~tilde(mu)(x_0, t=0, x_t) := 1 / sqrt(1 - beta_1) x_t~ and ~tilde(beta)(t=0) := beta_1 / (1 - beta_1)~.
+To avoid having handling this special case below, we override ~tilde(mu)(x_0, t=1, x_t) := 1 / sqrt(1 - beta_1) x_t~ and ~tilde(beta)(t=1) := beta_1 / (1 - beta_1)~.
 </div>
 </details>
 
-This formula with an expectation on ~q(x_0)~ (i.e. ~p_"data"~) hints for a closed form solution with a sum, in case of a finite dataset.
-Technically, this means a mixture of gaussian as each ~q(x_(t-1) | x_t, x_0^i)~ is a Gaussian.
-This could be explored further but is not very practical.
-
-To get the usual diffusion loss, it seems we have to resort to the Jensen's inequality to get an upper bound.
-This is a bit unsatisfactory as we loose the exactness of the KL minimization.
-This step is not explicit in other presentations of diffusion models, but seems necessary to get the usual diffusion loss (this might need further attention).
+We thus get a closed-form expression for the loss, involving square norms (coming from the KL between gaussians).
 
 <T block v='
-ln (q(x_(t-1) | x_t) / p_theta (x_(t-1) | x_t))
-& = ln ((EE_(x_0 tilde.op q(x_0)) [q(x_(t-1) | x_t, x_0)]) / (p_theta (x_(t-1) | x_t))) \
- "(Jensen + denominator indep. of " x_0 ")" \
-& <= EE_(x_0 tilde.op q(x_0)) [ln (q(x_(t-1) | x_t, x_0) / (p_theta (x_(t-1) | x_t)))] \
-'/>
-
-In the end we can identify the KL divergences and get the final upper bound:
-
-<T block v='
-cal(L)
-& <= "KL"(q(x_T) || p_theta (x_T)) \
-& + "KL"(q(x_0|x_1) || p_theta (x_0|x_1)) \
-& + sum_(t=2)^T EE_(x_t tilde.op q(x_t)) EE_(x_0 tilde.op q(x_0)) ["KL"(q(x_(t-1) | x_t, x_0) || p_theta (x_(t-1) | x_t))] \
-'/>
-
-All involved distributions are either fixed (at ~t=T~) or Gaussian with known closed-form (the others).
-We thus get a closed-form expression of the upper bound of the loss, involving square distances.
-
-<T block v='
-cal(L)
-&<=&& "KL"(cal(N)(0,I) || cal(N)(0,I)) \
-//& & & + "KL"(cal(N)(tilde(mu)(x_0, 1, x_1), tilde(beta)(1)^2 I) || cal(N)(mu_theta (x_1, 1), sigma_1^2 I)) \
-& & & + sum_(t=2)^T EE_(x_t tilde.op q(x_t)) EE_(x_0 tilde.op q(x_0)) ["KL"(cal(N)(tilde(mu)(x_0, t, x_t), tilde(beta)(t)^2 I) || cal(N)(mu_theta (x_t, t), sigma_t^2 I))] \
-& <= 0 \
-//& & & + 1/(2 sigma_1^2) EE_(x_1 tilde.op q(x_1)) EE_(x_0 tilde.op q(x_0)) [(tilde(mu)(x_0, 1, x_1) - mu_theta (x_1, 1))^2] + C_1 \
-& & & + sum_(t=2)^T [ 1/(2 sigma_t^2) EE_(x_t tilde.op q(x_t)) EE_(x_0 tilde.op q(x_0)) [(tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t))^2] + C_t ]\
-&<=&& sum_(t=1)^T lambda_t EE_(x_t tilde.op q(x_t)) EE_(x_0 tilde.op q(x_0)) [(tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t))^2] + C \
-&<=&& sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(x_t tilde.op q(x_t|x_0)) [(tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t))^2] + C \
+cal(L) &  = C + EE_(x_0 tilde.op q(x_0)) sum_(t=1)^T lambda_t ||tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t)||^2 \
+& = C + sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) ||tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t)||^2
 '/>
 
 with ~lambda_t = 1/(2 sigma_t^2)~.
-The last line obtained by replacing the independent sampling of ~x_0~ and ~x_t~ with a conditional sampling of ~x_t | x_0~.
+
+
+{/*
 
 <figure>
     <InlineSvg asset="diffusion" hide='#forward, #backward, #more, #bigkl, #qt, #qtt' />
@@ -459,20 +464,51 @@ It corresponds to a different decomposition of the joint distribution of the Mar
 && = q(x_T) times product_(t=1)^T q(x_(t-1) | x_t) \
 '/>
 
+*/}
+
+<T defines='
+#let x0 = $add(x_0)$;
+#let cx0 = $add(", "x_0)$;
+#let gx0 = $add("| "x_0)$;
+'/>
+
 <details>
-<summary>A different view / proof</summary>
+<summary>A different view / proof (and keeping a condition on ~x0~)</summary>
 <div>
-We can develop the markov chain, and apply the Bayes rule at each step:
+We can develop the markov chain, and apply the Bayes rule at each step.
 
 <T block v='
 ln q(x_(0:T))
+& := ln ( q(x^,_0) times product_(t=1)^T q(x_t | x_(t-1)) ) \
+& = ln q(x_0) + sum_(t=1)^T ln q(x_t | x_(t-1)) \
+& = ln q(x_0) + sum_(t=1)^T ln ( (q(x_(t-1) | x_t ) q(x_t)) / q(x_(t-1)) ) \
+& = ln q(x_0) + sum_(t=1)^T ln q(x_(t-1) | x_t ) + sum_(t=1)^T ln q(x_t) - sum_(t=1)^T ln q(x_(t-1)) \
+& = ln q(x_0) + sum_(t=1)^T ln q(x_(t-1) | x_t ) + sum_(t=1)^T ln q(x_t) - sum_(t=0)^(T-1) ln q(x_t) \
+& = ln q(x_0) + sum_(t=1)^T ln q(x_(t-1) | x_t ) + ln q(x_T) - ln q(x_0) \
+& = sum_(t=1)^T ln q(x_(t-1) | x_t) + ln q(x_T) \
+'/>
+
+
+We also, introduce ~x0~ thanks to the independence of ~x_t~ on ~x0~ when ~x_(t-1)~ is known.
+
+
+<T block defines='
+#let ee = $add(EE_(x_0 ~ q(x_0)))$;
+#let eee = $add(EE)$;
+' v='
+ln q(x_(0:T))
 & := ln ( q(x_0) times product_(t=1)^T q(x_t | x_(t-1)) ) \
 & = ln q(x_0) + sum_(t=1)^T ln q(x_t | x_(t-1)) \
-& = ln q(x_0) + sum_(t=1)^T ln ( (q(x_(t-1) | x_t) q(x_t)) / q(x_(t-1)) ) \
-& = ln q(x_0) + sum_(t=1)^T ln q(x_(t-1) | x_t) + sum_(t=1)^T ln q(x_t) - sum_(t=1)^T ln q(x_(t-1)) \
-& = ln q(x_0) + sum_(t=1)^T ln q(x_(t-1) | x_t) + sum_(t=1)^T ln q(x_t) - sum_(t=0)^(T-1) ln q(x_t) \
-& = ln q(x_0) + sum_(t=1)^T ln q(x_(t-1) | x_t) + ln q(x_T) - ln q(x_0) \
-& = sum_(t=1)^T ln q(x_(t-1) | x_t) + ln q(x_T) \
+& = underbrace(ln q(x_0) + ln q(x_1 | x_0), "A") + sum_(t=2)^T ln q(x_t | x_(t-1)) \
+& = A + ee sum_(t=2)^T ln q(x_t | x_(t-1)cx0) \
+& = A + eee sum_(t=2)^T ln ( (q(x_(t-1) | x_t cx0) q(x_t gx0)) / q(x_(t-1) gx0) ) \
+& = A + eee sum_(t=2)^T ln q(x_(t-1) | x_t cx0) + eee sum_(t=2)^T ln q(x_t gx0) - eee sum_(t=2)^T ln q(x_(t-1) gx0) \
+& = A + eee sum_(t=2)^T ln q(x_(t-1) | x_t cx0) + eee sum_(t=2)^T ln q(x_t gx0) - eee sum_(t=1)^(T-1) ln q(x_t gx0) \
+& = A + eee sum_(t=2)^T ln q(x_(t-1) | x_t cx0) + eee ln q(x_T gx0) - eee ln q(x_1 gx0) \
+& = B +ee sum_(t=2)^T ln q(x_(t-1) | x_t cx0) \
+"with" \
+B & = A + eee ln q(x_T gx0) - eee ln q(x_1 gx0) \
+& = ln q(x_0) + ln q(x_1 | x_0) + ee ln q(x_T gx0) - ee ln q(x_1 gx0)
 '/>
 </div>
 </details>

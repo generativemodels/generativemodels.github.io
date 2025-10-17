@@ -7,12 +7,14 @@ import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
 
 import { resetCounters, jsOnLoadSetupCounters } from '../components/numbering/CountersTools';
+import { resetDefines } from '../components/typst/typst-context';
 
 type Props = CollectionEntry<'lessons'>['data'];
 
 const { title, description, pubDate, updatedDate, heroImage, tags } = Astro.props;
 const beta = (tags ?? []).includes('beta');
 
+resetDefines();
 resetCounters();
 const onload = jsOnLoadSetupCounters('fig');
 ---

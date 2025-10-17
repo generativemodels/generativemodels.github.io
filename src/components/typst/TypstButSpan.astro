@@ -1,10 +1,10 @@
 ---
-import { renderToSVGString, renderToHTML } from "astro-typst/src//lib/typst.js";
+import { renderToSVGString, renderToHTML } from "astro-typst/src/lib/typst.js";
 import { unified } from "unified";
 import type { Parser } from "unified";
 import rehypeStringify from "rehype-stringify";
 
-import type { TypstDocInput } from "../lib/prelude.js";
+import type { TypstDocInput } from "astro-typst/src/lib/prelude.js";
 
 export type Props = (
     | { code: string }
