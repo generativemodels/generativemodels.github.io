@@ -243,7 +243,11 @@ figure {
 .glossary {
 	transition: transform 0.3s ease;
 	&:not(:has(:checked)) {
-		transform: translateX(260px);
+		transform: translateX(250px);
+		height: 1.8em;
+	}
+	input {
+		transform: scale(1.5);
 	}
 	li > strong {
 		border: 1px solid var(--accent);
@@ -266,6 +270,8 @@ figure {
 	background: rgb(var(--gray-light));
 	border: 1px solid #ccc;
 	border-left: 4px solid var(--accent);
+	border: 4px solid var(--accent);
+	border-right: none;
 	z-index: 100;
 }
 
