@@ -167,14 +167,15 @@ div.inline-typst {
 }
 
 details {
-  & > summary {
-    color: var(--accent-dark);
-  }
-  &:open > div {
-    border-left: 2px solid var(--accent-dark);
-    padding-left: 1em;
-    margin-left: 1em;
-  }
+    margin-bottom: 1em;
+	& > summary {
+		color: var(--accent-dark);
+	}
+	&:open > div {
+		border-left: 2px solid var(--accent-dark);
+		padding-left: 1em;
+		margin-left: 1em;
+	}
 }
 
 /* Menu that unfolds on click (no javascript, pure-css, checkbox-based hack) */
@@ -243,35 +244,40 @@ figure {
 .glossary {
 	transition: transform 0.3s ease;
 	&:not(:has(:checked)) {
-		transform: translateX(250px);
+		transform: translateX(260px);
 		height: 1.8em;
+		overflow: hidden;
 	}
-	input {
-		transform: scale(1.5);
+	.glossary-content {
+		input {
+			transform: scale(1.5);
+		}
+		li > strong {
+			border: 1px solid var(--accent);
+			display: inline-block;
+			padding: 0.2em;
+			padding-top: 0.5em;
+			border-radius: 0.25em;
+		}
+		li {
+			margin-bottom: .5em;
+		}
+		ul {
+			padding-left: 1.4em;
+		}
+		font-size: 0.7em;
+		padding: 0.5em;
+		max-height: calc(100vh - 200px);
+		overflow-y: scroll;
 	}
-	li > strong {
-		border: 1px solid var(--accent);
-		display: inline-block;
-		padding: 0.2em;
-		border-radius: .5em;
-	}
-	li {
-		margin-bottom: .5em;
-	}
-	font-size: 0.7em;
-	margin-left: 1em;
-	padding: 0.5em;
 	position: fixed;
 	top: 100px;
-	max-height: calc(100vh - 200px);
-	overflow-y: scroll;
 	right: 0;
 	width: 300px;
 	background: rgb(var(--gray-light));
-	border: 1px solid #ccc;
-	border-left: 4px solid var(--accent);
 	border: 4px solid var(--accent);
 	border-right: none;
+	padding-right: 5px; /* for a second scrollbar */
 	z-index: 100;
 }
 

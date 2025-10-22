@@ -25,7 +25,8 @@ import Ref from '../../components/numbering/Ref.astro'
 '/>
 
 <div class="glossary">
-<label><input type="checkbox" checked /> Glossary (keep visible)</label>
+<div class="glossary-content">
+<label><input type="checkbox" id="cb-glossary" checked /> Glossary (keep visible)</label>
 - **~beta_t~** ((choice)) small added noise variance at step ~t~
 - **~alpha_t := 1 - beta_t~** signal retention factor at step ~t~
 - **~overline(alpha)_ t := product_(s=1)^t alpha_s~** overall signal retention factor from the start to step ~t~
@@ -34,6 +35,12 @@ import Ref from '../../components/numbering/Ref.astro'
 - **~q(x_t | x_(t-1))~** ~!:= cal(N)(sqrt(1 - beta_t)x_(t-1), beta_t I)~ forward/noising step distribution
 - **~q(x_t | x_0)~**      ~!= cal(N)(sqrt(overline(alpha)_t)  x_0, (1 - overline(alpha)_t)  I)~ big-jump forward/noising step distribution
 - **~q(x_(t-1)|x_0)~**    ~!= cal(N)(sqrt(overline(alpha)_ (t-1))x_0, (1 - overline(alpha)_(t-1))I)~ big-jump for step ~t-1~
+- **~q(x_(t-1) | x_t, x_0) & prop cal(N)(tilde(mu), tilde(beta) I)~** "sandwich view"
+- **<T block v='tilde(mu)(x_0, t, x_t)= & (sqrt(overline(alpha)_(t-1)) beta_t)/ (1 - overline(alpha)_t) x_0  \ & + (sqrt(alpha_t) (1- overline(alpha)_(t-1))) / (1 - overline(alpha)_t) x_t'/>** sandwich mean
+- **~tilde(beta)(t) & = (1 - overline(alpha)_(t-1)) / (1 - overline(alpha)_t) beta_t~** sandwich variance
+
+<label for="cb-glossary">Hide Glossary</label>
+</div>
 </div>
 
 This lesson introduces the principles of diffusion models.
@@ -63,9 +70,9 @@ We will just recall some properties of Gaussians that will be useful in the rest
 
 The KL divergence between two normal distributions ~cal(N)(mu_1, sigma_1^2)~ and ~cal(N)(mu_2, sigma_2^2)~ is given by:
 
-~!"KL"(cal(N)(mu_1, sigma_1^2) || cal(N)(mu_2, sigma_2^2)) = (mu_1 - mu_2)^2 / (2 sigma_2^2) + (sigma_1^2 / (2 sigma_2^2)) - 1/2 + log(sigma_2 / sigma_1)~
+~!KL(cal(N)(mu_1, sigma_1^2), cal(N)(mu_2, sigma_2^2)) = (mu_1 - mu_2)^2 / (2 sigma_2^2) + (sigma_1^2 / (2 sigma_2^2)) - 1/2 + log(sigma_2 / sigma_1)~
 
-In the case we will use it, only the first term will be useful: it will be the only term depending on the variable of interest.
+In this post only the first term will be useful: it is the only term depending on the variable of interest.
 
 ### Product of two normal densities
 
@@ -75,20 +82,26 @@ The product of two normal densities ~cal(N)(mu_1, sigma_1^2)~ and ~cal(N)(mu_2, 
 
 or more explicitly,
 
-~! exists K_1, mu, sigma, forall x: cal(N)(mu_1, sigma_1^2)(x) times cal(N)(mu_2, sigma_2^2)(x) = K_1 times cal(N)(mu, sigma)(x)~
+<T block v='exists K_1, mu, sigma, forall x: \
+cal(N)(mu_1, sigma_1^2)(x) times cal(N)(mu_2, sigma_2^2)(x) = K_1 times cal(N)(mu, sigma)(x)
+'/>
 
-with ~!mu = (mu_1 / sigma_1^2 + mu_2 / sigma_2^2) / (1 / sigma_1^2 + 1 / sigma_2^2) = (sigma_2^2 mu_1 + sigma_1^2 mu_2) / (sigma_1^2 + sigma_2^2)~
-and ~!sigma^2 = 1 / (1 / sigma_1^2 + 1 / sigma_2^2) = (sigma_1^2  sigma_2^2) / (sigma_1^2 + sigma_2^2)~
+and <T block v='
+mu  & = (mu_1 / sigma_1^2 + mu_2 / sigma_2^2) / (1 / sigma_1^2 + 1 / sigma_2^2) = (sigma_2^2 mu_1 + sigma_1^2 mu_2) / (sigma_1^2 + sigma_2^2) \
+sigma^2 & = 1 / (1 / sigma_1^2 + 1 / sigma_2^2) = (sigma_1^2  sigma_2^2) / (sigma_1^2 + sigma_2^2)
+'/>
 
 <details>
-<summary>Proof</summary>
+<summary>Proof/Derivation</summary>
 <div>
 We work on the log space, focusing/keeping only the terms depending on ~x~ (the rest is the normalization constant of a Gaussian).
-More generally, the log of a gaussian density ~cal(N)(mu, sigma^2)~ can be expanded as:
+
+So, first, let's see that the log of a gaussian density ~cal(N)(mu, sigma^2)~ can be expanded as:
 <T block v='
 ln(cal(N)(mu, sigma^2)(x)) & = -1/2 ((x - mu)^2 / sigma^2) + C_1 \
 & = -1/2 (x^2 / sigma^2 - 2 (mu x) / sigma^2 + mu^2 / sigma^2) + C_1 \
 & = -1/(2 sigma^2) (x^2 - 2 mu x) + C_2 \
+& = -1/2 (add(1/sigma^2) x^2 - 2 add(mu / sigma^2) x) + C_2 \
 '/>
 
 This formula is useful for identifying the parameters of a Gaussian density from its expanded log density.
@@ -100,8 +113,8 @@ For the product of two Gaussian densities, we have:
 & "(developing)" \
 & = -1/2 (x^2 / sigma_1^2 - 2 (mu_1 x) / sigma_1^2 + mu_1^2 / sigma_1^2 + x^2 / sigma_2^2 - 2 (mu_2 x) / sigma_2^2 + mu_2^2 / sigma_2^2) + C_3 \
 & "(factorizing and pushing constant terms in the constant)" \
-& = -1/2 ((1 / sigma_1^2 + 1 / sigma_2^2) x^2 - 2 (mu_1 / sigma_1^2 + mu_2 / sigma_2^2) x) + C_4 \
-& = -1/2 (x^2 / sigma^2 - 2 (mu / sigma^2) x) + C_4 \
+& = -1/2 (add((1 / sigma_1^2 + 1 / sigma_2^2)) x^2 - 2 add((mu_1 / sigma_1^2 + mu_2 / sigma_2^2)) x) + C_4 \
+& = -1/2 ( add(1/sigma^2) x^2 - 2 add(mu / sigma^2) x) + C_4 \
 '/>
 We can identify ~sigma^2~ directly, and then deduce ~mu~:
 <T block v='
@@ -113,9 +126,9 @@ mu & = sigma^2 (mu_1 / sigma_1^2 + mu_2 / sigma_2^2) = (sigma_2^2 mu_1 + sigma_1
 
 ### Identities on normal mean
 
-- ~cal(N)(mu, sigma^2)(x) = cal(N)(x, sigma^2)(mu)~
-- ~cal(N)(a mu, sigma^2)(x) = cal(N)(mu, sigma^2 / a^2)(x / a)~
-- combining both: ~cal(N)(a x, sigma^2)(mu) = cal(N)(mu / a, sigma^2 / a^2)(x)~
+- ~cal(N)(add(mu), sigma^2)(x) = cal(N)(x, sigma^2)(add(mu))~
+- ~cal(N)(add(a) mu, sigma^2)(x) = cal(N)(mu, sigma^2 / add(a^2))(x / add(a))~
+- combining both: ~cal(N)(add(a x), sigma^2)(mu) = cal(N)(mu / add(a), sigma^2 / add(a^2))(add(x))~
 
 
 
@@ -133,7 +146,7 @@ The forward/noising process progressively adds noise to the data until it become
 As shown in Fig. <Ref label="fig:global-noise"/>, the forward process starts from data points
 ~forall i, x^i_0 tilde.op q(x_0)~ (e.g. images from the training set, also named ~hat(p)_"data"~).
 The forward process progressively adds Gaussian noise to these data points, until they are completely shuffled and become close to pure noise.
-The total process is run for a finite (but high) number of steps ~T~, and we obtain ~forall i, x^i_T tilde.op cal(N)(0,I)~.
+The total process is run for a finite (but high) number of steps ~T~, and we (almost) obtain ~forall i, x^i_T tilde.op cal(N)(0,I)~.
 
 <figure>
     <InlineSvg asset="diffusion" hide='#FORWARD, #BACKWARD, #forward, #backward , #more, #bigkl' />
@@ -152,11 +165,12 @@ forall t in [1..T], x_t & tilde.op q(x_t | x_(t-1)) \
 "/>
 
 Even more precisely:
+- we suppose the original dataset has been normalized,
 - we can decide on a variance addition schedule ~beta_1, ..., beta_T~ saying how much noise variance to add at each step,
 - as we add noise at each step, the distribution would be more and more spread along time steps (~t~) and would not reach a gaussian noise with identity covariance,
 - to avoid this, we also rescale the signal at each step by a factor ~sqrt(1 - beta_t)~.
 
-The goal of the rescaling is to ensure that the variance at step ~t~ is always ~1~, whatever ~t~.
+The goal of the rescaling is to ensure that the variance of the dataset at step ~t~ is always ~1~, whatever ~t~.
 Overall the forward/noising process is defined as:
 
 <T block v="
@@ -173,12 +187,17 @@ forall t in [1..T], x_t & tilde.op q(x_t | x_(t-1)) = cal(N)(sqrt(1 - beta_t) x_
 ### Big-jump view
 
 Thanks to the properties of Gaussians, we can express the distribution at step ~t~ as a function of the initial data point ~x_0~.
-Indeed, since each step is a Gaussian distribution, the composition of all the steps is also a Gaussian distribution as shown in Fig. <Ref label="fig:multi-step-noise"/>.
+Indeed, since each step is adding a Gaussian noise (and rescaling), the composition of all the steps is also a Gaussian distribution as shown in Fig. <Ref label="fig:multi-step-noise"/>.
 More precisely, we have:
 
 <T block v="
 forall t in [1..T], x_t & tilde.op q(x_t | x_0) = cal(N)(sqrt(overline(alpha)_t) x_0, (1 - overline(alpha)_t) I) \
 "/>
+
+with
+~overline(alpha)_ t := product_(s=1)^t alpha_s~ the overall signal retained from the start to step ~t~,
+in which ~alpha_t := 1 - beta_t~ is the signal retention factor at step ~t~.
+
 
 <figure>
     <InlineSvg asset="diffusion" hide='#BACKWARD, #qtt0, #backward, #more, #bigkl' />
@@ -197,13 +216,13 @@ This is illustrated in Fig. <Ref label="fig:sandwich-noise"/>:
 More precisely, we have:
 
 <T block v="
-forall t in [1..T], q(x_(t-1) | x_t, x_0) & prop q(x_(t-1) | x_t) times q(x_(t-1) | x_0) \
+forall t in [2..T], q(x_(t-1) | x_t, x_0) & prop q(x_(t-1) | x_t) times q(x_(t-1) | x_0) \
 "/>
 
 We will show that we can derive a closed-form expression for this distribution:
 
 <T block v='
-forall t in [1..T], q(x_(t-1) | x_t, x_0) & prop cal(N)(tilde(mu), tilde(beta) I) \
+forall t in [2..T], q(x_(t-1) | x_t, x_0) & prop cal(N)(tilde(mu), tilde(beta) I) \
 "with" \
 tilde(mu)(x_0, t, x_t) & = (sqrt(overline(alpha)_(t-1)) beta_t)/ (1 - overline(alpha)_t) x_0 + (sqrt(alpha_t) (1- overline(alpha)_(t-1))) / (1 - overline(alpha)_t) x_t \
 tilde(beta)(t) & = (1 - overline(alpha)_(t-1)) / (1 - overline(alpha)_t) beta_t \
@@ -212,14 +231,14 @@ tilde(beta)(t) & = (1 - overline(alpha)_(t-1)) / (1 - overline(alpha)_t) beta_t 
 The proof relies on showing that ~q(x_(t-1) | x_t)~ (the anti-forward step) is proportional to a Gaussian density, and then using the product-of-two-Gaussians property that we derived in the preliminaries.
 
 <details>
-<summary>Derivation</summary>
+<summary>Proof/Derivation</summary>
 <div>
 
 Knowing ~x_0~, we can express the anti-forward step ~q(x_(t-1) | x_t, x_0)~ using the Bayes rule.
-Remembering that this is a distribution over ~x_(t-1)~, we can focus on the factors that depend on it (and thus drop $q(x_t)$ below):
+Remembering that this is a distribution over ~x_(t-1)~, we can focus on the factors that depend on it (and thus drop $q(x_t | x_0)$ below):
 
 <T block v='
-forall t in [1..T], q(x_(t-1) | x_t, x_0) & = q(x_t | x_(t-1), x_0) q(x_(t-1) | x_0) / q(x_t | x_0) \
+forall t in [2..T], q(x_(t-1) | x_t, x_0) & = q(x_t | x_(t-1), x_0) q(x_(t-1) | x_0) / q(x_t | x_0) \
 & prop q(x_t | x_(t-1)) q(x_(t-1) | x_0) \
 & prop cal(N)(sqrt(1 - beta_t) x_(t-1), beta_t I)(x_t) times q(x_(t-1) | x_0) \
 cal(N)(a x,sigma^2)(mu) => cal(N)(μ/a, σ^2/a^2)(x) "   "
@@ -295,8 +314,9 @@ This part details the key insight of how to transform a global KL loss into a su
 We will show that we can simplify the global objective into a sum of local objectives, one for each step, with the proper conditioning.
 We will follow a few steps:
 - starting by writing the KL divergence between the two joint distributions of the Markov chains, in their natural direction (forward for the noising process, backward for the learned process),
-- re-introducing an expectation on ~x_0~ to make it the expression tractable (using the "sandwich view"),
+- re-introducing an expectation on ~x_0~ to make it the expression tractable (below, using the "sandwich view"),
 - "reversing" the conditional forward noising process,
+- using the sandwich view,
 - using the closed-form of the KL between Gaussians to get a final closed-form loss.
 
 The final terms involved in the loss are KL divergences between two Gaussian distributions, which can be computed in closed form.
@@ -310,7 +330,7 @@ A big part of these derivations are also detailed at the end of this page, in is
 NB: seems ok but need to be chunked better.
 
 <T block v='
-cal(L) & := "KL"(q(x_(0:T)) || p_theta (x_(0:T))) \
+cal(L) & := KL(q(x_(0:T)), p_theta (x_(0:T))) \
 & = EE_(x_(0:T) tilde.op q(x_(0:T))) [ln (q(x_(0:T)) / (p_theta (x_(0:T))))] \
 & = EE_(x_(0:T) tilde.op q(x_(0:T))) [ln ((q(x_0) product_(t=1)^T q(x_t | x_(t-1))) / (p_theta (x_T) product_(t=1)^T p_theta (x_(t-1) | x_t)))] \
 & = EE_(x_(0:T) tilde.op q(x_(0:T))) [ln q(x_0) - ln p_theta (x_T) + sum_(t=1)^T ln q(x_t | x_(t-1)) - sum_(t=1)^T ln p_theta (x_(t-1) | x_t)] \
@@ -364,12 +384,14 @@ To avoid having handling this special case below, we override ~tilde(mu)(x_0, t=
 We thus get a closed-form expression for the loss, involving square norms (coming from the KL between gaussians).
 
 <T block v='
-cal(L) &  = C + EE_(x_0 tilde.op q(x_0)) sum_(t=1)^T lambda_t ||tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t)||^2 \
-& = C + sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) ||tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t)||^2
+cal(L) &  = C + EE_(x_0 tilde.op q(x_0)) sum_(t=1)^T EE_(x_t) lambda_t norm(tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t))^2 \
+& = C + sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(x_t tilde.op q(x_t)) norm(tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t))^2 \
+& = C + sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(x_t tilde.op q(x_t | x_0)) norm(tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t))^2
 '/>
 
-with ~lambda_t = 1/(2 sigma_t^2)~.
+with ~lambda_t = 1/(2 sigma_t^2)~, and where, as above with $x_1$ and $x_0$, $x_t$ can be equivalently sampled either independently or conditioned on $x_0$ or conditioned on it.
 
+Overall, thanks to all derivations, we managed to get a loss that is simple as it is conditioned on the data point ~x_0~ and is local in time (sum over ~t~).
 
 <figure>
     <InlineSvg asset="diffusion" hide='#forward, #backward, #more, #bigkl, #qt, #qtt' />
@@ -394,57 +416,69 @@ with ~lambda_t = 1/(2 sigma_t^2)~.
 
 The above derivations reason in terms of fitting the means of the backward steps ~mu_theta (x_t, t)~.
 
-We can reparametrize the sampling of ~x_t~ as a function of ~x_0~ and some noise ~epsilon~:
+Based on the "big jump view" of the forward process, and the Gaussian properties, 
+we can reparametrize the sampling of ~x_t~ (conditioned on $x_0$) as a function of ~x_0~ and some noise ~epsilon~:
 
 <T block v='
 x_t & = sqrt(overline(alpha)_t) x_0 + sqrt(1 - overline(alpha)_t) epsilon \
 epsilon & tilde.op cal(N)(0,I) \
 '/>
 
-We can further use the formula of ~x_t~ to rewrite ~tilde(mu)~ as a function of ~x_0~ and ~epsilon~ only (which will help re-interpret and reparametrize the loss):
+Which, once reversed, gives:
+~!x_0 = 1 / sqrt(overline(alpha)_t) x_t - sqrt((1 - overline(alpha)_t) / overline(alpha)_t) epsilon~.
 
-TODO redo/check exact simplifications
+We can plug this expression on ~tilde(mu)~ to make it depend only on ~x_t~ and ~epsilon~, not on ~x_0~:
 
 <T block v='
 tilde(mu)(x_0, t, x_t) 
-& = tilde(mu)(x_0, t, sqrt(overline(alpha)_t) x_0 + sqrt(1 - overline(alpha)_t) epsilon) \
-& = (sqrt(overline(alpha)_(t-1)) beta_t)/ (1 - overline(alpha)_t) x_0 + (sqrt(alpha_t) (1- overline(alpha)_(t-1))) / (1 - overline(alpha)_t) (sqrt(overline(alpha)_t) x_0 + sqrt(1 - overline(alpha)_t) epsilon) \
-& = (sqrt(overline(alpha)_(t-1)) beta_t + sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(overline(alpha)_t)) / (1 - overline(alpha)_t) x_0 + (sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(1 - overline(alpha)_t)) / (1 - overline(alpha)_t) epsilon \
-& = 1 / sqrt(overline(alpha)_t) x_0 + (sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(1 - overline(alpha)_t)) / (1 - overline(alpha)_t) epsilon \
-
+& = (sqrt(overline(alpha)_(t-1)) beta_t)/ (1 - overline(alpha)_t) (1 / sqrt(overline(alpha)_t) x_t - sqrt((1 - overline(alpha)_t) / overline(alpha)_t) epsilon)
++ (sqrt(alpha_t) (1- overline(alpha)_(t-1))) / (1 - overline(alpha)_t) x_t \
+& = (sqrt(overline(alpha)_(t-1)) beta_t) / (sqrt(overline(alpha)_t) (1 - overline(alpha)_t)) x_t
++ (sqrt(alpha_t) (1- overline(alpha)_(t-1))) / (1 - overline(alpha)_t) x_t
+- (sqrt(overline(alpha)_(t-1)) beta_t sqrt((1 - overline(alpha)_t) / overline(alpha)_t)) / (1 - overline(alpha)_t) epsilon \
+& = ( (sqrt(overline(alpha)_(t-1)) beta_t) / (sqrt(overline(alpha)_t) (1 - overline(alpha)_t)) + (sqrt(alpha_t) (1- overline(alpha)_(t-1))) / (1 - overline(alpha)_t) ) x_t 
+- (sqrt(overline(alpha)_(t-1)) beta_t sqrt((1 - overline(alpha)_t) / overline(alpha)_t)) / (1 - overline(alpha)_t) epsilon \
+& =: K_(x_t)(t) x_t + K_(epsilon)(t) epsilon \
 '/>
 
+The constants can be refined further, but for now, let's look at the implications.
+Using the sampling of ~x_t~ reparametrized using ~epsilon~ and substituting the value of ~tilde(mu)~ we just derived, we can rewrite the loss as:
+<T block v='
+cal(L) & = C + sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) norm(K_(x_t)(t) x_t + K_(epsilon)(t) epsilon - mu_theta (x_t, t))^2 \
+& = C + sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I))
+norm(K_(epsilon)(t) (epsilon - (mu_theta (x_t, t) - K_(x_t)(t) x_t) / (K_(epsilon)(t))))^2 \
+& = C + sum_(t=1)^T (lambda_t K^2_(epsilon)(t)) EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I))
+norm(epsilon - (mu_theta (x_t, t) - K_(x_t)(t) x_t) / (K_(epsilon)(t)))^2 \
+'/>
 
-
-
-This allows to rewrite the loss as:
+So, up to the time reweighting (~gamma_t := lambda_t K^2_(epsilon)(t)~ instead of ~lambda_t~), as ~mu_theta~ takes as input ~x_t~ and ~t~, we can equivalently train a network to predict the noise ~epsilon~ that was used to generate ~x_t~ from ~x_0~, instead of predicting ~tilde(mu)~.
+We can thus define a network ~epsilon_theta (x_t, t)~ and train it to minimize the loss:
 
 <T block v='
-cal(L)
-& <= sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) [(tilde(mu)(x_0, t, x_t) - mu_theta (x_t, t))^2] + C \
-& = sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) [(tilde(mu)(x_0, t, sqrt(overline(alpha)_t) x_0 + sqrt(1 - overline(alpha)_t) epsilon) - mu_theta (x_t))^2] + C \
+cal(L) & = C + sum_(t=1)^T gamma_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I))
+norm(epsilon - epsilon_theta (x_t, t))^2 \
 '/>
 
-
-Where we developed ~x_t~ in ~tilde(mu)~ to be able to simplify the formula (but kept it in ~mu_theta~ as we will keep it untouched).
-By substituting the expression of ~tilde(mu)~, we get:
+With the two-way mapping between ~mu_theta~ and ~epsilon_theta~ being:
 
 <T block v='
-cal(L)
-& <= sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) [((sqrt(overline(alpha)_(t-1)) beta_t)/ (1 - overline(alpha)_t) x_0 + (sqrt(alpha_t) (1- overline(alpha)_(t-1))) / (1 - overline(alpha)_t) (sqrt(overline(alpha)_t) x_0 + sqrt(1 - overline(alpha)_t) epsilon) - mu_theta (x_t, t))^2] + C \
-& = sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) [((sqrt(overline(alpha)_(t-1)) beta_t + sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(overline(alpha)_t)) / (1 - overline(alpha)_t) x_0 + (sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(1 - overline(alpha)_t)) / (1 - overline(alpha)_t) epsilon - mu_theta (x_t, t))^2] + C \
-& = sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) [(1 / sqrt(overline(alpha)_t) x_0 + (sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(1 - overline(alpha)_t)) / (1 - overline(alpha)_t) epsilon - mu_theta (x_t, t))^2] + C \
-& = sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) [epsilon - ( (1 - overline(alpha)_t) / (sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(1 - overline(alpha)_t)) (mu_theta (x_t, t) - 1 / sqrt(overline(alpha)_t) x_0) )^2] + C \
+mu_theta (x_t, t) & = K_(x_t)(t) x_t + K_(epsilon)(t) epsilon_theta (x_t, t) \
+epsilon_theta (x_t, t) & = (mu_theta (x_t, t) - K_(x_t)(t) x_t) / (K_(epsilon)(t)) \
 '/>
 
+## Aside: link with flow matching
+
+Looking at algorithms, we can uncover the link with flow matching.
+Conceptually, both sample a time step (although with different semantics), a data point and a unit noise.
+However, they differ in the path, i.e., the formula for ~x_t~:
+- diffusion aims at preserving the variance across time,
+- flow matching (in its typical form) aims at a linear interpolation between data and noise.
+
+We can however instantiate flow matching that will match the diffusion path.
+The similarities/differences are then just in the time weighting and what is fit.
+The details are left out for now.
 
 
-Substituting to get rid of ~x_0~ and use only ~x_t~ as a parameter of ~epsilon_theta~, we get:
-
-<T block v='
-cal(L)
-& <= sum_(t=1)^T lambda_t EE_(x_0 tilde.op q(x_0)) EE_(epsilon tilde.op cal(N)(0,I)) [ ( epsilon - ( (1 - overline(alpha)_t) / (sqrt(alpha_t) (1- overline(alpha)_(t-1)) sqrt(1 - overline(alpha)_t)) (mu_theta (sqrt(overline(alpha)_t) x_0 + sqrt(1 - overline(alpha)_t) epsilon, t) - 1 / sqrt(overline(alpha)_t) x_0) )^2] + C \
-'/>
 
 ## Aside: Bayes rule over a Markov chain
 
