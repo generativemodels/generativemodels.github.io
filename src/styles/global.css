@@ -178,6 +178,66 @@ details {
 	}
 }
 
+nav.toc {
+	&:not(:has(a)) {
+		display: none;
+	}
+	/* fixed on the left margin, not too much indent in lists */
+	position: fixed;
+	top: 200px;
+	left: 0;
+	width: 200px;
+	max-height: calc(100vh - 300px);
+	overflow-y: auto;
+	padding-right: 1em;
+	border: 2px solid rgb(var(--gray-light));
+	border-right-color: rgb(var(--gray-dark));
+	border-left: none;
+	background-color: white;
+	font-size: 0.75rem;
+	a {
+		text-decoration: none;
+		color: rgb(var(--gray-dark));
+	}
+	ol {
+		padding-left: 1em;
+		li {
+			border-left: 1px solid rgb(var(--gray-light));
+			padding-left: 0.5em;
+		}
+	}
+	&>ol {
+		margin-left: .5em;
+		&>li {
+			&>a {
+				color: var(--accent-dark);
+			}
+			&>ol>li {
+				border-left-color: var(--accent);
+			}
+		}
+	}
+	/* fold if conflict with content */
+	@media (max-width: 1200px) {
+		&:not(:hover) {
+			width: 40px;
+			@media (max-width: 850px) {
+				width: 30px;
+				margin-left: -10px;
+			}
+			&>ol {
+				&::before {
+					content: "☰";
+					font-size: 1rem;
+				}
+				li {
+					display: none;
+				}
+			}
+		}
+	}
+}
+
 /* Menu that unfolds on click (no javascript, pure-css, checkbox-based hack) */
 .nav-link-folder {
 	&, label {
@@ -267,11 +327,11 @@ figure {
 		}
 		font-size: 0.7em;
 		padding: 0.5em;
-		max-height: calc(100vh - 200px);
+		max-height: calc(100vh - 300px);
 		overflow-y: scroll;
 	}
 	position: fixed;
-	top: 100px;
+	top: 200px;
 	right: 0;
 	width: 300px;
 	background: rgb(var(--gray-light));
@@ -288,4 +348,5 @@ figure {
 	padding: 0.5em 1em;
 	text-align: center;
 	font-weight: bold;
+	position: relative;
 }

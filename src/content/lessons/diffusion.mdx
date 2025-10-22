@@ -61,12 +61,12 @@ The generative process is then trained to reverse this noising process, and deno
 
 
 
-## Common knowledge about Gaussians / normal distributions
+### Common knowledge about Gaussians / normal distributions
 
 The goal here is not to define the normal distribution, nor to explain all its properties.
 We will just recall some properties of Gaussians that will be useful in the rest of the lesson.
 
-### KL divergence between two normals
+#### KL divergence between two normals
 
 The KL divergence between two normal distributions ~cal(N)(mu_1, sigma_1^2)~ and ~cal(N)(mu_2, sigma_2^2)~ is given by:
 
@@ -74,7 +74,7 @@ The KL divergence between two normal distributions ~cal(N)(mu_1, sigma_1^2)~ and
 
 In this post only the first term will be useful: it is the only term depending on the variable of interest.
 
-### Product of two normal densities
+#### Product of two normal densities
 
 The product of two normal densities ~cal(N)(mu_1, sigma_1^2)~ and ~cal(N)(mu_2, sigma_2^2)~ is proportional to another normal density:
 
@@ -124,7 +124,7 @@ mu & = sigma^2 (mu_1 / sigma_1^2 + mu_2 / sigma_2^2) = (sigma_2^2 mu_1 + sigma_1
 </div>
 </details>
 
-### Identities on normal mean
+#### Identities on normal mean
 
 - ~cal(N)(add(mu), sigma^2)(x) = cal(N)(x, sigma^2)(add(mu))~
 - ~cal(N)(add(a) mu, sigma^2)(x) = cal(N)(mu, sigma^2 / add(a^2))(x / add(a))~
@@ -135,12 +135,12 @@ mu & = sigma^2 (mu_1 / sigma_1^2 + mu_2 / sigma_2^2) = (sigma_2^2 mu_1 + sigma_1
 
 
 
-## Forward/noising process
+### Forward/noising process
 
 In this section, we introduce the forward/noising process, and derive all properties that are necessary afterwards.
 
 
-### Global view
+#### Global view
 
 The forward/noising process progressively adds noise to the data until it becomes pure noise.
 As shown in Fig. <Ref label="fig:global-noise"/>, the forward process starts from data points
@@ -153,7 +153,7 @@ The total process is run for a finite (but high) number of steps ~T~, and we (al
     <figcaption>[<Counter label="fig:global-noise"/>] global forward noising process.</figcaption>
 </figure>
 
-### Local view
+#### Local view
 
 The forward/noising process is defined as a Markov chain, where each step adds a bit of Gaussian noise to the previous step.
 As shown in Fig. <Ref label="fig:one-step-noise"/> the position at step ~t~ depends only on the position at step ~t-1~ (hence the Markov property).
@@ -184,7 +184,7 @@ forall t in [1..T], x_t & tilde.op q(x_t | x_(t-1)) = cal(N)(sqrt(1 - beta_t) x_
 </figure>
 
 
-### Big-jump view
+#### Big-jump view
 
 Thanks to the properties of Gaussians, we can express the distribution at step ~t~ as a function of the initial data point ~x_0~.
 Indeed, since each step is adding a Gaussian noise (and rescaling), the composition of all the steps is also a Gaussian distribution as shown in Fig. <Ref label="fig:multi-step-noise"/>.
@@ -206,7 +206,7 @@ in which ~alpha_t := 1 - beta_t~ is the signal retention factor at step ~t~.
 
 
 
-### Sandwich view
+#### Sandwich view
 
 As this will become useful, we can also express the distribution at step ~t-1~ as a function of the position at step ~t~ and the initial data point ~x_0~.
 This is illustrated in Fig. <Ref label="fig:sandwich-noise"/>:
@@ -272,7 +272,7 @@ tilde(mu) & = ((x_t / sqrt(1 - beta_t)) (1 - overline(alpha)_(t-1)) + (sqrt(over
     <figcaption>[<Counter label="fig:sandwich-noise"/>] Closed-form conditional backward step.</figcaption>
 </figure>
 
-## Learnable backward process
+### Learnable backward process
 
 Inspired by the forward/noising process, we define a backward/denoising process that will have parameters so that we can learn it to reverse the forward/noising process.
 As shown in Fig. <Ref label="fig:learnable-backward"/>, the backward/denoising process starts from some random noise.
@@ -294,7 +294,7 @@ forall t in [1..T], x_(t-1) & tilde.op p_theta(x_(t-1) | x_t) = cal(N)(mu_theta 
 </figure>
 
 
-### Overall goal: how to guide learning?
+#### Overall goal: how to guide learning?
 
 The parameters ~theta~ of the backward/denoising process will be learned by fitting the backward steps to the forward steps.
 More precisely, we want to minimize the KL divergence between the distribution induced by the forward step ~q(x_(0:T))~ and one induced by the backward step  ~p_theta (x_(0:T))~, as hinted in Fig. <Ref label="fig:fitting-process"/>.
@@ -305,11 +305,11 @@ More precisely, we want to minimize the KL divergence between the distribution i
 </figure>
 
 
-## From global to local KL
+### From global to local KL
 
 This part details the key insight of how to transform a global KL loss into a sum of local ones, eventually expressed as square errors.
 
-### Overview
+#### Overview
 
 We will show that we can simplify the global objective into a sum of local objectives, one for each step, with the proper conditioning.
 We will follow a few steps:
@@ -322,7 +322,7 @@ We will follow a few steps:
 The final terms involved in the loss are KL divergences between two Gaussian distributions, which can be computed in closed form.
 These are illustrated in Fig. <Ref label="fig:temporal-locality"/>.
 
-### Goal: KL divergence between the forward and backward processes
+#### Goal: KL divergence between the forward and backward processes
 
 We decompose the global KL divergence between the forward noising process and the backward learnable process.
 A big part of these derivations are also detailed at the end of this page, in isolation of the rest.
@@ -412,7 +412,7 @@ Overall, thanks to all derivations, we managed to get a loss that is simple as i
 </details>
 
 
-## What to fit?
+### What to fit?
 
 The above derivations reason in terms of fitting the means of the backward steps ~mu_theta (x_t, t)~.
 
@@ -466,7 +466,7 @@ mu_theta (x_t, t) & = K_(x_t)(t) x_t + K_(epsilon)(t) epsilon_theta (x_t, t) \
 epsilon_theta (x_t, t) & = (mu_theta (x_t, t) - K_(x_t)(t) x_t) / (K_(epsilon)(t)) \
 '/>
 
-## Aside: link with flow matching
+### Aside: link with flow matching
 
 Looking at algorithms, we can uncover the link with flow matching.
 Conceptually, both sample a time step (although with different semantics), a data point and a unit noise.
@@ -480,7 +480,7 @@ The details are left out for now.
 
 
 
-## Aside: Bayes rule over a Markov chain
+### Aside: Bayes rule over a Markov chain
 
 Even though the forward/noising process is defined forward in time, we can also express it in the opposite direction.
 It corresponds to a different decomposition of the joint distribution of the Markov chain $q(x_0, ..., x_T)$:

@@ -7,7 +7,8 @@ import { defineConfig } from 'astro/config';
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { typst } from 'astro-typst';
-
+import rehypeToc from '@jsdevtools/rehype-toc';
+import rehypeSlug from 'rehype-slug';
 
 // https://astro.build/config
 export default defineConfig({
@@ -46,6 +47,8 @@ export default defineConfig({
           strict: false,
         },
       ],
+      rehypeSlug,
+      rehypeToc,
     ],
   },
   vite: { ssr: { external: ["@myriaddreamin/typst-ts-node-compiler"] } },
