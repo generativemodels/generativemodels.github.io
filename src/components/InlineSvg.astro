@@ -1,0 +1,214 @@
+---
+
+let nextId = 1
+function generateId(/*oldId*/) {
+  let id = 'uniquesvg' + nextId
+  nextId++
+  return id
+}
+let referencingAttributes = ['clip-path', 'color-profile', 'fill', 'filter', 'marker-start', 'marker-mid', 'marker-end', 'mask', 'stroke']
+
+async function patchSVG(inputSVG: string, name: string, width: string, height: string, opts: {
+  addViewBox?: boolean
+  xlinkRewrite?: boolean
+  prefixHrefs?: boolean
+  styleToAttributes?: boolean
+  markersWorkaround?: boolean
+  idRewrite?: boolean
+} = {
+  addViewBox: true,
+  xlinkRewrite: true,
+  prefixHrefs: true,
+  styleToAttributes: true,
+  markersWorkaround: true,
+  idRewrite: true
+}) : Promise<string> {
+    const { JSDOM } = await import('jsdom')
+    let d = new JSDOM(inputSVG).window.document.body
+    let svg = d.children[0] as SVGSVGElement
+
+    if (opts.addViewBox) {
+        let vb = svg.getAttribute('viewBox')
+        if (vb === null) {
+        let units = {
+            '': 1,
+            px: 1,
+            cm: 96 / 2.54,
+            mm: 96 / 10 / 2.54,
+            Q: 96 / 40 / 2.54,
+            in: 96,
+            pc: 96 / 6,
+            pt: 96 / 72,
+        } as Record<string, number>
+
+        let px = (str: string | null) => {
+            // see https://www.w3.org/TR/css3-values/#absolute-lengths
+            if (str == null) return 0
+            var parts = str.split(/^([\d.]+)/).slice(1)
+            return parseFloat(parts[0]) * units[parts[1]]
+        }
+        let w = svg.getAttribute('width')
+        let h = svg.getAttribute('height')
+        vb = `0 0 ${px(w)} ${px(h)}`
+        svg.setAttribute('viewBox', vb)
+        }
+        svg.removeAttribute('width')
+        svg.removeAttribute('height')
+    }
+
+    if (opts.xlinkRewrite) {
+        // change xlink:href to plain href as xlink: is not supported anymore
+        svg.querySelectorAll('[*|href]:not([href])').forEach(e => {
+        if (e.hasAttributeNS('http://www.w3.org/1999/xlink', 'href')) {
+            e.setAttribute('href', e.getAttributeNS('http://www.w3.org/1999/xlink', 'href')!)
+            e.removeAttributeNS('http://www.w3.org/1999/xlink', 'href')
+        }
+        })
+    }
+
+    if (opts.prefixHrefs) {
+        // prefix href with the base svg path
+        svg.querySelectorAll('[href]').forEach(e => {
+        let href = e.getAttribute('href')?.trim() ?? ''
+        if (!href.startsWith('#') && ! href.startsWith('data:')) {
+            e.setAttribute('href', name.replace(/\/[^/]*$/, '/')+href)
+        }
+        })
+    }
+
+    if (width) {
+        svg.setAttribute('width', width)
+    }
+    if (height) {
+        svg.setAttribute('height', height)
+    }
+
+    if (opts.styleToAttributes) {
+        // style to attributes
+        svg.querySelectorAll('[style]').forEach(e => {
+        let st = e.getAttribute('style')
+        if (st) {
+            st.trim()
+            .split(/ *; */)
+            .forEach((style: string) => {
+                if (style && style.substring(0, 1) !== '-') {
+                let s = style.trim().split(/ *: */)
+                e.setAttribute(s[0], s[1])
+                }
+            })
+            e.removeAttribute('style')
+        }
+        })
+    }
+
+    if (opts.markersWorkaround) {
+        for (let attr of ['fill', 'stroke']) {
+        svg.querySelectorAll(`marker *[${attr}]`).forEach(e => {
+            let val = e.getAttribute(attr)
+            if (val === 'context-fill' || val === 'context-stroke') {
+            e.removeAttribute(attr)
+            }
+        })
+        }
+    }
+
+    if (opts.idRewrite) {
+        // makeReferencedIdsUnique
+        let byId = {} as Record<string, Element>
+        let referencersIds = {} as Record<string, Array<{o: Element, a: string}>>
+        let pushAdd = function(k: string, o: {o: Element, a: string}) {
+        if (referencersIds[k] !== undefined) {
+            referencersIds[k].push(o)
+        } else {
+            referencersIds[k] = [o]
+        }
+        }
+        // gather all ids and references
+        svg.querySelectorAll('*').forEach(e => {
+        let id = e.id
+        if (id) {
+            byId[id] = e
+        }
+        for (let attr of referencingAttributes) {
+            let val = e.getAttribute(attr)
+            if (val) {
+            // TODO: handle multiple matches (e.g. style not rewritten) and non-full matches too (e.g. same)
+            let groups = val.trim().match(/^url\(#(.+?)\)$/)
+            if (groups) {
+                pushAdd(groups[1], { o: e, a: attr })
+            }
+            }
+        }
+        var xlink = e.getAttribute('href')
+        if (xlink) {
+            var groups = xlink.trim().match(/^#(.+?)$/)
+            if (groups) {
+            pushAdd(groups[1], {o: e, a: 'href' })
+            }
+        }
+        })
+
+
+        // patch used ids and references (keep unreferenced ids fixed (to allow for identification from the editor to the css, even if classes should be preferred))
+        let newIds = {} as Record<string, string>
+        //*
+        for (let id in referencersIds) {
+        let newId = generateId()//id)
+        byId[id].id = newId
+        newIds[id] = newId
+        byId[id].classList.add(`idwas-${id}`)
+        }
+        for (let id in referencersIds) {
+        let newId = newIds[id]
+        let refs = referencersIds[id]
+        for (let pair of refs) {
+            let prev = pair.o.getAttribute(pair.a)!
+            let now
+            if (pair.a === 'href') {
+            now = prev.replace('#' + id, '#' + newId)
+            } else {
+            now = prev.replace('(#' + id + ')', '(#' + newId + ')')
+            }
+            if (prev !== now)
+            pair.o.setAttribute(pair.a, now)
+        }
+        }
+        //*/
+    }
+    return d.innerHTML
+}
+
+export interface Props {
+    asset: string
+    width: string
+    height: string
+    hide?: string
+    lighten?: string
+}
+
+const { asset, hide='', lighten='', ...attributes } = Astro.props as Props
+const { default: svgContent } = await import(`../assets/${asset}.svg?raw`)
+const uid = 'svg---' + Math.random().toString(16).slice(2, 10)
+const cl = `inline-svg ${uid}`
+function augment(s: string) {
+  return s//.split(',').map(v => `.${uid} ${v.trim()}`).join(', ')
+}
+let style = ''
+if (hide) {
+  style += `.${uid} { ${augment(hide)} { display: none; } }`
+}
+if (lighten) {
+  style += `.${uid} { ${augment(lighten)} { filter: saturate(0.2); opacity: 0.5; } }`
+}
+const innerHTML = await patchSVG(svgContent, `/assets/${asset}.svg`, attributes.width ?? '100%', attributes.height ?? '', {
+    addViewBox: true,
+    xlinkRewrite: true,
+    prefixHrefs: true,
+    styleToAttributes: true,
+    markersWorkaround: true,
+    idRewrite: true
+})
+
+---
+
+<div class={ cl }><style set:html={ style }></style><Fragment {...attributes} set:html={innerHTML}></Fragment></div>

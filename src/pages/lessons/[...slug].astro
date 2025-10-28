@@ -1,6 +1,8 @@
 ---
 import { type CollectionEntry, getCollection, render } from 'astro:content';
 import LessonLayout from '../../layouts/LessonLayout.astro';
+import T from '../../components/typst/TypstMath.astro';
+import { typstable } from '../../consts';
 
 export async function getStaticPaths() {
 	const lessons = await getCollection('lessons');
@@ -13,8 +15,16 @@ type Props = CollectionEntry<'lessons'>;
 
 const lesson = Astro.props;
 const { Content } = await render(lesson);
+
+const components = {} as Record<string, any>
+const typst = typeof lesson.data.typst === 'string' ? [lesson.data.typst] : lesson.data.typst as string[] ?? []
+for (const k of typstable) {
+	if (typst.includes(k)) {
+		components[k] = T
+	}
+}
 ---
 
 <LessonLayout {...lesson.data}>
-	<Content />
+	<Content components={ components } />
 </LessonLayout>
