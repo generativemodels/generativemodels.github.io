@@ -1,0 +1,113 @@
+---
+title: 'Discrete Flow Matching'
+menu: 'Discrete Flow Matching (DFM)'
+description: 'On discrete flow matching models and their core principles, and parallel with continuous flow matching'
+pubDate: '2025-10-08'
+heroImage: '../../assets/blog-placeholder-3.jpg'
+order: 610
+tags: ['Diffusion', 'Flow Matching']
+typst: ['del', 'code']
+---
+
+import T from '../../components/typst/TypstMath.astro'
+import Cetz from '../../components/typst/TypstCetz.astro'
+import { Image } from 'astro:assets'
+import diffusion from '../../assets/diffusion.svg'
+import InlineSvg from '../../components/InlineSvg.astro'
+import Counter from '../../components/numbering/Counter.astro'
+import Ref from '../../components/numbering/Ref.astro'
+
+<T defines='
+#let anno(t) = $text(#luma(100), size: #10pt, (#t))$;
+#let c = blue;
+#let add(txt) = $text(#c, txt)$
+#let KL(a,b) = $"KL"(#(a) || #(b))$;
+'/>
+
+<div class="glossary">
+<div class="glossary-content">
+<label><input type="checkbox" id="cb-glossary" checked /> Glossary (keep visible)</label>
+
+- **$\mathcal{V}$** vocabulary set; $|\mathcal{V}|$ is the vocabulary size
+- **$\mathcal{S} = \mathcal{V}^S$** space of all possible sequences of length $S$ over the vocabulary
+- **$\mathbf{x} = x^1 \dots x^S$** sequence of $S$ tokens, where each token $x^i$ takes values in $\mathcal{V}$
+- **$\mathbf{e}_v$** one-hot vector in $\mathbb{R}^{|\mathcal{V}|}$ for token $v \in \mathcal{V}$
+- **$m$** mask token $m \notin \mathcal{V}$, represented as the one-hot vector $(0, \dots, 0, 1) \in \mathbb{R}^{|\mathcal{V}|+1}$
+- **$\mathbf{x}^{\neq i}$** sub-sequence of $\mathbf{x}$ at all positions except $i$;
+- **$p_0$** source distribution (mask or uniform)
+- **$p_{\text{mask}}$** mask source distribution: $p_{\text{mask}}(v) = \mathbb{I}(v = m)$
+- **$p_{\text{unif}}$** uniform source distribution: $p_{\text{unif}}(v) = \frac{1}{|\mathcal{V}|}$
+- **$p_1$** target distribution
+- **$p_t$** marginal distribution at time $t \in [0,1]$; the probability path representing the trajectory that transports $p_0$ to $p_1$
+- **$p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | z^j)$** factorized conditional probability path given a conditioning variable $z$
+- **$q_t(x | z)$** token-wise conditional distribution given $z$.
+- **$q_t(x | x_0, x_1)$** source-target token-wise conditional distribution: $q_t(x | x_0, x_1) = \kappa_t \mathbb{I}(x = x_1) + (1 - \kappa_t) \mathbb{I}(x = x_0)$
+- **$\kappa_t$** interpolation schedule; boundary conditions are $\kappa_0 = 0$ and $\kappa_1 = 1$, with a natural choice being $\kappa_t = t$
+- **$u_t(\mathbf{x})_{\mathbf{y}}$** probability velocity: the instantaneous rate at which the sequence transitions from $\mathbf{x}$ to $\mathbf{y}$ at time $t$
+- **$u_t^i(\mathbf{x})_v$** token-wise velocity at position $i$: the instantaneous rate at which the $i$-th token of $\mathbf{x}$ transitions to $v$ at time $t$
+- **$u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}}$** conditional velocity field given $z$; it relates to the marginal velocity via expectation, formulated as $u_t(\mathbf{x})_{\mathbf{y}} = \mathbb{E}_{Z | X_t = \mathbf{x}}[u_t(\mathbf{x} | Z)_{\mathbf{y}}] $
+- **$u_t(x | x_0, x_1)$** source-target token-wise conditional velocity: $u_t(x | x_0, x_1)_v = \frac{\dot{\kappa}_t}{1 - \kappa_t} \left( \mathbb{I}(v = x_1) - \mathbb{I}(v = x) \right)$
+- **$u_{\theta,t}^i(\mathbf{x})_v$** learned velocity field parameterized by $\theta$
+- **$P_{\theta,t}(X_1^i | \mathbf{x}_t)$** learned denoiser: at coordinate j, conditional probability that the $i$-th token at time 1 is $\mathbf{e}_j$, given current sequence $\mathbf{x}_t$
+
+<label for="cb-glossary">Hide Glossary</label>
+</div>
+</div>
+
+Discrete diffusion models were introduced independently by Hoogeboom et al. and Austin et al. (both NeurIPS 2021), later extended to continuous time by Campbell et al. (NeurIPS 2022), and made competitive with autoregressive models by Lou et al. SEDD (ICML 2024). Discrete flow matching was then introduced by Campbell et al. (ICML 2024) and further generalized by Gat et al. (NeurIPS 2024), mirroring the shift from diffusion to flow matching seen in continuous spaces.
+The main goal of this post is to explain the theory behind discrete flow matching and to provide a clear parallel with continuous flow matching.
+
+### Discrete Flow Matching
+
+#### Intuition of Discrete Flow Matching
+
+Discrete flow matching was initially introduced as an alternative to autoregressive (AR) models for sequence generation. A fundamental limitation of current AR models is their reliance on the next-token prediction paradigm. This inherently restricts them to generating sequences one token at a time in a strict, left-to-right order.
+
+While AR models excel at purely sequential generative task, such as answering a conversational prompt or writing a block of code from scratch, this architecture feels unnatural and inefficient for tasks that require bidirectional or global context:
+- **Code infilling:** When missing tokens are scattered throughout a file, the model must condition heavily on both the few preceding and succeeding lines of code to fill the gaps accurately. To achieve this task with an AR model, we should give the full noisy code to the model before it starts filling, which is a counter-intuitive approach.
+- **Solving Sudoku:** This is an inherently 2D spatial constraint problem. A number in a cell is constrained by its entire row, column, and subgrid, not just by the cells evaluated "before" it in a 1D sequence.
+- **DNA sequence design:** Biological sequences rely on complex secondary structures and long-range dependencies. Parts of the sequence that are far apart often need to connect together like perfectly matched puzzle pieces so the molecule can fold into the right shape, making a purely left-to-right generation prone to structural errors.
+
+By contrast, the paradigm of diffusion and flow matching is bidirectional. Throughout the generation process, every token is updated while simultaneously "seeing" both the past and the future of the sequence. This global context makes solving infilling, constraint-satisfaction games, and complex spatial tasks much more natural.
+
+The primary objective of discrete flow matching is to define a process that smoothly transports a simple source distribution, denoted as $p_0$, into a complex target distribution (the actual data we want to generate), denoted as $p_1$. To achieve this, we construct a continuous transformation, the *flow* $f(\cdot, t): \mathcal{S} \times [0,1] \to \mathcal{S}$ such that the mapping
+$$
+\mathbf{x} \mapsto f(\mathbf{x}, t)
+$$
+satisfies $p_t = f(\cdot, t)_\sharp p_0$.
+
+This means that for a sequence $\mathbf{x} \sim p_0$, we have $f(\mathbf{x}, t) \sim p_t$. Here, the probability path $p_t$ represents the intermediate states as it transports the source distribution $p_0$ to the target distribution $p_1$ over time $t \in [0,1]$.
+
+In practice, we assume we have a dataset of $N$ samples $\mathcal{A} = \{a_1, \dots, a_N\}$ that follow the target distribution $p_1$.
+
+The source distribution $p_0$ acts as our starting point for generation and is typically chosen to be either:
+- **Mask distribution ($p_{\text{mask}}$):** All sequences start entirely filled with the mask token $m$.
+- **Uniform distribution ($p_{\text{unif}}$):** All tokens in the starting sequence are sampled uniformly across the vocabulary $\mathcal{V}$.
+
+For instance, if our goal is solving Sudoku, $p_0$ represents the theoretical distribution of initial states, like partially filled grids with masked unknowns ($p_{\text{mask}}$), while $\hat{p}_0$ denotes the $N$ empirical puzzle samples we actually draw. Conversely, the true target distribution $p_1$ defines the ideal space of all valid, completed Sudoku boards. Its empirical counterpart, $\hat{p}_1$, is formed by our training dataset $\mathcal{A}$, which consists of the exact $N$ solved grids corresponding to the initial puzzles in $\hat{p}_0$.
+
+{/* Maybe add a dummy simulation of a sudoku that fills with x0, xt and x1, to draw a sudoku from pt = fill a sudoku from 0 to t?
+The sudoku has the advantage to be constrained spatially so S is fixed and it's easy to make consistent simulations */}
+
+#### Generation of discrete data
+Introduce the vanilla sampling algorithm and the u notation.
+Factorization assumption.
+
+#### Modelling Choices
+Introduce the conditional probability paths and the associated conditional velocities.
+
+#### From Conditional to Unconditional Velocity
+
+Show link bewteen pcond --> pt, ucond --> ut and say that regressing against ucond is similar to regressing against u.
+
+#### Denoiser
+
+Introduce the denoiser and explain that the denoiser is a more natural object to learn is discrete spaces.
+Expression of the loss now. Precise that in masked diffusion, the adopted approach is to learn only to denoise masked positions, not also to keep unmasked positions.
+
+#### Sampling
+
+Explain the drawbacks of vanilla sampling (requires n_steps (1/h)*S draws over vectors of size Card(V), could be expensive).
+Introduce planner-aware sampling for masked diffusion/flow matching (num_steps fixed, use the denoiser to denoise S/num_steps tokens at each step given a criteria defined by a planner (define it)), then refer to the annex for more details.
+
+#### The big table to compare continuous and discrete flow matching.
