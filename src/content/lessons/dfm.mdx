@@ -16,6 +16,7 @@ import diffusion from '../../assets/diffusion.svg'
 import InlineSvg from '../../components/InlineSvg.astro'
 import Counter from '../../components/numbering/Counter.astro'
 import Ref from '../../components/numbering/Ref.astro'
+import SudokuFlowMatching from '../../components/sudoku_flow_matching.jsx';
 
 <T defines='
 #let anno(t) = $text(#luma(100), size: #10pt, (#t))$;
@@ -89,6 +90,9 @@ For instance, if our goal is solving Sudoku, $p_0$ represents the theoretical di
 {/* Maybe add a dummy simulation of a sudoku that fills with x0, xt and x1, to draw a sudoku from pt = fill a sudoku from 0 to t?
 The sudoku has the advantage to be constrained spatially so S is fixed and it's easy to make consistent simulations */}
 
+<SudokuFlowMatching client:load />
+
+
 #### Generation of discrete data
 
 To generate discrete data, we rely on a time-dependent vector field $u$ that guides the sampling process.
@@ -98,12 +102,16 @@ Let $u : [0,1] \times \mathcal{S} \to \mathbb{R}^{|\mathcal{S}|}$ be a time-depe
 
 Intuitively, $u_t(\mathbf{x})_{\mathbf{y}}$ is the instantaneous rate at which the sequence transitions from $\mathbf{x}$ to $\mathbf{y}$ at time $t$. Therefore, for any $\mathbf{x}, \mathbf{y} \in \mathcal{S}$:
 $$
+\begin{equation}
 \mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{x} = \mathbf{y}) + h u_{t}(\mathbf{x})_{\mathbf{y}} + o(h)
+\end{equation}
 $$
 
 In practice, this means that at each sampling step, the next state is drawn according to the following categorical distribution update:
 $$
+\begin{equation}
 \mathbf{x}_{\tau + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_\tau} + h u_\tau(\mathbf{x}_\tau)\right)
+\end{equation}
 $$
 
 The relationship between this velocity field and the marginal probability path is formalized by the Kolmogorov Equation.
@@ -111,7 +119,9 @@ The relationship between this velocity field and the marginal probability path i
 **Theorem (Kolmogorov Equation)**:
 The vector field $u$ generates $p_t$ if and only if for all $\mathbf{x}, \mathbf{y} \in \mathcal{S}$:
 $$
+\begin{equation}
 \frac{d}{dt} p_t(\mathbf{y}) = \sum_{\mathbf{x} \in \mathcal{S}} u_{t}(\mathbf{x})_{\mathbf{y}} \, p_t(\mathbf{x})
+\end{equation}
 $$
 
 <details>
@@ -138,15 +148,17 @@ $$
 
 Because modeling the joint transition for an entire sequence over a large state space is computationally intractable, we typically make a **factorization assumption**. We assume that the transition probabilities factorize over the tokens, meaning during generation transitions are applied independently to each position of the sequence. Concretely, for $\mathbf{x}, \mathbf{y} \in \mathcal{S}$:
 $$
-\begin{aligned}
+\begin{align}
 \mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) &= \mathbb{P}(X_{t+h}^1 = y_1, X_{t+h}^2 = y_2, \dots, X_{t+h}^S = y_S | X_t = \mathbf{x}) \\
 &= \prod_{i=1}^S \mathbb{P}(X_{t+h}^i = y^i | X_t = \mathbf{x})
-\end{aligned}
+\end{align}
 $$
 
 This factorization leads us to write the overall velocity field as a sum of individual token-wise velocities:
 $$
+\begin{equation}
 u_t(\mathbf{x})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i}
+\end{equation}
 $$
 
 <details>
@@ -184,7 +196,9 @@ This implies that for infinitesimally small time steps, each sequence $\mathbf{x
 
 Therefore, at each sampling step, we draw each token independently following:
 $$
+\begin{equation}
 x_{\tau+h}^i \sim \text{Cat}\left(\mathbf{e}_{x_\tau^i} + h u_\tau^i(\mathbf{x}_\tau)\right)
+\end{equation}
 $$
 
 {/* Maybe here add the simulation of my toy example (4 characters), 10 steps and we show u and the drawings at each steps*/}.
@@ -203,102 +217,102 @@ We define the conditioning variable $\mathbf{z} \in \mathcal{Z}^S$ to be either:
 
 For all conditioning variables $\mathbf{z}$ considered below, we assume a fully factorized conditional probability path:
 $$
+\begin{equation}
 p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | z^j)
+\end{equation}
 $$
 Concretely, this means that to sample a sequence $\mathbf{x} \sim p_t( \cdot | \mathbf{z})$, we can just sample each token $x^j$ independently from its token-wise distribution $q_t( \cdot | z^j)$. This factorization is what allows us to define the conditional probability $q_t$ and the conditional velocity $u_t$ on a purely per-token basis.
 
-Below are the explicit formulations for the three most common setups.
-
-##### Source-Target Conditioning
-
-Here, we condition on both the start and end points, so $z^i = (x_0^i, x_1^i)$. The token $x^i$ at time $t$ is simply $x_1^i$ with probability $t$, and $x_0^i$ with probability $1 - t$:
-$$
-q_t(x^i | x_0^i, x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = x_0^i)
-$$
-
-The conditional velocity field driving this transition is:
-$$
-u_t(x^i | x_0^i, x_1^i)_v = \begin{cases}
-\dfrac{1}{1 - t} & \text{if } v = x_1^i \text{ and } x^i = x_0^i, \\[0.3cm]
--\dfrac{1}{1 - t} & \text{if } v = x^i = x_0^i, \\[0.3cm]
-0 & \text{otherwise}.
-\end{cases}
-$$
-
-##### Uniform Source
-
-When $p_0$ is the uniform distribution, we can only condition on the target $z^i = x_1^i$. At time $t$, the token is the target $x_1^i$ with probability $t + (1 - t) \frac{1}{|\mathcal{V}|}$, or is drawn uniformly from other tokens in the vocabulary $\mathcal{V}$ with probability $(1 - t) \frac{1}{|\mathcal{V}|}$:
-$$
-q_t(x^i | x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \frac{1}{|\mathcal{V}|}
-$$
-
-The conditional velocity field driving this transition is:
-$$
-u_t(x^i | x_1^i)_v = \begin{cases}
-\dfrac{1}{1-t} & \text{if } v = x_1^i \text{ and } x^i \neq x_1^i \\[0.3cm]
--\dfrac{1}{1-t} & \text{if } v = x^i \neq x_1^i \\[0.3cm]
-0 & \text{otherwise}
-\end{cases}
-$$
-
-##### Mask Source
+Below are the explicit formulations for the masked source, the others are developed in the appendix.
 
 At time $t$, the token is the target $x_1^i$ with probability $t$, or it remains the mask token $m$ with probability $1 - t$:
 $$
+\begin{equation}
 q_t(x^i | x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = m)
+\end{equation}
 $$
 
 The conditional velocity field driving this transition is:
 $$
+\begin{equation}
 u_t(x^i | x_1^i)_v = \begin{cases}
 \dfrac{1}{1-t} & \text{if } v = x_1^i \text{ and } x^i = m, \\[0.3cm]
 -\dfrac{1}{1-t} & \text{if } v = x^i = m, \\[0.3cm]
 0 & \text{otherwise}.
 \end{cases}
+\end{equation}
+$$
+
+Concrete example with a vocabulary of 3 tokens $\{1, 2, 3\}$ and a mask token $m$, where the target is $x_1^i = 2$:
+
+$$
+u_t(x^i | x_1^i = 2)_v = \begin{array}{c|cccc}
+x^i \backslash v & 1 & 2 & 3 & m \\
+\hline
+1 & 0 & 0 & 0 & 0 \\[0.3cm]
+2 & 0 & 0 & 0 & 0 \\[0.3cm]
+3 & 0 & 0 & 0 & 0 \\[0.3cm]
+m & 0 & \dfrac{1}{1-t} & 0 & -\dfrac{1}{1-t}
+\end{array}
 $$
 
 **Useful note:** For all three cases detailed above, the conditional velocity can actually be unified and written in a more compact form:
 $$
+\begin{equation}
 u_t(x^i | z^i) = \frac{1}{1-t} \left( \mathbf{e}_{z^i} - \mathbf{e}_{x^i} \right)
+\end{equation}
 $$
 
+{/* ut(x^i given x0^i,x1^i)_v --> Matrice avec x_i, v et 0 quasi partout. */}
 #### From Conditional to Unconditional Velocity
 
 Now that we have defined our conditional probability paths and velocities, we need to connect them back to the global, unconditional process.
 
 The overall marginal distribution $p_t$ is obtained simply by marginalizing over all possible conditional paths:
 $$
+\begin{equation}
 p_t(\mathbf{x}) = \sum_{\mathbf{z}} p_t(\mathbf{x} | \mathbf{z}) \pi(\mathbf{z})
+\end{equation}
 $$
 where $\pi(\mathbf{z})$ is the distribution over the conditioning variable $\mathbf{z}$ used during training.
 {/* Maybe =choice to be consistent*/}.
 
 Just as the marginal probability is an average of conditional probabilities, the marginal velocity field $u_t(\mathbf{x})_{\mathbf{y}}$ can be expressed as the expectation of the conditional velocity over the conditioning variable $\mathbf{z}$:
 $$
+\begin{equation}
 u_t(\mathbf{x})_{\mathbf{y}} = \mathbb{E}_{Z | X_t = \mathbf{x}}[u_t(\mathbf{x} | Z)_{\mathbf{y}}] = \sum_{\mathbf{z}} u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}} \mathbb{P}(Z = \mathbf{z} | X_t = \mathbf{x})
+\end{equation}
 $$
 
 {/* If needed we can add the same figure u,ucond,p,pcond as the one in the CFM blogpost, because it's still valid.*/}
 
 **Learning with Conditional Velocity Fields**
 
-Let $D_\mathbf{x}(u, v)$ be a divergence metric (such as a Bregman divergence) that measures the difference between two vector fields. The ideal discrete flow matching loss would minimize the difference between our neural network's predicted velocity $u_{\theta,t}$ and the true marginal velocity $u_t$:
+To train our model, we use the KL divergence to measure the difference between velocity fields. This choice is natural: it arises from the KL divergence between the probability paths generated by the true and learned velocity fields. The ideal discrete flow matching loss minimizes the KL between the true marginal velocity $u_t$ and our learned velocity $u_{\theta,t}$:
+
 $$
-L_{\text{DFM}}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x} \sim p_t}}\left[ D_{\mathbf{x}}\left(u_t(\mathbf{x}), u_{\theta,t}(\mathbf{x})\right) \right]
+\begin{equation}
+L_{\text{DFM}}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x} \sim p_t}}\left[ D_{\text{KL}}\left(u_t(\mathbf{x}) \,\|\, u_{\theta,t}(\mathbf{x})\right) \right]
+\end{equation}
 $$
 
-However, $u_t(\mathbf{x})$ requires marginalizing over the entire dataset, making it computationally intractable. Following the breakthrough approach of continuous flow matching, we instead use the **conditional discrete flow matching loss**:
+However, $u_t(\mathbf{x})$ requires marginalizing over the entire dataset, making it computationally intractable. Following the approach of continuous flow matching, we instead use the **conditional discrete flow matching loss**:
+
 $$
-L_{\text{CDFM}}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x} \sim p_t( \cdot | \mathbf{z})}}\left[ D_{\mathbf{x}}\left(u_t(\mathbf{x} | \mathbf{z}), u_{\theta,t}(\mathbf{x})\right) \right]
+\begin{equation}
+L_{\text{CDFM}}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x} \sim p_t( \cdot | \mathbf{z})}}\left[ D_{\text{KL}}\left(u_t(\mathbf{x} | \mathbf{z}) \,\|\, u_{\theta,t}(\mathbf{x})\right) \right]
+\end{equation}
 $$
 
 **Theorem:** Regressing the neural network $u_\theta$ against the known conditional velocity field $u_t(\mathbf{x} | \mathbf{z})$ using the loss $L_{\text{CDFM}}(\theta)$ is mathematically equivalent to directly regressing $u_\theta$ against the intractable, unknown marginal velocity field $u_t(\mathbf{x})$ using the loss $L_{\text{DFM}}(\theta)$.
 
-In practice, because the sequence space $\mathcal{S}$ is enormous, we do not compute this divergence over the entire joint sequence space at once. We use our factorization assumption to compute the loss as a sum over individual tokens:
+In practice, thanks to our factorization assumption, the loss decomposes as a sum over individual token positions:
+
 $$
-L_{\text{CDFM}}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x} \sim p_t( \cdot | \mathbf{z})}}\left[ \sum_{i=1}^S D_{\mathbf{x}}^i\left( u_t(x^i | z^i), u_{\theta,t}^i(\mathbf{x}) \right) \right]
+\begin{equation}
+L_{\text{CDFM}}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x} \sim p_t( \cdot | \mathbf{z})}}\left[ \sum_{i=1}^S D_{\text{KL}}\left( u_t(x^i | z^i) \,\|\, u_{\theta,t}^i(\mathbf{x}) \right) \right]
+\end{equation}
 $$
-where $D_{\mathbf{x}}^i$ evaluates the divergence strictly at the $i$-th position.
 
 #### Denoiser
 
@@ -309,24 +323,77 @@ A denoiser simply observes the current noisy, corrupted, or partially masked seq
 We can directly connect the denoiser and velocity through this simple formula:
 
 $$
+\begin{equation}
 u_t^i(\mathbf{x})_v = \frac{1}{1 - t} \left( \mathbb{P}(X_1^i = v | X_t = \mathbf{x}) - \mathbb{I}(v = x^i) \right)
+\end{equation}
 $$
 
 Because the term $\mathbb{I}(v = x^i)$ is a known constant given the current state, learning the velocity field $u$ is mathematically exactly equivalent to learning the denoiser probability $\mathbb{P}(X_1^i = v | X_t = \mathbf{x})$.
 
-Consequently, we can train our model to learn predicting the clean data. This is done using the Conditional Discrete Matching loss:
-$$
-L_{CDM}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x} \sim p_t( \cdot | \mathbf{z})}} \left[ D_{\mathbf{x}} (\mathbf{e}_{x_1^i}, P_{\theta,t} (\cdot | \mathbf{x})) \right]
-$$
+Consequently, we can train the denoiser directly. Using the KL divergence between the true clean token distribution and the learned one, the loss simplifies to the standard cross-entropy:
 
-If we choose the Kullback-Leibler (KL) divergence as our distance metric $D_{\mathbf{x}}$, this objective neatly simplifies into the standard cross-entropy loss widely used in classification tasks:
 $$
-L_{CDM}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x} \sim p_t( \cdot | \mathbf{z})}} \left[ \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}) \right]
+\begin{equation}
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x} \sim p_t( \cdot | \mathbf{z})}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}) \right]
+\end{equation}
 $$
 
 **Note:** In practice, particularly when working with masked diffusion models, the adopted approach is to compute this loss exclusively on the positions that are currently masked. The model learns only how to denoise the corrupted tokens, and it is not penalized or trained to explicitly "keep" the unmasked tokens that are already visible.
 
-#### Sampling
+{/* Here it is the right time to add my simulation with 4 or more tokens with the "revelation" and the evolution of probabilities. with Vanilla Sampling. */}
+
+#### Detailed side-to-side comparison between continuous and discrete flow matching.
+
+### Appendix to go further
+
+#### Other conditioning choices
+
+In the main text we detailed the mask source conditioning. Here we present the two other common setups.
+
+##### Source-Target Conditioning
+
+Here, we condition on both the start and end points, so $z^i = (x_0^i, x_1^i)$. The token $x^i$ at time $t$ is simply $x_1^i$ with probability $t$, and $x_0^i$ with probability $1 - t$:
+$$
+\begin{equation}
+q_t(x^i | x_0^i, x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = x_0^i)
+\end{equation}
+$$
+
+The conditional velocity field driving this transition is:
+$$
+\begin{equation}
+u_t(x^i | x_0^i, x_1^i)_v = \begin{cases}
+\dfrac{1}{1 - t} & \text{if } v = x_1^i \text{ and } x^i = x_0^i, \\[0.3cm]
+-\dfrac{1}{1 - t} & \text{if } v = x^i = x_0^i, \\[0.3cm]
+0 & \text{otherwise}.
+\end{cases}
+\end{equation}
+$$
+
+##### Uniform Source
+
+When $p_0$ is the uniform distribution, we can only condition on the target $z^i = x_1^i$. At time $t$, the token is the target $x_1^i$ with probability $t + (1 - t) \frac{1}{|\mathcal{V}|}$, or is drawn uniformly from other tokens in the vocabulary $\mathcal{V}$ with probability $(1 - t) \frac{1}{|\mathcal{V}|}$:
+$$
+\begin{equation}
+q_t(x^i | x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \frac{1}{|\mathcal{V}|}
+\end{equation}
+$$
+
+The conditional velocity field driving this transition is:
+$$
+\begin{equation}
+u_t(x^i | x_1^i)_v = \begin{cases}
+\dfrac{1}{1-t} & \text{if } v = x_1^i \text{ and } x^i \neq x_1^i \\[0.3cm]
+-\dfrac{1}{1-t} & \text{if } v = x^i \neq x_1^i \\[0.3cm]
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+$$
+
+#### Reminder on continuous flow matching.
+(Needed after the table? We can just add some figures from the CFM blog).
+
+#### Planner aware path learning
 
 Vanilla sampling in masked discrete diffusion and flow matching is computationally expensive. It requires $(1/h) \times S$ sequential steps, where $h$ is the time step size and $S$ is the length of the sequence. At every single micro-step, we must compute and draw from probability vectors of size $|\mathcal{V}|$ for all tokens. For example, with a step size of $h = 0.01$ and a sequence length of $S = 3000$, we would need an impractical $300,000$ steps to generate a single sample.
 
@@ -342,8 +409,16 @@ To make generation tractable, the standard approach used in the industry for lar
     * **Denoise:** Create $\mathbf{x}_{k+1}$ by setting $x_{k+1}^i = z^i$ for all $i \in \mathcal{I}$, keeping the rest as masks
 3. **Return** fully generated sequence $\mathbf{x}_N$
 
-*(For a deeper dive into the specific criteria and scoring functions used by different planners, please refer to the Appendix).*
+Why learning a new loss with a planner
+Loss for a greedy planner (just a weight 1 + alpha w_i).
 
-{/* Here it is the right time to add my simulation with 4 or more tokens with the "revelation" and the evolution of probabilities. Vanilla + Planner Sampling. */}
+#### Links with discrete diffusion framework.
+Discrete diffusion: forward and backward process (add the matrixes for masked diffusion? Would be a long section.)
+Same as discrete flow matching with t/1-t.
+Links with concrete score matching.
 
-#### The big table to compare continuous and discrete flow matching.
+#### Very optional: "continuous" methods for discrete data generation.
+
+(Dirichlet Flow Matching, Categorical Flow Maps) that could benefit from distillation techniques to accelerate the sampling.
+
+{/* peut être mettre la distribution uniforme en appendix? */}

@@ -10,32 +10,30 @@ import { typst } from 'astro-typst';
 import rehypeToc from '@jsdevtools/rehype-toc';
 import rehypeSlug from 'rehype-slug';
 
+import react from '@astrojs/react';
+
 // https://astro.build/config
 export default defineConfig({
   site: 'https://generativemodels.github.io/',
   //base: '/',
-  integrations: [
-    mdx(),
-    sitemap(),
-    typst({
-      options: {
-        remPx: 14,
-      },
-      target: (id) => {
-        console.debug(`Detecting ${id}`);
-        if (id.endsWith(".html.typ") || id.includes("/html/")) return "html";
-        return "svg";
-      },
-      // === <img src="xxx.svg"> instead of inlined <svg> ===
-      emitSvg: true,
-      // emitSvgDir: ".astro/typst"
-      // === Add non-system fonts here ===
-      // fontArgs: [
-      //   { fontPaths: ['/system/fonts', '/user/fonts'] },
-      //   { fontBlobs: [customFontBuffer] }
-      // ],
-    }),
-  ],
+  integrations: [mdx(), sitemap(), typst({
+    options: {
+      remPx: 14,
+    },
+    target: (id) => {
+      console.debug(`Detecting ${id}`);
+      if (id.endsWith(".html.typ") || id.includes("/html/")) return "html";
+      return "svg";
+    },
+    // === <img src="xxx.svg"> instead of inlined <svg> ===
+    emitSvg: true,
+    // emitSvgDir: ".astro/typst"
+    // === Add non-system fonts here ===
+    // fontArgs: [
+    //   { fontPaths: ['/system/fonts', '/user/fonts'] },
+    //   { fontBlobs: [customFontBuffer] }
+    // ],
+  }), react()],
   markdown: {
     remarkPlugins: [remarkMath],
     rehypePlugins: [
