@@ -17,6 +17,7 @@ import InlineSvg from '../../components/InlineSvg.astro'
 import Counter from '../../components/numbering/Counter.astro'
 import Ref from '../../components/numbering/Ref.astro'
 import SudokuFlowMatching from '../../components/sudoku_flow_matching.jsx';
+import DFMSampling from '../../components/DFMSampling.jsx';
 
 <T defines='
 #let anno(t) = $text(#luma(100), size: #10pt, (#t))$;
@@ -202,6 +203,8 @@ x_{\tau+h}^i \sim \text{Cat}\left(\mathbf{e}_{x_\tau^i} + h u_\tau^i(\mathbf{x}_
 $$
 
 {/* Maybe here add the simulation of my toy example (4 characters), 10 steps and we show u and the drawings at each steps*/}.
+
+<DFMSampling client:load />
 
 #### Modelling Choices
 
