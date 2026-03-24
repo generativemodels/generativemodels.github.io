@@ -209,7 +209,7 @@ export default function App() {
               position: "absolute", left: x, top: y, width: CELL, height: CELL,
               borderRadius: 6,
               background: isGiven ? "rgba(255,255,255,0.05)"
-                : isMasked ? "rgba(130,180,255,0.06)"
+                : isMasked ? "rgba(0,0,0,0.6)"
                 : "rgba(125,239,160,0.1)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontFamily: isMasked ? "'DM Mono', monospace" : "'Outfit', sans-serif",

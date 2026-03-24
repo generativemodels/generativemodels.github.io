@@ -3,8 +3,10 @@
   "type": "module",
   "version": "0.0.1",
   "scripts": {
+    "dfm:install": "pnpm --dir dfm-live-figure install",
+    "build:dfm-figure": "pnpm --dir dfm-live-figure build-only --base=/dfm-live-figure/ && rm -rf public/dfm-live-figure && mkdir -p public/dfm-live-figure && cp -r dfm-live-figure/dist/* public/dfm-live-figure/",
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "pnpm build:dfm-figure && astro build",
     "preview": "astro preview",
     "astro": "astro"
   },

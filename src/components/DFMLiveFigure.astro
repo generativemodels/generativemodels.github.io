@@ -1,0 +1,89 @@
+---
+export interface Props {
+  src?: string
+  title?: string
+  height?: string
+  maxWidth?: string
+  autoResize?: boolean
+}
+
+const {
+  src = '/dfm-live-figure/index.html',
+  title = 'DFM live figure',
+  height = '760px',
+  maxWidth = '1200px',
+  autoResize = true,
+} = Astro.props as Props
+---
+
+<div class="dfm-live-figure" style={`--dfm-max-width:${maxWidth}; --dfm-height:${height};`}>
+  <iframe
+    src={src}
+    title={title}
+    loading="lazy"
+    referrerpolicy="no-referrer"
+    allow="fullscreen"
+    data-auto-resize={autoResize ? 'true' : 'false'}
+  />
+</div>
+
+<script is:inline>
+  (() => {
+    const wrappers = document.querySelectorAll('.dfm-live-figure iframe[data-auto-resize="true"]')
+
+    for (const iframe of wrappers) {
+      const setHeight = () => {
+        try {
+          const doc = iframe.contentDocument
+          if (!doc) return
+          const bodyH = doc.body ? doc.body.scrollHeight : 0
+          const docH = doc.documentElement ? doc.documentElement.scrollHeight : 0
+          const h = Math.max(bodyH, docH, 320)
+          iframe.style.height = `${h}px`
+        } catch {
+          // Ignore cross-origin access failures; default height remains.
+        }
+      }
+
+      iframe.addEventListener('load', () => {
+        setHeight()
+        try {
+          const doc = iframe.contentDocument
+          if (!doc || !doc.body) return
+          const observer = new ResizeObserver(() => setHeight())
+          observer.observe(doc.body)
+        } catch {
+          // Ignore observer setup failures.
+        }
+      })
+
+      window.addEventListener('resize', setHeight)
+    }
+  })()
+</script>
+
+<style>
+  .dfm-live-figure {
+    width: 100%;
+    max-width: var(--dfm-max-width);
+    margin: 2rem auto;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(128, 128, 128, 0.25);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+  }
+
+  .dfm-live-figure iframe {
+    display: block;
+    width: 100%;
+    height: var(--dfm-height);
+    border: 0;
+  }
+
+  @media (max-width: 900px) {
+    .dfm-live-figure {
+      margin: 1.25rem auto;
+      border-radius: 10px;
+    }
+  }
+</style>

@@ -18,6 +18,7 @@ import Counter from '../../components/numbering/Counter.astro'
 import Ref from '../../components/numbering/Ref.astro'
 import SudokuFlowMatching from '../../components/sudoku_flow_matching.jsx';
 import DFMSampling from '../../components/DFMSampling.jsx';
+import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 
 <T defines='
 #let anno(t) = $text(#luma(100), size: #10pt, (#t))$;
@@ -266,7 +267,11 @@ u_t(x^i | z^i) = \frac{1}{1-t} \left( \mathbf{e}_{z^i} - \mathbf{e}_{x^i} \right
 \end{equation}
 $$
 
-{/* ut(x^i given x0^i,x1^i)_v --> Matrice avec x_i, v et 0 quasi partout. */}
+<DFMLiveFigure
+    src="/dfm-live-figure/index.html"
+    title="Discrete Flow Matching Live Figure"
+    height="570px"/>
+
 #### From Conditional to Unconditional Velocity
 
 Now that we have defined our conditional probability paths and velocities, we need to connect them back to the global, unconditional process.
@@ -337,23 +342,92 @@ Consequently, we can train the denoiser directly. Using the KL divergence betwee
 
 $$
 \begin{equation}
-L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x} \sim p_t( \cdot | \mathbf{z})}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}) \right]
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}) \right]
 \end{equation}
 $$
 
-**Note:** In practice, particularly when working with masked diffusion models, the adopted approach is to compute this loss exclusively on the positions that are currently masked. The model learns only how to denoise the corrupted tokens, and it is not penalized or trained to explicitly "keep" the unmasked tokens that are already visible.
+In the specific context of masked diffusion, we usually restrict the learning process to predict only the tokens that are currently masked. Consequently, the loss is evaluated exclusively on these masked positions and scaled by the appropriate transition rate, becoming:
+$$
+\begin{equation}
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i : x_t^i = m} \frac{1}{1-t} \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}) \right]
+\end{equation}
+$$
 
-{/* Here it is the right time to add my simulation with 4 or more tokens with the "revelation" and the evolution of probabilities. with Vanilla Sampling. */}
+<DFMSampling denoiser client:load />
 
 #### Detailed side-to-side comparison between continuous and discrete flow matching.
 
+In this comparison, $S$ denotes the data dimensionality, corresponding to the vector dimension $\mathbf{x} \in \mathbb{R}^S$ in the continuous setting and the sequence length (number of discrete variables) in the discrete setting.
+
+<table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+  <colgroup>
+    <col style={{ width: '30%' }} />
+    <col style={{ width: '35%' }} />
+    <col style={{ width: '35%' }} />
+  </colgroup>
+  <thead>
+    <tr>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Aspect</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous Flow Matching</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Discrete Flow Matching</th>
+    </tr>
+  </thead>
+  <tbody>
+    {/* TOP SECTION */}
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}><strong>1. Define a variable $\mathbf{z}$ with some known distribution $p(\mathbf{z})$</strong></td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#e6ffe6' }}>$\mathbf{z}=(\mathbf{x}_0, \mathbf{x}_1)$ with <br /> $p(\mathbf{z}) = p_0 \times p_{\text{data}}$</td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#f2e6ff' }}>$\mathbf{z}=(\mathbf{x}_0, \mathbf{x}_1)$ with <br /> $p(\mathbf{z}) = p_0 \times p_{\text{data}}$</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}><strong>2. Define a simple conditional distribution $p_t(\mathbf{x} \mid \mathbf{z})$</strong></td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#e6ffe6' }}>$\mathcal{N}((1 - t) x_0 + t x_1, \sigma^2 \text{Id})$ <br /> $= \prod_{i=1}^S \mathcal{N}((1-t)x_0^i + t x_1^i, \sigma^2)$</td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#f2e6ff' }}>$p_t(\mathbf{x} \mid \mathbf{z}) = \prod_{j=1}^S q_t(x^j \mid x_0^j, x_1^j)$ <br /> where $q_t \sim \text{Cat}((1 - t) \mathbf{e}_{x_0^j} + t \mathbf{e}_{x_1^j} )$</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}><strong>3. Compute an associated velocity field $u_t(\mathbf{x} \mid \mathbf{z})$</strong></td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#e6ffe6' }}>$u_t(\mathbf{x} \mid \mathbf{z}) = x_1 - x_0$ <br /> $= \sum_{i=1}^S u_t(x^i \mid z^i)\, \mathbf{e}_i$ <br /> $u_t(x^i \mid z^i) = x_1^i - x_0^i$</td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#f2e6ff' }}>$u_t(\mathbf{x} \mid \mathbf{z})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})\, u_t(x^i \mid z^i)_{y^i}$ <br /> $u_t(x^i \mid z^i) = \frac{1}{1-t}\mathbb{I}(x^i = x_0^i)\left(\mathbf{e}_{x_1^i} - \mathbf{e}_{x_0^i}\right)$</td>
+    </tr>
+
+    {/* BOTTOM SECTION */}
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}><strong>4. Conditional Flow Matching Loss</strong></td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#e6ffff' }}>$D_{L^2}(x_1 - x_0, u_{\theta,t}(\mathbf{x}_t))$ <br /> $= \Vert u_{\theta,t}(\mathbf{x}_t) - (x_1 - x_0) \Vert^2$ <br /> $= \sum_{i=1}^S \left(u_{\theta,t}^i(\mathbf{x}_t) - (x_1^i - x_0^i)\right)^2$</td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#ffe6cc' }}>$\sum_{i=1}^S D_{\mathrm{KL}}^i(u(x_t^i \mid (x_1, x_0)), u_{\theta,t}^i(\mathbf{x}_t))$ <br /> $= \sum_{i=1}^S \Big[\sum_{v \neq x_t^i} u_{\theta,t}^i(\mathbf{x}_t)_v$ <br /> $\quad - \mathbb{I}(x_t^i = x_0^i) \frac{1}{1 - t} \log u_{\theta,t}^i(\mathbf{x}_t)_{x_1^i}\Big]$</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}><strong>5. Variational family $q_{\theta,t}(x_1 \mid \mathbf{x}_t)$ with</strong> <br /> $L = - \mathbb{E}_{x_1} \log q_{\theta,t}(x_1 \mid \mathbf{x}_t)$ <br /> $= - \mathbb{E}_{x_1} \sum_{i=1}^S \log q_{\theta,t}^i(x_1^i \mid \mathbf{x}_t)$</td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#e6ffff' }}>$q_{\theta,t}(x_1^i \mid \mathbf{x}_t) = \mathcal{N}(\mathbb{E}_\theta[x_1^i \mid \mathbf{x}_t], \sigma^2)$ <br /> $L = D_{L^2}(x_1, \mathbb{E}_\theta[X_1 \mid X_t = \mathbf{x}_t])$ <br /> $= \Vert x_1 - \mathbb{E}_\theta[X_1 \mid X_t = \mathbf{x}_t] \Vert^2$ <br /> $= \sum_{i=1}^S \left(x_1^i - \mathbb{E}_\theta[X_1^i \mid X_t = \mathbf{x}_t]\right)^2$</td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#ffe6cc' }}>$q_{\theta,t}(x_1^i \mid \mathbf{x}_t) = \text{Cat}(P_{\theta,t}(X_1^i \mid \mathbf{x}_t))$ <br /> $L = \sum_{i=1}^S D_{\mathrm{KL}}^i(\mathbf{e}_{x_1^i}, P_{\theta,t}(X_1^i \mid X_t = \mathbf{x}_t))$ <br /> $= -\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)$</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}><strong>6. Training in practice</strong> <br /> <em>Sample $t \sim \mathcal{U}_{[0,1]}, \mathbf{z} \sim p_z,$</em> <br /> <em>$\mathbf{x}_t \sim p(\mathbf{x} \mid t, \mathbf{z})$</em></td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#e6ffff' }}>$\Vert u_{\theta, t}(\mathbf{x}_t) - (x_1 - x_0) \Vert^2$</td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#ffe6cc' }}>$-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)$</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}><strong>7. Sampling</strong> <br /> <em>Sample $\mathbf{x}_0 \sim p_0$, Integration scheme on $t \in [0, 1]$</em></td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#e6ffff' }}>Numerical Integration (Euler ODE): <br /> $\mathbf{x}_{k+1} = \mathbf{x}_k + \frac{1}{N} u_{\theta,t}(\mathbf{x}_k)$ <br /> <em>If learned denoiser:</em> <br /> $u_{\theta,t}(\mathbf{x}) = \frac{1}{1-t}\!\left(\mathbb{E}_\theta[X_1 \mid X_t = \mathbf{x}] - \mathbf{x}\right)$</td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#ffe6cc' }}>Continuous Time Markov Chain: <br /> $x_{k+1}^i \sim \text{Cat}\!\left(\mathbf{e}_{x_k^i} + \frac{1}{N} u_{\theta,t}^i(\mathbf{x}_k)\right)$ <br /> <em>If learned denoiser:</em> <br /> $u_{\theta,t}^i(\mathbf{x}) = \frac{1}{1-t}\!\left(P_{\theta,t}(X_1^i \mid \mathbf{x}) - (\mathbf{e}_{x^i})\right)$</td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}><strong>8. Master Equation</strong></td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#e6ffff' }}>Continuity Equation: <br /> $\partial_t p_t + \nabla (u_t p_t) = 0$</td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #eee', backgroundColor: '#ffe6cc' }}>Kolmogorov Equation: <br /> $\frac{d}{dt} p_t(\mathbf{y}) = \sum_{\mathbf{x} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} \, p_t(\mathbf{x})$</td>
+    </tr>
+  </tbody>
+</table>
+
 ### Appendix to go further
 
-#### Other conditioning choices
+#### Complements on Discrete Flow Matching
+
+##### Other conditioning choices
 
 In the main text we detailed the mask source conditioning. Here we present the two other common setups.
 
-##### Source-Target Conditioning
+###### Source-Target Conditioning
 
 Here, we condition on both the start and end points, so $z^i = (x_0^i, x_1^i)$. The token $x^i$ at time $t$ is simply $x_1^i$ with probability $t$, and $x_0^i$ with probability $1 - t$:
 $$
@@ -373,7 +447,7 @@ u_t(x^i | x_0^i, x_1^i)_v = \begin{cases}
 \end{equation}
 $$
 
-##### Uniform Source
+###### Uniform Source
 
 When $p_0$ is the uniform distribution, we can only condition on the target $z^i = x_1^i$. At time $t$, the token is the target $x_1^i$ with probability $t + (1 - t) \frac{1}{|\mathcal{V}|}$, or is drawn uniformly from other tokens in the vocabulary $\mathcal{V}$ with probability $(1 - t) \frac{1}{|\mathcal{V}|}$:
 $$
@@ -412,8 +486,32 @@ To make generation tractable, the standard approach used in the industry for lar
     * **Denoise:** Create $\mathbf{x}_{k+1}$ by setting $x_{k+1}^i = z^i$ for all $i \in \mathcal{I}$, keeping the rest as masks
 3. **Return** fully generated sequence $\mathbf{x}_N$
 
-Why learning a new loss with a planner
-Loss for a greedy planner (just a weight 1 + alpha w_i).
+To make this concrete, let's look at how we actually choose these tokens and why that choice forces us to rethink how we train the model. A simple and widely used strategy is the soft greedy planner. Instead of unmasking tokens at random, it selects the positions where the denoiser is most confident in its predictions. To prevent the generation process from becoming rigidly deterministic, we relax this strict selection into a soft probability distribution using a softmax function with a temperature parameter $\tau$:
+$$
+\begin{equation}
+G_\phi^\tau(\mathbf{z}, \mathbf{x}_t)_j \propto \exp\left(\frac{1}{\tau} \log D_\theta^j(\mathbf{x}_t)_{z^j}\right)
+\end{equation}
+$$
+This formulation assigns higher selection probabilities to the tokens the model is sure about. As $\tau \to \infty$, this reduces to uniform random sampling. As $\tau \to 0$, it converges to a strict, hard selection of only the most confident token.
+
+For a concrete example, suppose we have two masked positions where the denoiser predicts the target tokens with confidences of $0.8$ and $0.2$. Setting the temperature to $\tau = 1/2$, the planner mathematically scales these probabilities by a power of $1/\tau = 2$ and normalizes them:
+$$
+D_\theta(\mathbf{x}_t)_{\mathbf{z}} = \begin{pmatrix} 0.8 \\ 0.2 \end{pmatrix} \quad \implies \quad G_\phi^{1/2}(\mathbf{z}, \mathbf{x}_t) = \frac{1}{0.8^2 + 0.2^2} \begin{pmatrix} 0.8^2 \\ 0.2^2 \end{pmatrix} \approx \begin{pmatrix} 0.941 \\ 0.059 \end{pmatrix}
+$$
+The initial confidence gap is heavily amplified, strongly favoring to denoise next the more certain prediction while still preserving a small element of stochasticity.
+
+However, introducing a planner-aware sampling process creates a mismatch between training and inference. During training, the standard objective masks tokens uniformly at random across all positions and orderings, so the denoiser learns to predict any token from any arbitrary subset of revealed context. At inference, however, the planner selectively reveals tokens along an optimized path, meaning the denoiser operates on structured, informative contexts it was never explicitly trained on. Paradoxically, this makes training strictly harder than inference: the model must learn to denoise under the worst-case random maskings, whereas the planner later guides it through the most favorable ones.
+
+To fix this discrepancy, we need a loss function that makes the model aware of the planner during the training phase. By safely detaching gradients through the planner to maintain numerical stability, we can achieve this by simply reweighting our standard objective. We assign higher loss weights to the positions the planner is most likely to select. The resulting Planner-Aware Path Learning (PAPL) loss is the standard continuous masked diffusion cross-entropy, mathematically augmented with these planner-derived weights:
+$$
+\begin{equation}
+\mathcal{L}_{\text{PAPL}}(\theta) = - \mathbb{E}_{t, \mathbf{x}_0, \mathbf{x}_t} \left[ \sum_{ix_t^i = m} \frac{1}{1-t}(1 + \alpha w^i) \log D_\theta^i(\mathbf{x}_t)_{x_0^i} \right]
+\end{equation}
+$$
+Here, $w^i$ represents the normalized weight of position $i$ assigned by the planner, and $\alpha$ is a hyperparameter that controls the strength of this planner guidance.
+
+<DFMSampling denoiser planner client:load />
+
 
 #### Links with discrete diffusion framework.
 Discrete diffusion: forward and backward process (add the matrixes for masked diffusion? Would be a long section.)
@@ -423,5 +521,3 @@ Links with concrete score matching.
 #### Very optional: "continuous" methods for discrete data generation.
 
 (Dirichlet Flow Matching, Categorical Flow Maps) that could benefit from distillation techniques to accelerate the sampling.
-
-{/* peut être mettre la distribution uniforme en appendix? */}
