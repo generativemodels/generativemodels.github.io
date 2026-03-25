@@ -227,7 +227,9 @@ p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | z^j)
 $$
 Concretely, this means that to sample a sequence $\mathbf{x} \sim p_t( \cdot | \mathbf{z})$, we can just sample each token $x^j$ independently from its token-wise distribution $q_t( \cdot | z^j)$. This factorization is what allows us to define the conditional probability $q_t$ and the conditional velocity $u_t$ on a purely per-token basis.
 
-Below are the explicit formulations for the masked source, the others are developed in the appendix.
+Below are the explicit formulations for three common setups:
+
+**Masked Source**
 
 At time $t$, the token is the target $x_1^i$ with probability $t$, or it remains the mask token $m$ with probability $1 - t$:
 $$
@@ -258,6 +260,46 @@ x^i \backslash v & 1 & 2 & 3 & m \\
 3 & 0 & 0 & 0 & 0 \\[0.3cm]
 m & 0 & \dfrac{1}{1-t} & 0 & -\dfrac{1}{1-t}
 \end{array}
+$$
+
+**Source-Target Conditioning**
+
+Here, we condition on both the start and end points, so $z^i = (x_0^i, x_1^i)$. The token $x^i$ at time $t$ is simply $x_1^i$ with probability $t$, and $x_0^i$ with probability $1 - t$:
+$$
+\begin{equation}
+q_t(x^i | x_0^i, x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = x_0^i)
+\end{equation}
+$$
+
+The conditional velocity field driving this transition is:
+$$
+\begin{equation}
+u_t(x^i | x_0^i, x_1^i)_v = \begin{cases}
+\dfrac{1}{1 - t} & \text{if } v = x_1^i \text{ and } x^i = x_0^i, \\[0.3cm]
+-\dfrac{1}{1 - t} & \text{if } v = x^i = x_0^i, \\[0.3cm]
+0 & \text{otherwise}.
+\end{cases}
+\end{equation}
+$$
+
+**Uniform Source**
+
+When $p_0$ is the uniform distribution, we can only condition on the target $z^i = x_1^i$. At time $t$, the token is the target $x_1^i$ with probability $t + (1 - t) \frac{1}{|\mathcal{V}|}$, or is drawn uniformly from other tokens in the vocabulary $\mathcal{V}$ with probability $(1 - t) \frac{1}{|\mathcal{V}|}$:
+$$
+\begin{equation}
+q_t(x^i | x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \frac{1}{|\mathcal{V}|}
+\end{equation}
+$$
+
+The conditional velocity field driving this transition is:
+$$
+\begin{equation}
+u_t(x^i | x_1^i)_v = \begin{cases}
+\dfrac{1}{1-t} & \text{if } v = x_1^i \text{ and } x^i \neq x_1^i \\[0.3cm]
+-\dfrac{1}{1-t} & \text{if } v = x^i \neq x_1^i \\[0.3cm]
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
 $$
 
 **Useful note:** For all three cases detailed above, the conditional velocity can actually be unified and written in a more compact form:
@@ -421,54 +463,362 @@ In this comparison, $S$ denotes the data dimensionality, corresponding to the ve
 
 ### Appendix to go further
 
-#### Complements on Discrete Flow Matching
+#### Links with Discrete Diffusion
 
-##### Other conditioning choices
+##### Forward and Reverse Diffusion Processes
 
-In the main text we detailed the mask source conditioning. Here we present the two other common setups.
-
-###### Source-Target Conditioning
-
-Here, we condition on both the start and end points, so $z^i = (x_0^i, x_1^i)$. The token $x^i$ at time $t$ is simply $x_1^i$ with probability $t$, and $x_0^i$ with probability $1 - t$:
+Let's first consider a sentence where we progressively replace each word with a special mask token, transforming the sequence $\mathbf{x}$ into a sequence of masks over time. This forward process is applied independently to each token. Thus, for $s < t$, we can compute the transition probability from time $s$ to $t$ and define the conditional transition matrix $\bar{Q}_{t|s}$ satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$. In matrix form, this is explicitly:
 $$
 \begin{equation}
-q_t(x^i | x_0^i, x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = x_0^i)
+\bar{Q}_{t|s} =
+\begin{pmatrix}
+\frac{\alpha_t}{\alpha_s} & 0 & \dots & 0 & 1 - \frac{\alpha_t}{\alpha_s} \\
+0 & \frac{\alpha_t}{\alpha_s} & \dots & 0 & 1 - \frac{\alpha_t}{\alpha_s} \\
+\vdots & \vdots & \ddots & \vdots & \vdots \\
+0 & 0 & \dots & \frac{\alpha_t}{\alpha_s} & 1 - \frac{\alpha_t}{\alpha_s} \\
+0 & 0 & \dots & 0 & 1
+\end{pmatrix}
+= \frac{\alpha_t}{\alpha_s} I + \left(1 - \frac{\alpha_t}{\alpha_s}\right)\mathbf{1}\mathbf{e}_m^\top
+\end{equation}
+$$
+where $\alpha_t$ is the probability of a token remaining unmasked at time $t$, $\frac{\alpha_t}{\alpha_s}$ is the probability of a token remaining unmasked between times s and t.
+By taking the first-order Taylor expansion for a small time step $\Delta t$, we define the forward rate matrix $\dot{Q}_t$:
+$$
+\begin{equation}
+\dot{Q}_t = \sigma(t)
+\begin{pmatrix}
+-1 & 0 & \dots & 0 & 1 \\
+0 & -1 & \dots & 0 & 1 \\
+\vdots & \vdots & \ddots & \vdots & \vdots \\
+0 & 0 & \dots & -1 & 1 \\
+0 & 0 & \dots & 0 & 0
+\end{pmatrix}
+= \sigma(t) (\mathbf{1}\mathbf{e}_m^\top - I)
+\end{equation}
+$$
+where $\sigma(t) = -\frac{\dot{\alpha}_t}{\alpha_t} > 0$ represents the instantaneous masking rate.
+
+To generate data, we define a reverse process that progressively unmasks tokens. The probability of reverting to the clean token $x_0$ yields a reverse matrix $R_{s|t}^{x_0}$:
+$$
+\begin{equation}
+R_{s|t}^{x_0} =
+\begin{pmatrix}
+ & & & 0 \\
+ & I_{|\mathcal{V}|} & & \vdots \\
+ & & & 0 \\
+0 & \dots \, \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \, \dots & 0 & \frac{1 - \alpha_s}{1 - \alpha_t}
+\end{pmatrix}
+= I + \frac{\alpha_s - \alpha_t}{1 - \alpha_t} m (x_0 - m)^\top
+\end{equation}
+$$
+where the term $\frac{\alpha_s - \alpha_t}{1 - \alpha_t}$ in the last row appears at the column index corresponding to the clean token $x_0$. It represents the probability that a masked token $x_t=m$ at time t will jump to the clean token $x_0$ between t and s.
+
+By taking the first-order Taylor expansion for a small time step $\Delta t$, we define the conditional reverse rate matrix $\dot{R}_t^{x_0}$:
+$$
+\begin{equation}
+\dot{R}_t^{x_0} =
+\begin{pmatrix}
+ & & & 0 \\
+ & \mathbf{0}_{|\mathcal{V}|} & & \vdots \\
+ & & & 0 \\
+0 & \dots \, r_t \, \dots & 0 & -r_t
+\end{pmatrix}
+= r_t \, m (x_0 - m)^\top
+\end{equation}
+$$
+where $r_t = -\frac{\dot{\alpha}_t}{1 - \alpha_t}$ is the instantaneous unmasking rate. While $\dot{R}_t^{x_0}$ represents the conditional reverse rate assuming the clean target $x_0$ is explicitly known, the true marginal reverse rate $\dot{R}_t(x_t)$ is obtained by taking $\dot{R}_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)} [\dot{R}_t(x_t | x_0)]$.
+
+In a general setting when the forward noising process is not necessarily restricted to mask tokens, the forward and reverse transitions can be defined locally using these instantaneous rates:
+$$
+\begin{equation}
+q(x_{t+\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{Q}_t(x_t)]_y + o(\Delta t)
+\end{equation}
+$$
+$$
+\begin{equation}
+q(x_{t-\Delta t} = y | x_t, x_0) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t | x_0)]_y + o(\Delta t)
+\end{equation}
+$$
+$$
+\begin{equation}
+p_\theta(x_{t-\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_{\theta,t}(x_t)]_y + o(\Delta t)
 \end{equation}
 $$
 
-The conditional velocity field driving this transition is:
+##### Equivalence with Discrete Flow Matching
+
+While discrete diffusion and discrete flow matching share similar mathematical foundations, their primary difference lies in the time convention. In discrete diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. Discrete flow matching uses the exact opposite convention.
+
+We can perfectly translate between the two frameworks using a simple time reversal: $t_{\text{FM}} = 1 - t_{\text{DD}}$. Under this time change, the velocity field in flow matching directly corresponds to the entries of the reverse rate matrix in discrete diffusion:
 $$
 \begin{equation}
-u_t(x^i | x_0^i, x_1^i)_v = \begin{cases}
-\dfrac{1}{1 - t} & \text{if } v = x_1^i \text{ and } x^i = x_0^i, \\[0.3cm]
--\dfrac{1}{1 - t} & \text{if } v = x^i = x_0^i, \\[0.3cm]
-0 & \text{otherwise}.
-\end{cases}
+u_{1-t}^{\text{FM}} = \dot{R}_t
 \end{equation}
 $$
 
-###### Uniform Source
+##### Training
 
-When $p_0$ is the uniform distribution, we can only condition on the target $z^i = x_1^i$. At time $t$, the token is the target $x_1^i$ with probability $t + (1 - t) \frac{1}{|\mathcal{V}|}$, or is drawn uniformly from other tokens in the vocabulary $\mathcal{V}$ with probability $(1 - t) \frac{1}{|\mathcal{V}|}$:
+For a discrete-time masked diffusion process, we define a path-wise generative model by approximately reversing the forward transitions step by step along the entire noising trajectory. We want to align the forward and reverse trajectories so that $\log p_\theta(x_0) \geq \text{ELBO}(x_0)$, where:
 $$
 \begin{equation}
-q_t(x^i | x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \frac{1}{|\mathcal{V}|}
+\text{ELBO}(x_0) = \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log p_\theta(x_{0:T}) - \log q(x_{1:T}|x_0) \right]
+\end{equation}
+$$
+Intuitively, this ELBO inequality means we can lower-bound the log-likelihood of the data $x_0$ under our model by measuring how well the model's reverse process $p_\theta(x_{0:T})$ agrees with the forward noising process $q(x_{1:T}|x_0)$. The closer the two are, the tighter the bound.
+
+The ELBO for a general discrete diffusion process is given by:
+
+$$
+\begin{aligned}
+\text{ELBO}(x_0) = - D_{KL}(q( \cdot | x_0) \parallel p_{\text{source}}) - \int_0^1 \mathbb{E}_{x_t \sim q( \cdot | x_0)} \left[ D_{KL}(\dot{R}_t(x_t | x_0) \parallel \dot{R}_{\theta,t}(x_t)) \right] dt
+\end{aligned}
+\begin{equation}\end{equation}
+$$
+
+Ignoring constants independent of $\theta$, the general KL objective can be written explicitly as:
+
+$$
+\begin{aligned}
+L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_{\text{data}} \\ x_t \sim q( \cdot |x_0)}} \left[ \sum_{y \neq x_t} \left( [\dot{R}_{\theta,t}(x_t)]_y - [\dot{R}_t(x_t | x_0)]_y \log [\dot{R}_{\theta,t}(x_t)]_y \right) \right]
+\end{aligned}
+\begin{equation} \end{equation}
+$$
+
+In the specific case of masked diffusion, this loss can be simplified:
+
+$$
+\begin{equation}
+L(\theta) = \mathbb{E}_{\substack{\mathbf{x}_0 \sim p_{\text{data}} \\ x_t^i \sim q( \cdot | x_0^i)}} \sum_{i=1}^{S}  \left[ \mathbb{I}(x_t^i = m) \left( -\frac{\dot{\alpha}_t}{1 - \alpha_t} \mathbf{x}_0^{i \top} \log \mu_\theta^i(\mathbf{x}_t, t) \right) \right]
 \end{equation}
 $$
 
-The conditional velocity field driving this transition is:
+In discrete flow matching, the matching loss at flow time $1-t$ is simply the negative log-likelihood of the clean token:
 $$
 \begin{equation}
-u_t(x^i | x_1^i)_v = \begin{cases}
-\dfrac{1}{1-t} & \text{if } v = x_1^i \text{ and } x^i \neq x_1^i \\[0.3cm]
--\dfrac{1}{1-t} & \text{if } v = x^i \neq x_1^i \\[0.3cm]
-0 & \text{otherwise}
-\end{cases}
+L_{\text{FM}}(1-t) = -\mathbb{E}\left[ \log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \right]
 \end{equation}
 $$
 
-#### Reminder on continuous flow matching.
-(Needed after the table? We can just add some figures from the CFM blog).
+Since both losses use the same denoiser $\mu_\theta^i(\mathbf{x}_t, t)$, we can compare them directly:
+
+$$
+\begin{equation}
+L_{\text{DD}}(t) \approx \frac{-\dot{\alpha}_t}{1 - \alpha_t} \, L_{\text{FM}}(1-t)
+\end{equation}
+$$
+
+<details>
+<summary>Derivation</summary>
+<div>
+We decompose the flow matching loss using the law of total expectation:
+$$
+\begin{aligned}
+L_{\text{FM}}(1-t) = (1 - \alpha_t) \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right] + \alpha_t \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i \neq m \right]
+\end{aligned}
+\begin{equation} \end{equation}
+$$
+
+Since a well-trained denoiser can trivially reconstruct unmasked positions by copying the input, the second term vanishes, giving:
+$$
+\begin{equation}
+L_{\text{FM}}(1-t) \approx (1 - \alpha_t) \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right]
+\end{equation}
+$$
+
+Similarly, applying the law of total expectation to the discrete diffusion loss extracts the masking probability $(1 - \alpha_t)$, which cancels with the denominator:
+$$
+\begin{aligned}
+L_{\text{DD}}(t) = (1 - \alpha_t) \cdot \frac{-\dot{\alpha}_t}{1 - \alpha_t} \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right] = -\dot{\alpha}_t \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right]
+\end{aligned}
+\begin{equation} \end{equation}
+$$
+
+Both expressions share the same conditional expectation. Eliminating it yields the exact relationship (up to the vanishing unmasked-loss approximation).
+</div>
+</details>
+
+##### Concrete Score
+
+In continuous diffusion, the score function $\nabla \log p_t(x)$ dictates the deterministic reverse ODE:
+$$
+\begin{equation}
+dx = \left[h(x, t) - \tfrac{1}{2}g(t)^2 \,\nabla \log p_t(x)\right]dt
+\end{equation}
+$$
+which has the same marginal densities as the time-reversed stochastic process. In a discrete state space, there is no notion of a continuous gradient. However, one can write the sampling equation for the reverse process using Bayes' theorem:
+$$
+\begin{align}
+    p_\theta(x_s = y | x_t = x) &= q(x_t = x | x_s = y)  \frac{p_s(y)}{p_t(x)} \\
+    &\approx q(x_t = x | x_s = y)  s_t(x)_y
+\end{align}
+$$
+where the approximation holds under the hypothesis that $s \to t$, meaning $p_s(y) \approx p_t(y)$.
+
+This naturally introduces the definition of the concrete score:
+$$
+\begin{equation}
+s_t(x)_y = \frac{p_t(y)}{p_t(x)}
+\end{equation}
+$$
+where $p_t(v) = \mathbb{P}(x_t = v)$.
+
+Specifically, the concrete score relates the true forward rate matrix to the reverse rate matrix:
+$$
+\begin{equation}
+s_t(x)_y = \frac{[\dot{R}_t(x)]_y}{[\dot{Q}_t(x)]_y}
+\end{equation}
+$$
+This relationship directly unlocks our sampling mechanism used in practice with a learned concrete score:
+$$
+\begin{equation}
+\mathbb{P}\!\left(X_{t-h} = y | X_t = x\right) = \mathbb{I}(x=y) + h\,[\dot{Q}_t(x)]_y\,s_{\theta,t}(x)_y + o(h)
+\end{equation}
+$$
+
+Then, we can express the KL loss between the rates in terms of concrete score:
+$$
+\begin{aligned}
+    L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \left[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y \left( s_{\theta,t}(x_t)_y - \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \log s_{\theta,t}(x_t)_y \right) \right] + C.
+\end{aligned}
+\begin{equation} \end{equation}
+$$
+
+##### Complement: Equivalence Between Masked Diffusion Models and Any-Order Autoregressive Models
+
+An any-order autoregressive model (AO-ARM) is an autoregressive model trained to factorize the joint distribution under *every* possible token ordering $\pi$, not just the left-to-right one. Its training objective minimizes the expected negative log-likelihood over the uniform distribution $\mathcal{U}_\pi$ of all $S!$ orderings:
+$$
+\begin{equation}
+\mathcal{L}_{\text{AO-ARM}}(\theta) = -\mathbb{E}_{\mathbf{x}_0 \sim p_{\text{data}},\, \pi \sim \mathcal{U}_\pi} \left[ \sum_{i=1}^{S} \log p_\theta(x_0^{\pi(i)} | x_0^{\pi(<i)}; \pi) \right]
+\end{equation}
+$$
+where $x_0^{\pi(<i)} = (x_0^{\pi(1)}, \ldots, x_0^{\pi(i-1)})$ denotes the tokens revealed before position $\pi(i)$ in the ordering $\pi$. In practice, AO-ARMs use a shared neural network with mask tokens to represent absent variables: given an ordering $\pi$ and a step $i$, the positions $\pi(i), \pi(i+1), \ldots, \pi(S)$ are replaced by the mask token $m$, and the network predicts the token at position $\pi(i)$ from this partially masked input.
+
+The following proposition shows that the MDM training objective is equivalent to the AO-ARM objective.
+
+**Proposition (MDM and AO-ARM Equivalence):** Let $\mathcal{L}_{\text{MDM}}(\theta)$ denote the masked diffusion training loss with linear schedule $\alpha_t = 1 - t$ and uniform time sampling $t \sim \mathcal{U}(0,1)$:
+$$
+\begin{equation}
+\mathcal{L}_{\text{MDM}}(\theta) = -\mathbb{E}_{t \sim \mathcal{U}(0,1),\, \mathbf{x}_0 \sim p_{\text{data}},\, \mathbf{x}_t \sim q(\cdot | \mathbf{x}_0)} \left[ \frac{1}{t} \sum_{i=1}^{S} \mathbb{I}(x_t^i = m) \log p_\theta(x_0^i | \mathbf{x}_t) \right]
+\end{equation}
+$$
+Then $\mathcal{L}_{\text{MDM}}(\theta) = \mathcal{L}_{\text{AO-ARM}}(\theta)$.
+
+This equivalence has a practical consequence: since the MDM is implicitly trained on all possible token orderings, it does not privilege left-to-right dependencies.
+
+<details>
+<summary>Proof</summary>
+<div>
+**Proof:** We proceed in two steps. First, we rewrite the MDM loss as a sum over the number of masked tokens using a change of variable. Second, we rewrite the AO-ARM loss in the same form.
+
+**Step 1: Rewriting the MDM loss.**
+
+Under the linear schedule $\alpha_t = 1 - t$, the forward process masks each token independently with probability $t$. The MDM loss can be written as:
+$$
+\begin{equation}
+\mathcal{L}_{\text{MDM}}(\theta) = -\mathbb{E}_{\mathbf{x}_0} \left[ \int_0^1 \frac{1}{t} \mathbb{E}_{\mathbf{x}_t \sim q(\cdot | \mathbf{x}_0)} \left[ \sum_{i=1}^{S} \mathbb{I}(x_t^i = m) \log p_\theta(x_0^i | \mathbf{x}_t) \right] dt \right]
+\end{equation}
+$$
+We now condition on the number of masked tokens. The forward process $q(\cdot | \mathbf{x}_0)$ masks each token independently: $x_t^i = m$ with probability $t$ and $x_t^i = x_0^i$ with probability $1-t$. Equivalently, drawing $\mathbf{x}_t \sim q(\cdot | \mathbf{x}_0)$ amounts to drawing $\xi^i \sim \text{Bernoulli}(t)$ independently for $i = 1, \ldots, S$ and setting:
+$$
+\begin{equation}
+x_t^i = \begin{cases} m & \text{if } \xi^i = 1 \\ x_0^i & \text{if } \xi^i = 0 \end{cases}
+\end{equation}
+$$
+Let $\mathcal{M} = \{i : \xi^i = 1\}$ denote the set of masked positions. For fixed $\mathbf{x}_0$, $\mathbf{x}_t$ and $\mathcal{M}$ are in bijection ($\mathcal{M} = \{i : x_t^i = m\}$), so we may write $\mathbf{x}_{\mathcal{M}} := \mathbf{x}_t$ and $p_\theta(x_0^i | \mathbf{x}_t) = p_\theta(x_0^i | \mathbf{x}_{\mathcal{M}})$. The inner sum becomes $\sum_{i \in \mathcal{M}} \log p_\theta(x_0^i | \mathbf{x}_{\mathcal{M}})$. For any function $g$:
+$$
+\begin{equation}
+\mathbb{E}_{\mathbf{x}_t \sim q(\cdot | \mathbf{x}_0)}[g(\mathbf{x}_t)] = \mathbb{E}_{(\xi^1, \ldots, \xi^S) \overset{\text{i.i.d.}}{\sim} \text{Bernoulli}(t)}[g(\mathbf{x}_t)] = \mathbb{E}_{\mathcal{M}}[g(\mathbf{x}_{\mathcal{M}})]
+\end{equation}
+$$
+Applying the law of total expectation by conditioning on $|\mathcal{M}|$:
+$$
+\begin{equation}
+\mathbb{E}_{\mathcal{M}}[g(\mathbf{x}_{\mathcal{M}})] = \sum_{k=0}^{S} \mathbb{P}(|\mathcal{M}| = k) \;\mathbb{E}[g(\mathbf{x}_{\mathcal{M}}) \mid |\mathcal{M}| = k]
+\end{equation}
+$$
+It remains to identify the conditional distribution of $\mathcal{M}$ given $|\mathcal{M}| = k$. For any subset $A \subseteq [S]$ with $|A| = k$:
+$$
+\begin{equation}
+\mathbb{P}(\mathcal{M} = A \mid |\mathcal{M}| = k) = \frac{\mathbb{P}(\mathcal{M} = A)}{\mathbb{P}(|\mathcal{M}| = k)} = \frac{t^k(1-t)^{S-k}}{\binom{S}{k}\, t^k(1-t)^{S-k}} = \frac{1}{\binom{S}{k}}
+\end{equation}
+$$
+so $\mathcal{M} \mid |\mathcal{M}| = k$ is uniformly distributed over all size-$k$ subsets of $[S]$, i.e., $\mathbb{E}[\,\cdot \mid |\mathcal{M}| = k] = \mathbb{E}_{\mathcal{M} \sim \text{Unif}(\binom{[S]}{k})}[\,\cdot\,]$.
+Define:
+$$
+\begin{equation}
+f(k, \mathbf{x}_0) := \mathbb{E}_{\mathcal{M} \sim \text{Unif}(\binom{[S]}{k})} \left[ \sum_{i \in \mathcal{M}} \log p_\theta(x_0^i | \mathbf{x}_{\mathcal{M}}) \right]
+\end{equation}
+$$
+Combining these results:
+$$
+\begin{equation}
+\mathbb{E}_{\mathbf{x}_t \sim q(\cdot | \mathbf{x}_0)}\left[ \frac{1}{t} \sum_{i=1}^{S} \mathbb{I}(x_t^i = m) \log p_\theta(x_0^i | \mathbf{x}_t) \right] = \frac{1}{t} \sum_{k=0}^{S} \underbrace{\binom{S}{k} t^k (1-t)^{S-k}}_{\mathbb{P}(|\mathcal{M}| = k)} \; f(k, \mathbf{x}_0)
+\end{equation}
+$$
+The $k = 0$ term vanishes (no masked tokens), so substituting back into $\mathcal{L}_{\text{MDM}}$:
+$$
+\begin{equation}
+\mathcal{L}_{\text{MDM}}(\theta) = -\mathbb{E}_{\mathbf{x}_0} \left[ \int_0^1 \frac{1}{t} \sum_{k=1}^{S} \binom{S}{k} t^k (1-t)^{S-k}\, f(k, \mathbf{x}_0)\, dt \right]
+\end{equation}
+$$
+The $k=0$ term is absent because it contributes zero (no masked tokens). Exchanging the sum and integral:
+$$
+\begin{equation}
+\mathcal{L}_{\text{MDM}}(\theta) = -\mathbb{E}_{\mathbf{x}_0} \left[ \sum_{k=1}^{S} \binom{S}{k} \left( \int_0^1 t^{k-1} (1-t)^{S-k}\, dt \right) f(k, \mathbf{x}_0) \right]
+\end{equation}
+$$
+The integral is a Beta function:
+$$
+\begin{equation}
+\int_0^1 t^{k-1}(1-t)^{S-k}\, dt = B(k, S-k+1) = \frac{(k-1)!(S-k)!}{S!}
+\end{equation}
+$$
+Substituting and simplifying $\binom{S}{k} \cdot \frac{(k-1)!(S-k)!}{S!} = \frac{S!}{k!(S-k)!} \cdot \frac{(k-1)!(S-k)!}{S!} = \frac{1}{k}$:
+$$
+\begin{equation}
+\mathcal{L}_{\text{MDM}}(\theta) = -\mathbb{E}_{\mathbf{x}_0} \left[ \sum_{k=1}^{S} \frac{1}{k}\, f(k, \mathbf{x}_0) \right]
+\end{equation}
+$$
+
+**Step 2: Rewriting the AO-ARM loss.**
+
+Fix an ordering $\pi$ and a step $i \in \{1, \ldots, S\}$. The conditional $p_\theta(x_0^{\pi(i)} | x_0^{\pi(<i)}; \pi)$ asks the model to predict the token at position $\pi(i)$ given that positions $\{\pi(1), \ldots, \pi(i-1)\}$ are unmasked and all others are masked. Since the model uses mask tokens to represent absent variables, the prediction depends only on *which* positions are revealed, not on the ordering in which they were revealed. Defining $\mathcal{M}_i = \{\pi(i), \pi(i+1), \ldots, \pi(S)\}$ as the set of $k = S - i + 1$ masked positions at step $i$:
+$$
+\begin{equation}
+p_\theta(x_0^{\pi(i)} | x_0^{\pi(<i)}; \pi) = p_\theta(x_0^{\pi(i)} | \mathbf{x}_{\mathcal{M}_i})
+\end{equation}
+$$
+We now show that, for a uniformly random $\pi$ and fixed $k$, the pair $(\mathcal{M}_i,\, \pi(i))$ is uniformly distributed over all (size-$k$ subset, element of that subset). Fix any $A \subseteq [S]$ with $|A| = k$ and any $j \in A$. A permutation $\pi$ satisfies $\mathcal{M}_i = A$ and $\pi(i) = j$ if and only if: its first $S - k$ entries are a permutation of $[S] \setminus A$, its $i$-th entry is $j$, and its last $k - 1$ entries are a permutation of $A \setminus \{j\}$. The number of such permutations is $(S-k)!\,(k-1)!$, so:
+$$
+\begin{equation}
+\mathbb{P}(\mathcal{M}_i = A,\; \pi(i) = j) = \frac{(S-k)!\,(k-1)!}{S!} = \frac{1}{\binom{S}{k} \cdot k}
+\end{equation}
+$$
+Summing over $j \in A$ gives $\mathbb{P}(\mathcal{M}_i = A) = 1/\binom{S}{k}$, and conditionally $\mathbb{P}(\pi(i) = j \mid \mathcal{M}_i = A) = 1/k$. We can now replace the expectation over $\pi$ with expectations over $\mathcal{M}$ and $j$. For any function $h$:
+$$
+\begin{align}
+\mathbb{E}_{\pi \sim \mathcal{U}_\pi}\left[h(\mathcal{M}_i, \pi(i))\right] &= \frac{1}{S!}\sum_{\pi} h(\mathcal{M}_i, \pi(i)) \\
+&= \sum_{\substack{A \subseteq [S] \\ |A| = k}} \sum_{j \in A} \mathbb{P}(\mathcal{M}_i = A,\; \pi(i) = j)\; h(A, j) \\
+&= \sum_{\substack{A \subseteq [S] \\ |A| = k}} \sum_{j \in A} \frac{1}{\binom{S}{k}} \cdot \frac{1}{k}\; h(A, j) \\
+&= \mathbb{E}_{\substack{\mathcal{M} \sim \text{Unif}(\binom{[S]}{k}) \\ j \sim \text{Unif}(\mathcal{M})}} \left[h(\mathcal{M}, j)\right]
+\end{align}
+$$
+Applying this with $h(\mathcal{M}, j) = \log p_\theta(x_0^j | \mathbf{x}_{\mathcal{M}})$ and summing over $k$:
+$$
+\begin{equation}
+\mathcal{L}_{\text{AO-ARM}}(\theta) = -\mathbb{E}_{\mathbf{x}_0} \left[ \sum_{k=1}^{S} \mathbb{E}_{\substack{\mathcal{M} \sim \text{Unif}(\binom{[S]}{k}) \\ j \sim \text{Unif}(\mathcal{M})}} \left[ \log p_\theta(x_0^j | \mathbf{x}_{\mathcal{M}}) \right] \right]
+\end{equation}
+$$
+Since $j$ is uniform over $\mathcal{M}$, we have $\mathbb{E}_{j \sim \text{Unif}(\mathcal{M})}[\log p_\theta(x_0^j | \mathbf{x}_{\mathcal{M}})] = \frac{1}{k} \sum_{j \in \mathcal{M}} \log p_\theta(x_0^j | \mathbf{x}_{\mathcal{M}})$, giving:
+$$
+\begin{equation}
+\mathcal{L}_{\text{AO-ARM}}(\theta) = -\mathbb{E}_{\mathbf{x}_0} \left[ \sum_{k=1}^{S} \frac{1}{k}\, f(k, \mathbf{x}_0) \right]
+\end{equation}
+$$
+with the same $f(k, \mathbf{x}_0)$ defined in Step 1.
+</div>
+</details>
+
 
 #### Planner aware path learning
 
@@ -505,18 +855,12 @@ However, introducing a planner-aware sampling process creates a mismatch between
 To fix this discrepancy, we need a loss function that makes the model aware of the planner during the training phase. By safely detaching gradients through the planner to maintain numerical stability, we can achieve this by simply reweighting our standard objective. We assign higher loss weights to the positions the planner is most likely to select. The resulting Planner-Aware Path Learning (PAPL) loss is the standard continuous masked diffusion cross-entropy, mathematically augmented with these planner-derived weights:
 $$
 \begin{equation}
-\mathcal{L}_{\text{PAPL}}(\theta) = - \mathbb{E}_{t, \mathbf{x}_0, \mathbf{x}_t} \left[ \sum_{ix_t^i = m} \frac{1}{1-t}(1 + \alpha w^i) \log D_\theta^i(\mathbf{x}_t)_{x_0^i} \right]
+\mathcal{L}_{\text{PAPL}}(\theta) = - \mathbb{E}_{t, \mathbf{x}_0, \mathbf{x}_t} \left[ \sum_{ix_t^i = m} \frac{1}{t}(1 + \alpha w^i) \log D_\theta^i(\mathbf{x}_t)_{x_0^i} \right]
 \end{equation}
 $$
 Here, $w^i$ represents the normalized weight of position $i$ assigned by the planner, and $\alpha$ is a hyperparameter that controls the strength of this planner guidance.
 
 <DFMSampling denoiser planner client:load />
-
-
-#### Links with discrete diffusion framework.
-Discrete diffusion: forward and backward process (add the matrixes for masked diffusion? Would be a long section.)
-Same as discrete flow matching with t/1-t.
-Links with concrete score matching.
 
 #### Very optional: "continuous" methods for discrete data generation.
 
