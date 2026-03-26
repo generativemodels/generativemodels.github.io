@@ -14,11 +14,13 @@ const {
   maxWidth = '1200px',
   autoResize = true,
 } = Astro.props as Props
+
+const fullSrc = (import.meta.env.BASE_URL + src).replace(/\/+/g, '/')
 ---
 
 <div class="dfm-live-figure" style={`--dfm-max-width:${maxWidth}; --dfm-height:${height};`}>
   <iframe
-    src={src}
+    src={fullSrc}
     title={title}
     loading="lazy"
     referrerpolicy="no-referrer"
