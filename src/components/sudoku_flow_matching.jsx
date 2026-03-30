@@ -134,9 +134,6 @@ export default function App() {
     : t >= 0.995 ? "x\u2081  \u2014 solved"
     : `x\u209C  \u2014 t = ${t.toFixed(2)}`;
 
-  const phaseText = t === 0 ? "p\u2080 : source distribution"
-    : t >= 0.995 ? "p\u2081 : target distribution"
-    : `p\u209C : probability path at t=${t.toFixed(2)}`;
 
   return (
     <div style={{
@@ -163,18 +160,12 @@ export default function App() {
           fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 8, lineHeight: 1.6,
           fontFamily: "'DM Mono', monospace",
         }}>
-          Transporting <span style={{ color: "#82b4ff" }}>p{"\u2080"}</span> (initial puzzles)
-          {" \u2192 "}<span style={{ color: "#a78bfa" }}>p{"\u209C"}</span> (intermediate puzzles at t)
-          {" \u2192 "}<span style={{ color: "#7defa0" }}>p{"\u2081"}</span> (solved puzzles)
+          Transporting <span style={{ color: "#82b4ff" }}>x{"\u2080"}</span> (initial puzzle)
+          {" \u2192 "}<span style={{ color: "#a78bfa" }}>x{"\u209C"}</span> (intermediate puzzle at t)
+          {" \u2192 "}<span style={{ color: "#7defa0" }}>x{"\u2081"}</span> (solved puzzle)
         </p>
       </div>
 
-      {/* Phase label */}
-      <div style={{
-        fontFamily: "'DM Mono', monospace", fontSize: 12,
-        color: t === 0 ? "#82b4ff" : t >= 0.995 ? "#7defa0" : "#a78bfa",
-        letterSpacing: "0.06em",
-      }}>{phaseText}</div>
 
       {/* Grid label */}
       <div style={{
