@@ -463,10 +463,11 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
   const [stepsInput, setStepsInput] = useState(String(defaultSteps));
   const [tau, setTau] = useState(1.0);
   const [tauInput, setTauInput] = useState("1");
-  const [rngSeed, setRngSeed] = useState(() => (Date.now() ^ 0xABCD) | 0);
+  const FIRST_SEED = 42;
+  const [rngSeed, setRngSeed] = useState(FIRST_SEED);
+  const [seedInput, setSeedInput] = useState(String(FIRST_SEED));
   const [runData, setRunData] = useState(() => {
-    const s = (Date.now() ^ 0xABCD) | 0;
-    return isPlanner(defaultRight) ? runPlannerSampling(defaultSteps, 1.0, s) : runVanillaSampling(defaultSteps, s);
+    return isPlanner(defaultRight) ? runPlannerSampling(defaultSteps, 1.0, FIRST_SEED) : runVanillaSampling(defaultSteps, FIRST_SEED);
   });
   const [step, setStep] = useState(0);
   const [phase, setPhase] = useState(0);
@@ -531,6 +532,7 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
       setPlaying(false);
       const s = (Date.now() ^ 0x1234) | 0;
       setRngSeed(s);
+      setSeedInput(String(s));
       setRunData(doSampling(n, rightView, tau, s));
       setStep(0);
       setPhase(0);
@@ -540,7 +542,7 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
 
   function applyTau(val) {
     const raw = Number(val);
-    const t = isNaN(raw) ? tau : Math.max(0, Math.round(raw * 10) / 10);
+    const t = isNaN(raw) ? tau : Math.max(0, Math.round(raw * 1000) / 1000);
     setTauInput(String(t));
     if (t !== tau) {
       setTau(t);
@@ -555,10 +557,25 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
     }
   }
 
+  function applySeed(val) {
+    const raw = parseInt(val, 10);
+    const s = isNaN(raw) ? rngSeed : raw | 0;
+    setSeedInput(String(s));
+    if (s !== rngSeed) {
+      setPlaying(false);
+      setRngSeed(s);
+      setRunData(doSampling(numSteps, rightView, tau, s));
+      setStep(0);
+      setPhase(0);
+      setSampleCount((c) => c + 1);
+    }
+  }
+
   function newSample() {
     setPlaying(false);
     const s = (Date.now() ^ 0x5678) | 0;
     setRngSeed(s);
+    setSeedInput(String(s));
     setRunData(doSampling(numSteps, rightView, tau, s));
     setStep(0);
     setPhase(0);
@@ -575,6 +592,7 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
     setPlaying(false);
     const s = (Date.now() ^ 0x9ABC) | 0;
     setRngSeed(s);
+    setSeedInput(String(s));
     setRunData(doSampling(n, newMode, tau, s));
     setStep(0);
     setPhase(0);
@@ -944,6 +962,25 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
             </span>
           )}
         </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+            seed
+          </span>
+          <input
+            type="number"
+            value={seedInput}
+            onChange={(e) => setSeedInput(e.target.value)}
+            onBlur={() => applySeed(seedInput)}
+            onKeyDown={(e) => { if (e.key === "Enter") applySeed(seedInput); }}
+            style={{
+              width: 72, padding: "4px 6px", borderRadius: 6,
+              border: "1px solid rgba(255,255,255,0.15)",
+              background: "rgba(255,255,255,0.06)",
+              color: "#82b4ff", fontFamily: "'DM Mono', monospace",
+              fontSize: 12, fontWeight: 600, textAlign: "center", outline: "none",
+            }}
+          />
+        </div>
         {isPlannerMode && (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
@@ -952,7 +989,7 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
             <input
               type="number"
               min={0}
-              step={0.10}
+              step={0.1}
               value={tauInput}
               onChange={(e) => { setTauInput(e.target.value); applyTau(e.target.value); }}
               onKeyDown={(e) => { if (e.key === "Enter") applyTau(tauInput); }}

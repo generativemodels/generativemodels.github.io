@@ -15,6 +15,7 @@ interface CubeProps {
   topText?: string
   textColor?: string
   textSize?: number
+  opacity?: number
 }
 
 const c = computed(() => new Color(props.color))
@@ -45,7 +46,7 @@ const gBind = computed(() => (props.x || props.y || props.z) ? {
 const group = ref<SVGGElement | null>(null)
 </script>
 <template>
-  <g ref="group" v-bind="gBind">
+  <g ref="group" v-bind="gBind" :opacity="props.opacity ?? 1">
     <polygon
       :points="`0,0 ${props.size},0 ${props.size},${-props.size} 0,${-props.size}`"
       :fill="cFront.toString()"

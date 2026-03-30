@@ -25,7 +25,7 @@ function tokenColor(token: string): string {
 const svgDomain = computed<[number, number, number, number]>(() => {
   const vocabSize = state.masked ? state.vocabulary.length + 1 : state.vocabulary.length
   const seqLen = Math.max(state.x1L, 3) // floor at 3 so tiny inputs don't explode
-  const rightX = (state.horizontalBins + 5) * size + seqLen * depth + margin
+  const rightX = (state.horizontalBins + 2) * size + seqLen * depth + margin
   const topY = Math.max(vocabSize, 3) * size + seqLen * depth + margin
   return [
     -margin,
@@ -75,12 +75,16 @@ const ProbTable = ({
   y = 0,
   z = 0,
   frontFacing = false,
+  transparentMask = false,
+  hideLowP = false,
 }: {
   prob: number[][]
   x?: number
   y?: number
   z?: number
   frontFacing?: boolean
+  transparentMask?: boolean
+  hideLowP?: boolean
 }) => {
   const colorScales = state.vocabulary.map((_, iv) =>
     new Color('white').range(new Color(tokenIndexColor(iv))),
@@ -93,17 +97,23 @@ const ProbTable = ({
         ps
           .slice()
           .reverse()
-          .map((p, iv) => (
-            <SVGCube
-              key={`${is}-${iv}`}
-              x={frontFacing ? x + is : x}
-              y={y - iv}
-              z={frontFacing ? z : z + prob.length - is - 1}
-              size={size}
-              depth={depth}
-              color={(colorScales[ps.length - 1 - iv] ?? outOfVocabularyColor)(p).toString()}
-            />
-          )),
+          .map((p, iv) => {
+            const isMaskCube = (ps.length - 1 - iv) >= state.vocabulary.length
+            const cubeOpacity = transparentMask ? (isMaskCube ? 0 : p) : (hideLowP ? p : 1)
+            if (cubeOpacity < 0.01) return null
+            return (
+              <SVGCube
+                key={`${is}-${iv}`}
+                x={frontFacing ? x + is : x}
+                y={y - iv}
+                z={frontFacing ? z : z + prob.length - is - 1}
+                size={size}
+                depth={depth}
+                color={(colorScales[ps.length - 1 - iv] ?? outOfVocabularyColor)(p).toString()}
+                opacity={cubeOpacity}
+              />
+            )
+          }),
       )}
     </g>
   )
@@ -121,29 +131,32 @@ const ProbTable = ({
         class="proba xtproba"
         :x="state.t * state.horizontalBins"
       />
-      <ProbTable
-        v-else
-        :prob="state.xfocusprobat.slice(1)"
-        class="proba xfocusprobat"
-        :x="1"
-        :z="state.sequencePositionOfInterest"
-        :frontFacing="true"
-      />
-      <ProbTable :prob="state.x1onehot" class="proba x1onehot" :x="state.horizontalBins" />
-      <g class="x1seq">
-        <SVGCube
-          v-for="(item, i) in state.x1.slice().reverse()"
-          :key="i"
-          :x="state.horizontalBins + 3.75"
-          :y="-(state.vocabulary.length - 1)"
-          :z="state.x1L - i"
-          :size="size"
-          :depth="depth"
-          :color="tokenColor(item)"
-          :rightText="item"
-          :topText="item"
+      <template v-else>
+        <!-- Full cube: all positions, mask row only on position 0 -->
+        <template v-if="state.showTransparentMask && state.masked && state.x1IsDecreasing">
+          <ProbTable
+            v-for="(posProba, posIdx) in [...state.xAllPositionsProbat].reverse()"
+            :key="posIdx"
+            :prob="posProba.slice(1)"
+            class="proba xfocusprobat"
+            :x="1"
+            :z="state.xAllPositionsProbat.length - 1 - posIdx"
+            :frontFacing="true"
+            :transparentMask="posIdx !== state.xAllPositionsProbat.length - 1"
+            :hideLowP="true"
+          />
+        </template>
+        <!-- Default: only selected position -->
+        <ProbTable
+          v-else
+          :prob="state.xfocusprobat.slice(1)"
+          class="proba xfocusprobat"
+          :x="1"
+          :z="state.sequencePositionOfInterest"
+          :frontFacing="true"
         />
-      </g>
+      </template>
+      <ProbTable :prob="state.x1onehot" class="proba x1onehot" :x="state.horizontalBins" />
       <defs>
         <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
           <polygon points="0 0, 10 3.5, 0 7" fill="darkred" />
@@ -178,7 +191,7 @@ const ProbTable = ({
           @input="state.playing = false"
         />
       </label>
-      <label v-else class="slider-label">
+      <label v-else-if="!(state.showTransparentMask && state.masked)" class="slider-label">
         <span class="label-text">pos {{ state.sequencePositionOfInterest }}</span>
         <input
           type="range"
@@ -190,7 +203,7 @@ const ProbTable = ({
         />
       </label>
 
-      <div class="playback-controls">
+      <div v-if="!state.showXfocuseprobat" class="playback-controls">
         <button class="btn play-btn" :class="{ playing: state.playing }" @click="togglePlay">
           {{ state.playing ? '⏸ Pause' : '▶ Play' }}
         </button>
@@ -202,6 +215,25 @@ const ProbTable = ({
       <input type="checkbox" v-model="state.showXfocuseprobat" />
       <span class="label-text">Show per-position probability over time</span>
     </label>
+
+    <label v-if="state.showXfocuseprobat && state.masked" class="checkbox-label">
+      <input type="checkbox" v-model="state.showTransparentMask" :disabled="!state.x1IsDecreasing" />
+      <span class="label-text">Show full cube <span v-if="!state.x1IsDecreasing" style="opacity: 0.5">(requires x₁ in decreasing order)</span></span>
+    </label>
+
+    <div v-if="!state.showXfocuseprobat" class="samples-section">
+      <h2 class="samples-title">Samples from conditional probability paths</h2>
+      <div class="samples-list">
+        <div v-for="(sample, idx) in state.sampledStrings" :key="idx" class="sample-row">
+          <span
+            v-for="(token, pos) in sample"
+            :key="pos"
+            class="sample-token"
+            :style="{ color: token === state.maskToken ? 'rgba(255,255,255,0.35)' : tokenColor(token) }"
+          >{{ token === state.maskToken ? 'm' : token }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -410,5 +442,44 @@ svg {
 
 .checkbox-label input[type='checkbox'] {
   accent-color: #a78bfa;
+}
+
+/* Samples section */
+.samples-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.samples-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 10px;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #82b4ff, #a78bfa, #7defa0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.samples-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.sample-row {
+  font-family: 'DM Mono', monospace;
+  font-size: 16px;
+  letter-spacing: 0.15em;
+  display: flex;
+  gap: 2px;
+}
+
+.sample-token {
+  font-weight: 600;
 }
 </style>
