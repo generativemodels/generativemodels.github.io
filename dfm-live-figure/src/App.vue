@@ -123,7 +123,7 @@ const ProbTable = ({
   <div class="dfm-card">
     <h2 class="dfm-title">Conditional Probability Paths</h2>
 
-    <D3Wrapper class="svg-vis" :domain="svgDomain">
+    <D3Wrapper class="svg-vis" :class="{ 'dense-xprobat': state.showTransparentMask && state.showXfocuseprobat && state.masked && state.x1IsDecreasing }" :domain="svgDomain">
       <ProbTable :prob="state.x0proba" class="proba x0proba" :x="0" />
       <ProbTable
         v-if="!state.showXfocuseprobat"
@@ -238,6 +238,10 @@ const ProbTable = ({
 </template>
 
 <style>
+.dense-xprobat .xfocusprobat g>polygon:nth-child(3n) {
+  opacity: 0;
+}
+
 html, body, #app {
   margin: 0;
   padding: 0;
