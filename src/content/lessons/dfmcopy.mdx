@@ -16,7 +16,7 @@ import diffusion from '../../assets/diffusion.svg'
 import InlineSvg from '../../components/InlineSvg.astro'
 import Counter from '../../components/numbering/Counter.astro'
 import Ref from '../../components/numbering/Ref.astro'
-import SudokuFlowMatching from '../../components/sudoku_flow_matching.jsx';
+import SudokuFlowMatching from '../../components/sudoku_flow_matching_generative.jsx';
 import DFMSampling from '../../components/DFMSampling.jsx';
 import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 
@@ -162,14 +162,7 @@ The goal of this blog post is to introduce discrete flow matching, explain its c
 
 #### Intuition of Discrete Flow Matching
 
-Discrete flow matching was initially introduced as an alternative to autoregressive (AR) models for sequence generation. A fundamental limitation of current AR models is their reliance on the next-token prediction paradigm. This inherently restricts them to generating sequences one token at a time in a strict, left-to-right order.
-
-While AR models excel at purely sequential generative task, such as answering a conversational prompt or writing a block of code from scratch, this architecture feels unnatural and inefficient for tasks that require bidirectional or global context:
-- **Code infilling:** When missing tokens are scattered throughout a file, the model must condition heavily on both the few preceding and succeeding lines of code to fill the gaps accurately. To achieve this task with an AR model, we should give the full noisy code to the model before it starts filling, which is a counter-intuitive approach.
-- **Solving Sudoku:** This is an inherently 2D spatial constraint problem. A number in a cell is constrained by its entire row, column, and subgrid, not just by the cells evaluated "before" it in a 1D sequence.
-- **DNA sequence design:** Biological sequences rely on complex secondary structures and long-range dependencies. Parts of the sequence that are far apart often need to connect together like perfectly matched puzzle pieces so the molecule can fold into the right shape, making a purely left-to-right generation prone to structural errors.
-
-By contrast, the paradigm of diffusion and flow matching is bidirectional. Throughout the generation process, every token is updated while simultaneously "seeing" both the past and the future of the sequence. This global context makes solving infilling, constraint-satisfaction games, and complex spatial tasks much more natural.
+Continuous Flow Matching (FM) has recently emerged as a state-of-the-art framework for continuous data generation, particularly images. This blog post explores its adaptation to discrete domains, presenting the core principles of Discrete Flow Matching (DFM).
 
 The primary objective of discrete flow matching is to define a process that smoothly transports a simple source distribution, denoted as $p_0$, into a complex target distribution (the actual data we want to generate), denoted as $p_1$. The intermediate distributions $p_t$ are then obtained by running this stochastic transport process over time $t \in [0,1]$.
 
@@ -179,7 +172,7 @@ The source distribution $p_0$ acts as our starting point for generation and is t
 - **Mask distribution ($p_{\text{mask}}$):** All sequences start entirely filled with the mask token $m$.
 - **Uniform distribution ($p_{\text{unif}}$):** All tokens in the starting sequence are sampled uniformly across the vocabulary $\mathcal{V}$.
 
-For instance, if our goal is generating Sudoku, $p_0$ represents the theoretical distribution of initial states, like partially filled grids with masked unknowns ($p_{\text{mask}}$), while $\hat{p}_0$ denotes the $N$ empirical puzzle samples we actually draw. Conversely, the true target distribution $p_1$ defines the ideal space of all valid, completed Sudoku boards. Its empirical counterpart, $\hat{p}_1$, is formed by our training dataset $\mathcal{A}$, which consists of the exact $N$ solved grids corresponding to the initial puzzles in $\hat{p}_0$.
+In this post, we will use the mask distribution ($p_{\text{mask}}$) as our running example. For instance, if our goal is generating Sudoku grids, we start from a fully-masked grid sampled from $p_0 = p_{\text{mask}}$. The model then iteratively fills this grid, step-by-step, until it matches the target distribution $p_1$, which represents the ideal space of all valid, completed Sudoku boards.
 
 {/* Maybe add a dummy simulation of a sudoku that fills with x0, xt and x1, to draw a sudoku from pt = fill a sudoku from 0 to t?
 The sudoku has the advantage to be constrained spatially so S is fixed and it's easy to make consistent simulations */}
@@ -484,6 +477,10 @@ m & 0 & 0 & 0 & -\dfrac{1}{1-t}
 \end{array}
 $$
 
+<details>
+<summary>Other Modelling Choices</summary>
+<div>
+
 **Source-Target Conditioning**
 
 Here, we condition on both the start and end points, so $z^i = (x_0^i, x_1^i)$. The token $x^i$ at time $t$ is simply $x_1^i$ with probability $t$, and $x_0^i$ with probability $1 - t$:
@@ -523,6 +520,9 @@ u_t(x^i | x_1^i)_v = \begin{cases}
 \end{cases}
 \end{equation}
 $$
+
+</div>
+</details>
 
 <DFMLiveFigure
     title="Discrete Flow Matching Live Figure"
