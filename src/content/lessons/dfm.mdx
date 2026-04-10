@@ -1093,13 +1093,84 @@ $$
 
 #### Training
 
-For a discrete-time masked diffusion process, we define a path-wise generative model by approximately reversing the forward transitions step by step along the entire noising trajectory. We want to align the forward and reverse trajectories so that $\log p_\theta(x_0) \geq \text{ELBO}(x_0)$, where:
+For a discrete-time masked diffusion process, we define a path-wise generative model by approximately reversing the forward transitions step by step along the entire noising trajectory. The training objective has a single clean interpretation: we want to minimize the KL divergence between the distribution induced by the forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
+
 $$
 \begin{equation}
-\text{ELBO}(x_0) = \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log p_\theta(x_{0:T}) - \log q(x_{1:T}|x_0) \right]
+\min_\theta\; \mathrm{KL}\!\Big(q(x_{0:T}),\, p_\theta(x_{0:T})\Big)
 \end{equation}
 $$
-Intuitively, this ELBO inequality means we can lower-bound the log-likelihood of the data $x_0$ under our model by measuring how well the model's reverse process $p_\theta(x_{0:T})$ agrees with the forward noising process $q(x_{1:T}|x_0)$. The closer the two are, the tighter the bound.
+
+Since the entropy of the data distribution $H(q)$ is constant w.r.t. $\theta$, we can show that:
+
+$$
+\begin{equation}
+\min_\theta\; \mathrm{KL}\!\Big(q(x_{0:T}),\, p_\theta(x_{0:T})\Big)
+\;\iff\;
+\max_\theta\; \mathbb{E}_{q(x_0)}\!\left[\text{ELBO}(x_0)\right]
+\end{equation}
+$$
+
+where the per-sample ELBO is defined as:
+
+$$
+\begin{equation}
+\text{ELBO}(x_0) = \mathbb{E}_{x_{1:T} \sim q(\cdot | x_0)} \left[ \log p_\theta(x_{0:T}) - \log q(x_{1:T}|x_0) \right]
+\end{equation}
+$$
+
+<details>
+<summary>Equivalence of KL minimization and ELBO maximization</summary>
+<div>
+
+Expand the KL over the full joint by factoring $q(x_{0:T}) = q(x_0)\, q(x_{1:T}|x_0)$
+and $p_\theta(x_{0:T}) = p_\theta(x_0)\, p_\theta(x_{1:T}|x_0)$:
+
+$$
+\begin{align}
+\mathrm{KL}\!\Big(q(x_{0:T}),\, p_\theta(x_{0:T})\Big)
+&= \mathbb{E}_{q(x_{0:T})}\!\left[\log \frac{q(x_{0:T})}{p_\theta(x_{0:T})}\right] \\
+&= \mathbb{E}_{q(x_0)}\!\left[\mathbb{E}_{q(x_{1:T}|x_0)}\!\left[\log \frac{q(x_0)\,q(x_{1:T}|x_0)}{p_\theta(x_{0:T})}\right]\right] \\
+&= \mathbb{E}_{q(x_0)}\!\left[\log q(x_0)\right]
++ \mathbb{E}_{q(x_0)}\!\left[\mathbb{E}_{q(x_{1:T}|x_0)}\!\left[\log q(x_{1:T}|x_0) - \log p_\theta(x_{0:T})\right]\right] \\
+&= -H(q) - \mathbb{E}_{q(x_0)}\!\left[\text{ELBO}(x_0)\right]
+\end{align}
+$$
+
+Since $H(q) = -\mathbb{E}_{q(x_0)}[\log q(x_0)]$ does not depend on $\theta$, minimizing
+the KL is exactly equivalent to maximizing $\mathbb{E}_{q(x_0)}[\text{ELBO}(x_0)]$.
+
+</div>
+</details>
+
+<details>
+<summary>Why ELBO lower-bounds $\log p_\theta(x_0)$</summary>
+<div>
+
+Multiply and divide inside the expectation by $p_\theta(x_{1:T}|x_0)$:
+
+$$
+\begin{align}
+\text{ELBO}(x_0)
+&= \mathbb{E}_{q(x_{1:T}|x_0)}\!\left[\log p_\theta(x_{0:T}) - \log q(x_{1:T}|x_0)\right] \\
+&= \mathbb{E}_{q(x_{1:T}|x_0)}\!\left[\log p_\theta(x_0) + \log p_\theta(x_{1:T}|x_0) - \log q(x_{1:T}|x_0)\right] \\
+&= \log p_\theta(x_0) - \mathbb{E}_{q(x_{1:T}|x_0)}\!\left[\log \frac{q(x_{1:T}|x_0)}{p_\theta(x_{1:T}|x_0)}\right]
+\end{align}
+$$
+
+which gives the exact identity:
+
+$$
+\begin{equation}
+\log p_\theta(x_0) = \text{ELBO}(x_0) + \mathrm{KL}\!\Big(q(x_{1:T}|x_0),\, p_\theta(x_{1:T}|x_0)\Big)
+\end{equation}
+$$
+
+Since $\mathrm{KL} \geq 0$, the bound $\log p_\theta(x_0) \geq \text{ELBO}(x_0)$ follows
+immediately, with equality iff the reverse trajectories perfectly recover the forward process.
+
+</div>
+</details>
 
 The ELBO for a general discrete diffusion process is given by:
 
