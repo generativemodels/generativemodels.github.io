@@ -198,45 +198,9 @@ The sudoku has the advantage to be constrained spatially so S is fixed and it's 
 
 ### Discrete Flow Matching
 
-#### Intuition of Discrete Flow Matching
-#### Generation of discrete data
+In this section we adopt the Flow Matching convention: time goes from $t=0$ to $t=1$, the source distribution is $p_0$, and the target distribution is $p_1$.
 
-To generate discrete data, we rely on a time-dependent vector field $u$ that guides the sampling process.
-
-**Definition (Probability Velocity)**:
-Let $u : [0,1] \times \mathcal{S} \to \mathbb{R}^{|\mathcal{S}|}$ be a time-dependent vector field. We say that $u$ *generates* the probability path $p_t$ if, for a random variable $X_t$ constructed via the standard sampling algorithm, it holds that $X_t \sim p_t$.
-
-Intuitively, $u_t(\mathbf{x})_{\mathbf{y}}$ is the instantaneous rate at which the sequence transitions from $\mathbf{x}$ to $\mathbf{y}$ at time $t$. Therefore, for any $\mathbf{x}, \mathbf{y} \in \mathcal{S}$:
-$$
-\begin{equation}
-\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{x} = \mathbf{y}) + h u_{t}(\mathbf{x})_{\mathbf{y}} + o(h)
-\end{equation}
-$$
-
-If we index the state space as $\mathcal{S} = \{\mathbf{y}_1, \dots, \mathbf{y}_{|\mathcal{S}|}\}$ and choose $k$ such that $\mathbf{y}_k = \mathbf{x}$ (the current state), then the full transition-probability vector reads
-$$
-\begin{equation}
-\mathbb{P}(X_{t+h}=\cdot\mid X_t=\mathbf{x}) =
-\begin{bmatrix}
-h u_t(\mathbf{x})_{\mathbf{y}_1} \\
-\vdots \\
-1 + h u_t(\mathbf{x})_{\mathbf{y}_k} \; \leftarrow \mathbf{y}=\mathbf{x} \\
-\vdots \\
-h u_t(\mathbf{x})_{\mathbf{y}_{|\mathcal{S}|}}
-\end{bmatrix}
-+ o(h),
-\end{equation}
-$$
-where all off-diagonal entries are $h u_t(\mathbf{x})_{\mathbf{y}_j}$ and the diagonal entry at $\mathbf{y}=\mathbf{x}$ is $1 + h u_t(\mathbf{x})_{\mathbf{x}}$.
-
-In practice, this means that at each sampling step, the next state is drawn according to the following categorical distribution update:
-$$
-\begin{equation}
-\mathbf{x}_{\tau + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_\tau} + h u_\tau(\mathbf{x}_\tau)\right)
-\end{equation}
-$$
-
-This is the discrete counterpart of the continuous FM viewpoint. In continuous spaces, one defines a flow by the ODE
+In Continuous Flow Matching, a central object is the *velocity field* $u: \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d$, that governs the generating process: samples are obtained as solutions at time $t=1$ of the ODE
 $$
 \begin{equation}
 \begin{cases}
@@ -245,15 +209,47 @@ x(0) = x_0 \\
 \end{cases}
 \end{equation}
 $$
-and obtains the time-$t$ law by pushing forward $p_0$.
+and if $p_t$ is defined as the law of the solution $x(t)$ at time $t$ when $x_0 \sim p_0$, we say that $u$ generate $(p_t)$.
 
-Here, if we denote by $f_t^u : \mathcal{S} \times [0,1] \to \mathcal{S}$ the (random) map induced by simulating the CTMC with velocity field $u$ up to time $t$ from an initial state, then
+Solving an ODE when the state space is discrete is not possible.
+Discrete FM relies on a different type of object, a *probability velocity*.
+
+**Definition (Probability Velocity)**:
+Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, and $(X_t)_{t\in[0,1]}$ be random variables of laws $(p_t)_{t \in [0, 1]}$.
+Denote $u_t := u(\cdot, t)$.
+We say that $u$ *generates* the probability path $(p_t)_{t \in [0, 1]}$ if
 $$
 \begin{equation}
-p_t = (f_t^u)_\sharp p_0,
+\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{x} = \mathbf{y}) + h u_{t}(\mathbf{x})_{\mathbf{y}} + o(h)
 \end{equation}
 $$
-**Important note**: unlike continuous FM, where sampling is deterministic and the flow map is the unique solution of the ODE, sampling here is inherently stochastic, so the flow map is random.
+If we index the state space as $\mathcal{S} = \{\mathbf{y}_1, \dots, \mathbf{y}_{S}\}$ and choose $k$ such that $\mathbf{y}_k = \mathbf{x}$ (the current state), then the full transition-probability vector reads
+$$
+\begin{equation}
+\underbrace{\mathbb{P}(X_{t+h} = \cdot \mid X_t=\mathbf{x})}_{\in \mathbb{R}^{S}}  =
+\begin{bmatrix}
+  h u_t(\mathbf{x})_{\mathbf{y}_1} \\
+  \vdots \\
+  h u_t(\mathbf{x})_{\mathbf{y}_{k-1}} \\
+  1 + h u_t(\mathbf{x})_{\mathbf{y}_k}  \\
+  h u_t(\mathbf{x})_{\mathbf{y}_{k+1}} \\
+  \vdots \\
+  h u_t(\mathbf{x})_{\mathbf{y}_{S}}
+\end{bmatrix}
++ o(h),
+\end{equation}
+$$
+
+Intuitively, $u_t(\mathbf{x})_{\mathbf{y}}$ is the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
+Much like the ODE TODO cite ODE can be discretized with Euler's method, the sampling process TODO cite eq can be discretized as
+$$
+\begin{equation}
+\mathbf{x}_{t + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_t} + h u_\tau(\mathbf{x}_t)\right)
+\end{equation}
+$$
+
+The variable stays in state $\mathbf{x}$ with probability $h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
+We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**.
 
 **Proposition (Mass Conservation for Velocity Fields).**
 For the velocity field to preserve probability mass, it must satisfy:
