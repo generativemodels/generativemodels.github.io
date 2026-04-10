@@ -156,7 +156,7 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 </div>
 </div>
 
-The goal of this blog post is to introduce discrete flow matching, explain its core principles, and provide a clear parallel with continuous flow matching. Discrete diffusion models were first introduced independently by two simultaneous papers at NeurIPS 2021 [<a class="cite-ref" href="#ref-1">1</a>,<a class="cite-ref" href="#ref-2">2</a>], later extended to continuous time [<a class="cite-ref" href="#ref-3">3</a>], made competitive with autoregressive models by SEDD [<a class="cite-ref" href="#ref-4">4</a>], and then extended with flow-based formulations in [<a class="cite-ref" href="#ref-5">5</a>] and [<a class="cite-ref" href="#ref-6">6</a>], mirroring the shift from diffusion to flow matching seen in continuous spaces.
+The goal of this blog post is to introduce discrete flow matching, explain its core principles, and provide a clear parallel with continuous flow matching. Discrete diffusion models were first introduced independently by two simultaneous papers at NeurIPS 2021 [<a class="cite-ref" href="#ref-1">1</a>,<a class="cite-ref" href="#ref-2">2</a>], later extended to continuous time [<a class="cite-ref" href="#ref-3">3</a>], made competitive with autoregressive models by SEDD [<a class="cite-ref" href="#ref-4">4</a>], and then extended with flow-based formulations in [<a class="cite-ref" href="#ref-5">5</a>] and [<a class="cite-ref" href="#ref-6">6</a>].
 
 ### Discrete Flow Matching
 
@@ -164,9 +164,12 @@ The goal of this blog post is to introduce discrete flow matching, explain its c
 
 Continuous Flow Matching (FM) has recently emerged as a state-of-the-art framework for continuous data generation, particularly images. This blog post explores its adaptation to discrete domains, presenting the core principles of Discrete Flow Matching (DFM).
 
-The primary objective of discrete flow matching is to define a process that smoothly transports a simple source distribution, denoted as $p_0$, into a complex target distribution (the actual data we want to generate), denoted as $p_1$. The intermediate distributions $p_t$ are then obtained by running this stochastic transport process over time $t \in [0,1]$.
 
-In practice, we assume we have a dataset of $N$ samples $\mathcal{A} = \{a_1, \dots, a_N\}$ that follow the target distribution $p_1$.
+Like its continuous analog, discrete flow matching aims at mapping a simple source distribution, denoted as $p_0$, to a complex target distribution (the actual data we want to generate), denoted as $p_1$.
+To do so, it creates a *probability path* of intermediate distributions $(p_t)_{t \in [0, 1]}$, that progessively evolves from $p_0$ to $p_1$.
+
+Here, we will deal with discrete data: the space on which the probability distributions are defined is $\mathcal{S} := \mathcal{V}^S$, the space of sequences of length $S \in \mathbb{N}$ over a given vocabulary $\mathcal{V}$.
+
 
 The source distribution $p_0$ acts as our starting point for generation and is typically chosen to be either:
 - **Mask distribution ($p_{\text{mask}}$):** All sequences start entirely filled with the mask token $m$.
