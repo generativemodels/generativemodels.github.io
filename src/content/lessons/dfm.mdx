@@ -160,8 +160,7 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 
 Flow Matching (FM) and diffusion are the state-of-the-art frameworks for continuous data generation, particularly images. This blog post is a pedagogical introduction to their adaptation to discrete data.
 
-<span style="color: red"> Section XXX </span> contains an introduction to Discrete Flow Matching, Section XXX an introduction to Discrete Diffusion. The connection between the two is made explicit in Section XXX.
-. <span style="color: red;">TODO add refs to sections 1 2 3</span>
+[Discrete Flow Matching](#discrete-flow-matching) contains an introduction to Discrete Flow Matching, [Discrete Diffusion](#discrete-diffusion) an introduction to Discrete Diffusion. The connection between the two is made explicit in [Equivalence with Discrete Flow Matching](#equivalence-with-discrete-flow-matching).
 The reader already familiar with one or the other method can skip the associated section.
 
 
@@ -839,11 +838,9 @@ $$
   </tbody>
 </table>
 
-### Appendix to go further
+### Discrete Diffusion
 
-#### Links with Discrete Diffusion
-
-##### Forward and Reverse Diffusion Processes
+#### Forward and Reverse Diffusion Processes
 
 We first consider a sentence where we progressively replace each word with a special mask token, transforming the sequence $\mathbf{x}$ into a sequence of masks over time. This forward process is applied independently to each token. Thus, for $s < t$, we can compute the transition probability from time $s$ to $t$ and define the conditional transition matrix $\bar{Q}_{t|s}$ satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$. In matrix form, this is explicitly:
 $$
@@ -1094,22 +1091,11 @@ q(x_{t-\Delta t} = y | x_t, x_0) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(
 $$
 $$
 \begin{equation}
-p_\theta(x_{t-\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_{\theta,t}(x_t)]_y + o(\Delta t)
+p(x_{t-\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t)]_y + o(\Delta t)
 \end{equation}
 $$
 
-##### Equivalence with Discrete Flow Matching
-
-While discrete diffusion and discrete flow matching share similar mathematical foundations, their primary difference lies in the time convention. In discrete diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. Discrete flow matching uses the exact opposite convention.
-
-We can perfectly translate between the two frameworks using a simple time reversal: $t_{\text{FM}} = 1 - t_{\text{DD}}$. Under this time change, the velocity field in flow matching directly corresponds to the entries of the reverse rate matrix in discrete diffusion:
-$$
-\begin{equation}
-u_{1-t}^{\text{FM}} = \dot{R}_t
-\end{equation}
-$$
-
-##### Training
+#### Training
 
 For a discrete-time masked diffusion process, we define a path-wise generative model by approximately reversing the forward transitions step by step along the entire noising trajectory. We want to align the forward and reverse trajectories so that $\log p_\theta(x_0) \geq \text{ELBO}(x_0)$, where:
 $$
@@ -1410,52 +1396,8 @@ which matches the sequence-level training loss defined previously.
 
 </div>
 </details>
-In discrete flow matching, the matching loss at flow time $1-t$ is simply the negative log-likelihood of the clean token:
-$$
-\begin{equation}
-L_{\text{FM}}(1-t) = -\mathbb{E}\left[ \log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \right]
-\end{equation}
-$$
 
-Since both losses use the same denoiser $\mu_\theta^i(\mathbf{x}_t, t)$, we can compare them directly:
-
-$$
-\begin{equation}
-L_{\text{DD}}(t) \approx \frac{-\dot{\alpha}_t}{1 - \alpha_t} \, L_{\text{FM}}(1-t)
-\end{equation}
-$$
-
-<details>
-<summary>Derivation</summary>
-<div>
-We decompose the flow matching loss using the law of total expectation:
-$$
-\begin{aligned}
-L_{\text{FM}}(1-t) = (1 - \alpha_t) \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right] + \alpha_t \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i \neq m \right]
-\end{aligned}
-\begin{equation} \end{equation}
-$$
-
-Since a well-trained denoiser can trivially reconstruct unmasked positions by copying the input, the second term vanishes, giving:
-$$
-\begin{equation}
-L_{\text{FM}}(1-t) \approx (1 - \alpha_t) \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right]
-\end{equation}
-$$
-
-Similarly, applying the law of total expectation to the discrete diffusion loss extracts the masking probability $(1 - \alpha_t)$, which cancels with the denominator:
-$$
-\begin{aligned}
-L_{\text{DD}}(t) = (1 - \alpha_t) \cdot \frac{-\dot{\alpha}_t}{1 - \alpha_t} \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right] = -\dot{\alpha}_t \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right]
-\end{aligned}
-\begin{equation} \end{equation}
-$$
-
-Both expressions share the same conditional expectation. Eliminating it yields the exact relationship (up to the vanishing unmasked-loss approximation).
-</div>
-</details>
-
-##### Concrete Score
+#### Concrete Score
 
 In continuous diffusion, the score function $\nabla \log p_t(x)$ dictates the deterministic reverse ODE:
 $$
@@ -1547,7 +1489,9 @@ which is exactly the statement in the proposition above.
 </div>
 </details>
 
-##### Complement: Equivalence Between Masked Diffusion Models and Any-Order Autoregressive Models
+
+{/*
+#### Complement: Equivalence Between Masked Diffusion Models and Any-Order Autoregressive Models
 
 An any-order autoregressive model (AO-ARM) is an autoregressive model trained to factorize the joint distribution under *every* possible token ordering $\pi$, not just the left-to-right one. Its training objective minimizes the expected negative log-likelihood over the uniform distribution $\mathcal{U}_\pi$ of all $S!$ orderings:
 $$
@@ -1688,6 +1632,68 @@ $$
 with the same $f(k, \mathbf{x}_0)$ defined in Step 1.
 </div>
 </details>
+*/}
+
+### Equivalence with Discrete Flow Matching
+
+While discrete diffusion and discrete flow matching share similar mathematical foundations, their primary difference lies in the time convention. In discrete diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. Discrete flow matching uses the exact opposite convention.
+
+We can perfectly translate between the two frameworks using a simple time reversal: $t_{\text{FM}} = 1 - t_{\text{DD}}$. Under this time change, the velocity field in flow matching directly corresponds to the entries of the reverse rate matrix in discrete diffusion:
+$$
+\begin{equation}
+u_{1-t}^{\text{FM}} = \dot{R}_t
+\end{equation}
+$$
+
+#### Training
+
+In discrete flow matching, the matching loss at flow time $1-t$ is simply the negative log-likelihood of the clean token:
+$$
+\begin{equation}
+L_{\text{FM}}(1-t) = -\mathbb{E}\left[ \log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \right]
+\end{equation}
+$$
+
+Since both losses use the same denoiser $\mu_\theta^i(\mathbf{x}_t, t)$, we can compare them directly:
+
+$$
+\begin{equation}
+L_{\text{DD}}(t) \approx \frac{-\dot{\alpha}_t}{1 - \alpha_t} \, L_{\text{FM}}(1-t)
+\end{equation}
+$$
+
+<details>
+<summary>Derivation</summary>
+<div>
+We decompose the flow matching loss using the law of total expectation:
+$$
+\begin{aligned}
+L_{\text{FM}}(1-t) = (1 - \alpha_t) \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right] + \alpha_t \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i \neq m \right]
+\end{aligned}
+\begin{equation} \end{equation}
+$$
+
+Since a well-trained denoiser can trivially reconstruct unmasked positions by copying the input, the second term vanishes, giving:
+$$
+\begin{equation}
+L_{\text{FM}}(1-t) \approx (1 - \alpha_t) \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right]
+\end{equation}
+$$
+
+Similarly, applying the law of total expectation to the discrete diffusion loss extracts the masking probability $(1 - \alpha_t)$, which cancels with the denominator:
+$$
+\begin{aligned}
+L_{\text{DD}}(t) = (1 - \alpha_t) \cdot \frac{-\dot{\alpha}_t}{1 - \alpha_t} \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right] = -\dot{\alpha}_t \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right]
+\end{aligned}
+\begin{equation} \end{equation}
+$$
+
+Both expressions share the same conditional expectation. Eliminating it yields the exact relationship (up to the vanishing unmasked-loss approximation).
+</div>
+</details>
+
+### Appendix to go further
+
 
 #### Planner aware path learning
 
