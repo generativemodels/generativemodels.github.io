@@ -679,7 +679,7 @@ $$
 
 In discrete spaces, directly predicting a continuous vector field or instantaneous transition rates can feel unintuitive. Instead, a much more natural object to learn is a denoiser.
 
-A denoiser simply observes the current noisy, corrupted, or partially masked sequence $\mathbf{x}_t$ at time $t$ and attempts to predict the true, clean target token $X_1^i$ for each position $i$. We denote this learned neural network distribution as $P_{\theta,t}(X_1^i | \mathbf{x})$.
+A denoiser simply observes the current noisy, corrupted, or partially masked sequence $\mathbf{x}_t$ at time $t$ and attempts to predict the true, clean target token $X_1^i$ for each position $i$. We denote this learned neural network distribution as $P_{\theta,t}(X_1^i | \mathbf{x})$, also noted as $D_{\theta,t}^i(\mathbf{x})$.
 
 We can directly connect the denoiser and velocity through this simple formula:
 
@@ -861,7 +861,15 @@ $$
 \end{equation}
 $$
 where $\alpha_t$ is the probability of a token remaining unmasked at time $t$.
-Interpretation: if the token at time $s$ is $x_s$, the probability it transitions to $x_t$ is $\frac{\alpha_t}{\alpha_s}$ if it remains unchanged, and $1 - \frac{\alpha_t}{\alpha_s}$ if it becomes the mask token $m$.
+Interpretation: if the token at time $s$ is $x_s$, then for $t > s$.:
+$$
+\begin{equation}
+x_t = \begin{cases}
+x_s, & \text{with probability } \frac{\alpha_t}{\alpha_s} \\
+m, & \text{with probability } 1 - \frac{\alpha_t}{\alpha_s}
+\end{cases}
+\end{equation}
+$$
 
 <details>
 <summary>Construction of $\bar{Q}_{t|s}$</summary>
@@ -1022,8 +1030,18 @@ R_{s|t}^{x_0} =
 = I + \frac{\alpha_s - \alpha_t}{1 - \alpha_t} m (x_0 - m)^\top
 \end{equation}
 $$
-where the term $\frac{\alpha_s - \alpha_t}{1 - \alpha_t}$ in the last row appears at the column index corresponding to the clean token $x_0$. It represents the probability that a masked token $x_t=m$ at time t will jump to the clean token $x_0$ between t and s.
-Interpretation: if the token at time $t$ is $m$, the probability it transitions to $x_0$ at time s is $\frac{\alpha_s - \alpha_t}{1 - \alpha_t}$.
+where the term $\frac{\alpha_s - \alpha_t}{1 - \alpha_t}$ in the last row appears at the column index corresponding to the clean token $x_0$.
+It represents the probability that a masked token $x_t=m$ at time $t$ will jump to the clean token $x_0$ between $t$ and $s$.
+
+Interpretation: if the token at time $t$ is $m$, and $s < t$, then:
+$$
+\begin{equation}
+x_s = \begin{cases}
+x_0, & \text{with probability } \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \\
+m, & \text{with probability } 1 - \frac{\alpha_s - \alpha_t}{1 - \alpha_t}
+\end{cases}
+\end{equation}
+$$
 
 <details>
 <summary>Construction of $R_{s|t}^{x_0}$</summary>
@@ -1090,14 +1108,40 @@ q(x_{t+\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{Q}_t(x_t)]
 $$
 $$
 \begin{equation}
-q(x_{t-\Delta t} = y | x_t, x_0) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t | x_0)]_y + o(\Delta t)
-\end{equation}
-$$
-$$
-\begin{equation}
 p(x_{t-\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t)]_y + o(\Delta t)
 \end{equation}
 $$
+
+We can show that the instantaneous reverse rate matrix $\dot{R}_t$ is defined as:
+$$
+\begin{equation}
+[\dot{R}_t(x_t)]_y =
+\begin{cases}
+[\dot{Q}_t(y)]_{x_t} \frac{q(x_t = y)}{q(x_t)} & \text{if } y \neq x_t \\
+- \sum_{y' \neq x_t} [\dot{R}_t(x_t)]_{y'} & \text{if } y = x_t
+\end{cases}
+\end{equation}
+$$
+
+<details>
+<summary>Derivation of $\dot{R}_t$</summary>
+<div>
+
+We want to find the reverse instantaneous transition rate $[\dot{R}_t(x_t)]_y$ for transitioning to state $y \neq x_t$ backwards over an infinitesimal time step $\Delta t$, given the forward rate matrix $\dot{Q}_t$.
+
+Using Bayes' theorem and the local forward transition $q(x_t | x_{t-\Delta t} = y)$:
+$$
+\begin{align}
+p(x_{t-\Delta t} = y | x_t) &= \frac{q(x_t | x_{t-\Delta t} = y) q(x_{t-\Delta t} = y)}{q(x_t)} \\
+&= \frac{\big(\Delta t [\dot{Q}_t(y)]_{x_t} + o(\Delta t)\big) \big(q(x_t = y) + O(\Delta t)\big)}{q(x_t)} \\
+&= \Delta t \left( [\dot{Q}_t(y)]_{x_t} \frac{q(x_t = y)}{q(x_t)} \right) + o(\Delta t)
+\end{align}
+$$
+
+By identifying this result with the definition of the reverse local transition $p(x_{t-\Delta t} = y | x_t) = \Delta t [\dot{R}_t(x_t)]_y + o(\Delta t)$ for $y \neq x_t$, we obtain the off-diagonal entries. The diagonal elements are then constrained by the requirement that the rows of a valid continuous-time transition rate matrix must sum to zero.
+
+</div>
+</details>
 
 #### Training
 
@@ -1364,19 +1408,19 @@ L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_{\text{data}} \\ x_t \sim q( \cdo
 \begin{equation} \end{equation}
 $$
 
-In the specific case of masked diffusion, this loss can be simplified:
+In the specific case of masked diffusion, we can express the loss in terms of the denoiser output $D_{\theta,t}(x_t)$:
 
 $$
-\begin{aligned}
-L(\theta) = \mathbb{E}_{\substack{\mathbf{x}_0 \sim p_{\text{data}} \\ x_t^i \sim q( \cdot | x_0^i)}} \sum_{i=1}^{S} \left[ \mathbb{I}(x_t^i = m) \left( -\frac{\dot{\alpha}_t}{1 - \alpha_t} \mathbf{x}_0^{i \top} \log \mu_\theta^i(\mathbf{x}_t, t) \right) \right]
-\end{aligned}
+\begin{align}
+L(\theta) = \mathbb{E}_{\substack{\mathbf{x}_0 \sim p_{\text{data}} \\ x_t^i \sim q( \cdot | x_0^i)}} \sum_{i=1}^{S} \left[ \mathbb{I}(x_t^i = m) \left( -\frac{\dot{\alpha}_t}{1 - \alpha_t} \mathbf{x}_0^{i \top} \log D_{\theta,t}^i(\mathbf{x}_t) \right) \right]
+\end{align}
 $$
 
 <details>
 <summary>Training Loss Proof for Masked Diffusion</summary>
 <div>
 
-We start from (cf. previous proof, right before conclusion):
+We start from (cf. previous proof, <span style="color: red"> cite eq </span> ):
 
 $$
 \begin{aligned}
@@ -1402,7 +1446,7 @@ $$
 \begin{equation} \end{equation}
 $$
 
-From previous definitions, we recall, for $x_t = m$:
+From previous definitions <span style="color: red"> cite eq </span>, we recall, for $x_t = m$:
 $$
 \begin{aligned}
 q(x_s | x_t, x_0) = \left[ \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \mathbb{I}(x_s = x_0) + \frac{1 - \alpha_s}{1 - \alpha_t} \mathbb{I}(x_s = m) \right]
@@ -1410,10 +1454,10 @@ q(x_s | x_t, x_0) = \left[ \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \mathbb{I}(x
 \begin{equation} \end{equation}
 $$
 
-We now specialize to the discrete times $s=(j-1)/T$ and $t=j/T$. The reverse model is $p_\theta(x_s| x_t)=q(x_s| x_t,\mu_\theta(x_t,t))$, so when $x_t=m$ we have:
+We now specialize to the discrete times $s=(j-1)/T$ and $t=j/T$. The reverse model is $p_\theta(x_s| x_t)=q(x_s| x_t,D_\theta(x_t,t))$, so when $x_t=m$ we have:
 $$
 \begin{align}
-    p_\theta(x_s=v| x_t=m) &= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,\mu_\theta(v| x_t,t)\quad (v\in\mathcal{V}), \\
+    p_\theta(x_s=v| x_t=m) &= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,D_\theta(v| x_t,t)\quad (v\in\mathcal{V}), \\
     p_\theta(x_s=m| x_t=m) &= \frac{1-\alpha_s}{1-\alpha_t}.
 \end{align}
 $$
@@ -1432,16 +1476,16 @@ $$
     + \frac{1-\alpha_s}{1-\alpha_t}\mathbb{I}(x_s=m) \right] \\
     &\quad \log\frac{\left[ \frac{\alpha_s-\alpha_t}{1-\alpha_t}\mathbb{I}(x_s=x_0)
     + \frac{1-\alpha_s}{1-\alpha_t}\mathbb{I}(x_s=m) \right]}{
-    \left[ \frac{\alpha_s-\alpha_t}{1-\alpha_t}\mu_\theta(x_s| x_t,t)\mathbb{I}(x_s\neq m)
+    \left[ \frac{\alpha_s-\alpha_t}{1-\alpha_t}D_\theta(x_s| x_t,t)\mathbb{I}(x_s\neq m)
     + \frac{1-\alpha_s}{1-\alpha_t}\mathbb{I}(x_s=m) \right]} \\
     &= \mathbb{I}(x_t=m)\Bigg[
     \frac{\alpha_s-\alpha_t}{1-\alpha_t}\log\frac{\frac{\alpha_s-\alpha_t}{1-\alpha_t}}
-    {\frac{\alpha_s-\alpha_t}{1-\alpha_t}\mu_\theta(x_0| x_t,t)}
+    {\frac{\alpha_s-\alpha_t}{1-\alpha_t}D_\theta(x_0| x_t,t)}
     +\frac{1-\alpha_s}{1-\alpha_t}\log\frac{\frac{1-\alpha_s}{1-\alpha_t}}
     {\frac{1-\alpha_s}{1-\alpha_t}}
     \Bigg] \\
     &= \mathbb{I}(x_t=m)\,\frac{\alpha_s-\alpha_t}{1-\alpha_t}\,
-    \big(-\log \mu_\theta(x_0| x_t,t)\big).
+    \big(-\log D_\theta(x_0| x_t,t)\big).
 \end{aligned}
 \begin{equation} \end{equation}
 $$
@@ -1452,7 +1496,7 @@ $$
     \text{ELBO}(x_0)
     = \sum_{j=1}^T \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}}
     \left[ \mathbb{I}(x_{j/T}=m)\,\frac{\alpha_{(j-1)/T}-\alpha_{j/T}}{1-\alpha_{j/T}}
-    \,x_0^\top \log \mu_\theta(x_{j/T}, j/T)\right].
+    \,x_0^\top \log D_\theta(x_{j/T}, j/T)\right].
 \end{aligned}
 \begin{equation} \end{equation}
 $$
@@ -1462,7 +1506,7 @@ $$
 \begin{aligned}
     \text{ELBO}(x_0)
     = \int_0^1 \mathbb{E}_{\substack{x_t \sim q( \cdot | x_0)}}\left[
-    \mathbb{I}(x_t=m)\,\frac{-\dot{\alpha}_t}{1-\alpha_t}\,x_0^\top\log\mu_\theta(x_t,t)
+    \mathbb{I}(x_t=m)\,\frac{-\dot{\alpha}_t}{1-\alpha_t}\,x_0^\top\logD_\theta(x_t,t)
     \right]dt,
 \end{aligned}
 \begin{equation} \end{equation}
@@ -1480,37 +1524,20 @@ $$
 dx = \left[h(x, t) - \tfrac{1}{2}g(t)^2 \,\nabla \log p_t(x)\right]dt
 \end{equation}
 $$
-which has the same marginal densities as the time-reversed stochastic process. In a discrete state space, there is no notion of a continuous gradient. However, one can write the sampling equation for the reverse process using Bayes' theorem:
-$$
-\begin{align}
-    p_\theta(x_s = y | x_t = x) &= q(x_t = x | x_s = y)  \frac{p_s(y)}{p_t(x)} \\
-    &\approx q(x_t = x | x_s = y)  s_t(x)_y
-\end{align}
-$$
-where the approximation holds under the hypothesis that $s \to t$, meaning $p_s(y) \approx p_t(y)$.
-
-This naturally introduces the definition of the concrete score:
-$$
-\begin{equation}
-s_t(x)_y = \frac{p_t(y)}{p_t(x)}
-\end{equation}
-$$
-where $p_t(v) = \mathbb{P}(x_t = v)$.
-
-Specifically, the concrete score relates the true forward rate matrix to the reverse rate matrix:
+which has the same marginal densities as the time-reversed stochastic process. In a discrete state space, there is no notion of a continuous gradient. However, one can write the sampling equation for the reverse process. Indeed, remembering from <span style="color: red"> cite eq </span> that:
 $$
 \begin{equation}
 s_t(x)_y = \frac{[\dot{R}_t(x)]_y}{[\dot{Q}_t(x)]_y}
 \end{equation}
 $$
-This relationship directly unlocks our sampling mechanism used in practice with a learned concrete score:
+we can directly write the sampling used with a learned concrete score:
 $$
 \begin{equation}
 \mathbb{P}\!\left(X_{t-h} = y | X_t = x\right) = \mathbb{I}(x=y) + h\,[\dot{Q}_t(x)]_y\,s_{\theta,t}(x)_y + o(h)
 \end{equation}
 $$
 
-Then, we can express the KL loss between the rates in terms of concrete score:
+Then, we can express the loss <span style="color: red"> cite eq </span> in terms of concrete score:
 $$
 \begin{aligned}
 L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \left[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y \left( s_{\theta,t}(x_t)_y - \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \log s_{\theta,t}(x_t)_y \right) \right] + C
@@ -1713,12 +1740,50 @@ with the same $f(k, \mathbf{x}_0)$ defined in Step 1.
 
 While discrete diffusion and discrete flow matching share similar mathematical foundations, their primary difference lies in the time convention. In discrete diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. Discrete flow matching uses the exact opposite convention.
 
+#### Probability velocity field and reverse rate matrix
+
 We can perfectly translate between the two frameworks using a simple time reversal: $t_{\text{FM}} = 1 - t_{\text{DD}}$. Under this time change, the velocity field in flow matching directly corresponds to the entries of the reverse rate matrix in discrete diffusion:
+
 $$
 \begin{equation}
 u_{1-t}^{\text{FM}} = \dot{R}_t
 \end{equation}
 $$
+
+<details>
+<summary>Proof</summary>
+<div>
+
+We start from the infinitesimal reverse-time transition of the discrete diffusion process <span style="color: red">(**ref your eq**)</span>:
+
+$$
+\begin{equation}
+p(x_{t-\Delta t} = y \mid x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t)]_y + o(\Delta t)
+\end{equation}
+$$
+
+**Step 1: variable change $t' = 1 - t$.** We have $t = 1 - t'$, so $x_t = x_{1-t'}$ and $x_{t - \Delta t} = x_{1 - t' - \Delta t}$. The rate evaluates at $\dot{R}_{1-t'}$. The equation rewrites as:
+
+$$
+\begin{equation}
+p(x_{1-t'-\Delta t} = y \mid x_{1-t'}) = \mathbb{I}(y = x_{1-t'}) + \Delta t \, [\dot{R}_{1-t'}(x_{1-t'})]_y + o(\Delta t)
+\end{equation}
+$$
+
+**Step 2: identify the FM process.** Since $t_{\text{FM}} = 1 - t_{\text{DD}}$, we identify $x^{\text{FM}}_{t'} = x_{1-t'}$. We deduce $x^{\text{FM}}_{t' + \Delta t} = x_{1 - t' - \Delta t}$.
+
+Substituting directly into the equation above:
+
+$$
+\begin{equation}
+p(x^{\text{FM}}_{t' + \Delta t} = y \mid x^{\text{FM}}_{t'}) = \mathbb{I}(y = x^{\text{FM}}_{t'}) + \Delta t \, [\dot{R}_{1-t'}(x^{\text{FM}}_{t'})]_y + o(\Delta t)
+\end{equation}
+$$
+
+This is exactly the infinitesimal characterization of a CTMC with velocity field $u_{t'}^{\text{FM}} = \dot{R}_{1-t'}$. By uniqueness of the Kolmogorov forward equation for bounded generators, this fully determines the law of $x^{\text{FM}}$.
+
+</div>
+</details>
 
 #### Training
 
