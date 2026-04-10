@@ -18,7 +18,7 @@ export default defineConfig({
   //base: '/',
   integrations: [mdx(), sitemap(), typst({
     options: {
-      remPx: 14,
+      remPx: 14+100,
     },
     target: (id) => {
       console.debug(`Detecting ${id}`);
@@ -26,8 +26,9 @@ export default defineConfig({
       return "svg";
     },
     // === <img src="xxx.svg"> instead of inlined <svg> ===
-    emitSvg: true,
-    // emitSvgDir: ".astro/typst"
+    //emitSvg: true,
+    //emitSvgDir: ".astro/typst",
+    htmlMode: "text",
     // === Add non-system fonts here ===
     // fontArgs: [
     //   { fontPaths: ['/system/fonts', '/user/fonts'] },

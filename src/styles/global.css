@@ -350,3 +350,41 @@ figure {
 	font-weight: bold;
 	position: relative;
 }
+
+
+
+
+
+
+
+/* Center the display math */
+.typst-display-math {
+  margin: 1em auto;
+  text-align: center;
+}
+
+.typst-display-math>svg {
+  display: inline-block;
+}
+
+.typst-inline-math {
+  display: inline-block;
+}
+
+/* Ensure inline math SVGs are inline */
+.typst-inline-math>svg {
+  display: inline-block;
+  overflow: visible;
+}
+
+.typst-code-block {
+  font-size: 24px;
+  overflow-x: auto;
+}
+
+html, body {
+	scroll-padding-top: 20vh;
+	:target {
+		outline: 0.1px solid var(--accent);
+	}
+}

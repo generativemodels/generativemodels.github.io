@@ -16,12 +16,14 @@
     "@astrojs/rss": "^4.0.12",
     "@astrojs/sitemap": "^3.5.1",
     "@jsdevtools/rehype-toc": "^3.0.2",
-    "@myriaddreamin/typst-ts-node-compiler": "0.6.1-rc3",
+    "@myriaddreamin/typst-ts-node-compiler": "^0.7.0-rc2",
+    "@myriaddreamin/typst-ts-renderer": "^0.7.0-rc2",
+    "@myriaddreamin/typst.ts": "^0.7.0-rc2",
     "@types/jsdom": "^27.0.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "astro": "^5.13.5",
-    "astro-typst": "^0.12.1",
+    "astro-typst": "^0.12.3",
     "jsdom": "^27.0.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -33,4 +35,3 @@
     "sharp": "^0.34.2",
     "unified": "^11.0.5"
   }
-}

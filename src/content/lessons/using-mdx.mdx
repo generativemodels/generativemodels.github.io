@@ -6,26 +6,27 @@ heroImage: '../../assets/blog-placeholder-5.jpg'
 tags: ['draft']
 ---
 
-SYNTAX DEMO / HELPER
 
-(look at source for better understanding)
+## HTML Typst include
 
-## Latex-like with KaTeX
+https://1024th.top/posts/typst/typst-html-export
 
+import Test from "./ttypst.html.typ";
 
-inline $\frac{\mathbb{R}}{\pi}$ is ok
-
-(block, need multiple lines)
-
-$$
-\frac{\mathbb{R}}{\pi}
-$$
+<Test />
 
 
 
 ## Typst integration
 
 import T from '../../components/typst/TypstMath.astro'
+
+<T raw v="
+- math $a+b$ inline
+- and $ a+b $ spaced
+"/>
+
+
 
 Simple typst:
 
