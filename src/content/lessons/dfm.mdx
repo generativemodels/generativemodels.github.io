@@ -198,6 +198,8 @@ The sudoku has the advantage to be constrained spatially so S is fixed and it's 
 
 ### Discrete Flow Matching
 
+#### Setup: probability velocities
+
 In this section we adopt the Flow Matching convention: time goes from $t=0$ to $t=1$, the source distribution is $p_0$, and the target distribution is $p_1$.
 
 In Continuous Flow Matching, a central object is the *velocity field* $u: \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d$, that governs the generating process: samples are obtained as solutions at time $t=1$ of the ODE
@@ -251,20 +253,17 @@ $$
 The variable stays in state $\mathbf{x}$ with probability $h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
 We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**.
 
-**Proposition (Mass Conservation for Velocity Fields).**
-For the velocity field to preserve probability mass, it must satisfy:
+**Remark (Mass conservation for probability velocities).**
+The probability velocity $u$ must preserve probability mass: for TODO cite eq to define a valid probability, for every $t\in [0, 1]$ $u_$ must satisfy:
 1. **Positivity:** $u_t(\mathbf{x})_{\mathbf{y}} \ge 0$ for all $\mathbf{y} \neq \mathbf{x}$.
-2. **Normalization:** $\sum_{\mathbf{y} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} = 0$ for all $\mathbf{x} \in \mathcal{S}$ and $t \in [0,1]$.
+2. **Normalization:** $\sum_{\mathbf{y} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} = 0$ for all $\mathbf{x} \in \mathcal{S}$
+
+Hence, for each state $\mathbf{x}$,
+$u_t(\mathbf{x})_{\mathbf{x}} = -\sum_{\mathbf{y} \neq \mathbf{x}} u_t(\mathbf{x})_{\mathbf{y}}$.
 
 <details>
 <summary>Justification</summary>
 <div>
-Hence, for each state $\mathbf{x}$,
-$$
-\begin{equation}
-u_t(\mathbf{x})_{\mathbf{x}} = -\sum_{\mathbf{y} \neq \mathbf{x}} u_t(\mathbf{x})_{\mathbf{y}}.
-\end{equation}
-$$
 Positivity guarantees nonnegative off-diagonal transition probabilities:
 $$
 \begin{equation}
@@ -281,23 +280,19 @@ $$
 </div>
 </details>
 
-The relationship between this velocity field and the marginal probability path is formalized by the Kolmogorov Equation.
 
-**Theorem (Kolmogorov Equation)**:
-The vector field $u$ generates $p_t$ if and only if for all $\mathbf{x}, \mathbf{y} \in \mathcal{S}$:
+In Continuous Flow Matching, we have the guarantee that a velocitiy field $u_t$ generates a probability path $(p_t)$ if they satisfy the continuity equation $\partial_t p_t + \nabla \cdot (u_t p_t) = 0$.
+In Discrete Flow Matching, we also have such a tool: the Kolmogorov Equation.
+
+**Proposition (Kolmogorov Equation)**:
+The probability velocity $u_t$ generates $p_t$ if and only if for all $\mathbf{x}, \mathbf{y} \in \mathcal{S}$
 $$
 \begin{equation}
 \frac{d}{dt} p_t(\mathbf{y}) = \sum_{\mathbf{x} \in \mathcal{S}} u_{t}(\mathbf{x})_{\mathbf{y}} \, p_t(\mathbf{x})
 \end{equation}
 $$
 
-This directly parallels continuous flow matching: there, the deterministic ODE induces the continuity equation
-$$
-\begin{equation}
-\partial_t p_t + \nabla \cdot (u_t p_t) = 0.
-\end{equation}
-$$
-In discrete spaces, the Kolmogorov equation plays the same role and governs how probability mass moves under the velocity field.
+<span style="color: red"> XXX interpretation </span>
 
 <details>
 <summary>Proof</summary>
