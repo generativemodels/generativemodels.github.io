@@ -404,50 +404,62 @@ $$
 
 <DFMSampling client:load />
 
-#### Modelling Choices
+<span style="color: red"> Discuss this animation </span>
 
-Similarly to continuous flow matching, there are infinitely many possible choices for the probability path $\{p_t\}$. However, because the target data distribution $p_1$ is highly complex and unknown, defining a global probability path and its associated velocity field directly is completely intractable.
+We are now ready to build the probability path of Discrete Flow Matching!
 
-To solve this, we borrow the core trick from Conditional Flow Matching (CFM): we first define conditional probability paths for which the exact conditional velocity is known. Then, we show the resulting global velocity (obtained by marginalizing the conditional velocities) is guaranteed to generate a probability path that transports $p_0$ to $p_1$. All that's left is to learn it as a simple conditional expectation from data, which neural networks know how to do!
+#### Building the probability path
 
-To put this into practice, we define the conditioning variable $\mathbf{z} \in \mathcal{Z}^S$ to be either:
+Similarly to continuous flow matching, there are infinitely many possible choices for the probability path $(p_t)$.
+To build one, we borrow the core trick from Conditional Flow Matching (CFM): we first define **conditional** probability paths for which the exact conditional velocity is known.
+Then, we show that the resulting global velocity (obtained by marginalizing the conditional velocities) is guaranteed to generate a probability path that transports $p_0$ to $p_1$. All that's left is to learn it as a simple conditional expectation from data, which neural networks know how to do!
+
+The conditioning variable $\mathbf{z} \in \mathcal{Z}^S$ can be either:
 * **A target sample:** $\mathbf{z} = \mathbf{x}_1$ (useful when the source $p_0$ is a known, simple distribution like uniform or mask).
 * **A source-target pair:** $\mathbf{z} = (\mathbf{x}_0, \mathbf{x}_1)$ (useful when transforming between two arbitrary datasets).
 
-For all conditioning variables $\mathbf{z}$ considered below, we assume a fully factorized conditional probability path:
+For illustration, we will use $\mathbf{z} = \mathbf{x}_1$.
+Having chosen $\mathbf{z}$, we chose a conditional probability path.
+In order to have factorized velocities (simpler to learn) as per <span style="color:red"> cite Factorization proposition</span>, we pick the conditional path to be factorized:
 $$
-\begin{equation}
-p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | z^j)
-\end{equation}
-$$
-Concretely, this means that to sample a sequence $\mathbf{x} \sim p_t( \cdot | \mathbf{z})$, we can just sample each token $x^j$ independently from its token-wise distribution $q_t( \cdot | z^j)$. This factorization is what allows us to define the conditional probability $q_t$ and the conditional velocity $u_t$ on a purely per-token basis.
-
-Below are the explicit formulations for three common setups:
-
-**Masked Source**
-
-At time $t$, the token is the target $x_1^i$ with probability $t$, or it remains the mask token $m$ with probability $1 - t$:
-$$
-\begin{equation}
+\begin{align}
+& p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | z^j) \\
+&\text{with} \quad
 q_t(x^i | x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = m)
-\end{equation}
+\end{align}
 $$
+This means that at time $t$, the $i$-th token $x^i_t$ equals the target token $x_1^i$ with probability $t$, or it remains the mask token $m$ with probability $1 - t$.
+The interest of this conditional probability path is that we can derive the associated probability velocity.
 
-The conditional velocity field driving this transition is:
+**Proposition (Conditional velocity)**:
+The conditional velocity driving the transition <span style="color:red"> XXX eqref </span> is:
 $$
 \begin{equation}
 u_t(x^i | x_1^i)_v = \begin{cases}
-\dfrac{1}{1-t} & \text{if } v = x_1^i \text{ and } x^i = m, \\[0.3cm]
--\dfrac{1}{1-t} & \text{if } v = x^i = m, \\[0.3cm]
+\frac{1}{1-t} & \text{if } v = x_1^i \text{ and } x^i = m, \\[0.3cm]
+-\frac{1}{1-t} & \text{if } v = x^i = m, \\[0.3cm]
 0 & \text{otherwise}.
 \end{cases}
 \end{equation}
 $$
 
-Remember that $u$ is a rate of change of probability: $u_t(x^i \mid x_1^i)_v$ quantifies the instantaneous probability flow from the current token $x^i$ toward token $v$. In this masked-source setting, the flow progressively removes mass from $m$ and transfers it to the target token $x_1^i$.
+Remember that $u$ is a rate of change of probability: $u_t(x^i | x_1^i)_v$ quantifies the instantaneous probability flow from the current token $x^i$ toward token $v$.
+In the masked-source setting, the flow progressively removes mass from $m$ and transfers it to the target token $x_1^i$.
+Concretely, if the vocabulary has  3 tokens $\{1, 2, 3\}$ and a mask token $m$, and if the conditioning target is $x_1^i = 2$:
+
+$$
+u_t(x^i | x_1^i = 2)_v = \begin{array}{c|cccc}
+\begin{matrix} x^i  \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & 1 & 2 & 3 & m \\
+\hline
+1 & 0 & 0 & 0 & 0 \\[0.3cm]
+2 & 0 & 0 & 0 & \dfrac{1}{1-t} \\[0.3cm]
+3 & 0 & 0 & 0 & 0 \\[0.3cm]
+m & 0 & 0 & 0 & -\dfrac{1}{1-t}
+\end{array}
+$$
 
 <details>
-<summary>Verification via the Kolmogorov Equation</summary>
+<summary>Proof of Proposition XXX TODO</summary>
 <div>
 
 We verify the validity of our conditional velocity field by ensuring it aligns with the defined probability path via the Kolmogorov equation. For a token at position $i$, we need to check:
@@ -487,21 +499,9 @@ This matches the initial continuous-time derivative perfectly, confirming that o
 </div>
 </details>
 
-Concrete example with a vocabulary of 3 tokens $\{1, 2, 3\}$ and a mask token $m$, where the target is $x_1^i = 2$:
-
-$$
-u_t(x^i | x_1^i = 2)_v = \begin{array}{c|cccc}
-\begin{matrix} v \\[-2pt] \diagdown \\[-2pt] x^i \end{matrix} & 1 & 2 & 3 & m \\
-\hline
-1 & 0 & 0 & 0 & 0 \\[0.3cm]
-2 & 0 & 0 & 0 & \dfrac{1}{1-t} \\[0.3cm]
-3 & 0 & 0 & 0 & 0 \\[0.3cm]
-m & 0 & 0 & 0 & -\dfrac{1}{1-t}
-\end{array}
-$$
 
 <details>
-<summary>Other Modelling Choices</summary>
+<summary>Conditional velocities for source target conditioning, and uniform source</summary>
 <div>
 
 **Source-Target Conditioning**
@@ -551,7 +551,7 @@ $$
     title="Discrete Flow Matching Live Figure"
     height="570px"/>
 
-#### From Conditional to Unconditional Velocity
+#### From conditional to unconditional velocity
 
 Now that we have defined our conditional probability paths and velocities, we need to connect them back to the global, unconditional process.
 
