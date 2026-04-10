@@ -190,7 +190,7 @@ In this post, we will use the mask distribution ($p_{\text{mask}}$) as our runni
 
 As a first example, consider generating Sudoku grids. The vocabulary is $\mathcal{V} = \{1, 2, \ldots, 9, m\}$, and the sequence length is 81, as there are 81 cases in a grid.
 Discrete flow matching and diffusion start from a sample the source distribution, i.e. a fully masked grid here.
-The model then iteratively fills this grid, step-by-step, until it reaches a sample from the target distribution (the distribution of all valid, completed Sudoku boards).
+The model then iteratively fills this grid, step-by-step, finally reaching a sample from the target distribution (a valid, completed Sudoku board).
 
 {/* Maybe add a dummy simulation of a sudoku that fills with x0, xt and x1, to draw a sudoku from pt = fill a sudoku from 0 to t?
 The sudoku has the advantage to be constrained spatially so S is fixed and it's easy to make consistent simulations */}

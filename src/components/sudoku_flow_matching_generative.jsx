@@ -148,7 +148,7 @@ export default function App() {
 
   const label = t === 0 ? "x\u2080  \u2014 fully masked"
     : t >= 0.995 ? "x\u2081  \u2014 generated grid"
-    : `x\u209C  \u2014 t = ${t.toFixed(2)}`;
+      : `x\u209C  \u2014 t = ${t.toFixed(2)}`;
 
   return (
     <div style={{
@@ -238,7 +238,7 @@ export default function App() {
         boxShadow: "0 0 0 1px rgba(167,139,250,0.1), 0 24px 80px rgba(0,0,0,0.4)",
       }}>
         <svg width={GRID_SIZE} height={GRID_SIZE} style={{ position: "absolute", top: 0, left: 0 }}>
-          {[0,1,2].map(br => [0,1,2].map(bc => {
+          {[0, 1, 2].map(br => [0, 1, 2].map(bc => {
             const x = bc * (CELL * 3 + GAP * 2 + BOX_GAP);
             const y = br * (CELL * 3 + GAP * 2 + BOX_GAP);
             return <rect key={`${br}-${bc}`} x={x} y={y}
@@ -275,7 +275,7 @@ export default function App() {
       <div style={{ display: "flex", gap: 32, justifyContent: "center" }}>
         {[
           { label: "Masked", value: masked, color: "#82b4ff" },
-          { label: "Revealed", value: revealed, color: "#7defa0" },
+          { label: "Generated", value: revealed, color: "#7defa0" },
           { label: "Total", value: total, color: "rgba(255,255,255,0.4)" },
         ].map(s => (
           <div key={s.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
@@ -330,7 +330,7 @@ export default function App() {
       <div style={{ display: "flex", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
         {[
           { color: "rgba(130,180,255,0.5)", label: "Masked [M]" },
-          { color: "#7defa0", label: "Revealed" },
+          { color: "#7defa0", label: "Generated" },
         ].map(it => (
           <div key={it.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <div style={{ width: 10, height: 10, borderRadius: 3, background: it.color }} />
