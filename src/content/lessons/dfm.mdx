@@ -169,13 +169,18 @@ Like its continuous analog, discrete flow matching aims at mapping a simple sour
 To do so, it creates a *probability path* of intermediate distributions $(p_t)_{t \in [0, 1]}$, that progessively evolves from $p_0$ to $p_1$.
 
 Here, we will deal with discrete data: the space on which the probability distributions are defined is $\mathcal{S} := \mathcal{V}^S$, the space of sequences of length $S \in \mathbb{N}$ over a given vocabulary $\mathcal{V}$.
+A sequence $x$ in $\mathcal{S}$ is denoted as $\mathbf{x} = x^1 \dots x^S$, the $x^i$'s being called *tokens*.
+In the vocabulary, we add a special token: the mask token, denoted as $m$.
 
 
 The source distribution $p_0$ acts as our starting point for generation and is typically chosen to be either:
-- **Mask distribution ($p_{\text{mask}}$):** All sequences start entirely filled with the mask token $m$.
+- **Mask distribution ($p_{\text{mask}} := \delta_{m\ldots m}$):** All sequences start entirely filled with the mask token $m$.
 - **Uniform distribution ($p_{\text{unif}}$):** All tokens in the starting sequence are sampled uniformly across the vocabulary $\mathcal{V}$.
 
-In this post, we will use the mask distribution ($p_{\text{mask}}$) as our running example. For instance, if our goal is generating Sudoku grids, we start from a fully-masked grid sampled from $p_0 = p_{\text{mask}}$. The model then iteratively fills this grid, step-by-step, until it matches the target distribution $p_1$, which represents the ideal space of all valid, completed Sudoku boards.
+In this post, we will use the mask distribution ($p_{\text{mask}}$) as our running example; adaptations in the case of other distributions are available as toggleable content.
+
+As a first example of discrete flow matching, consider generating Sudoku grids. The vocabulary is $\mathcal{V} = \{1, 2, \ldots, 9, m\}$, and the sequence length is 81.
+Discrete flow matching  starts from a sample from $p_0 = p_{\text{mask}}$, i.e. a fully masked grid. The model then iteratively fills this grid, step-by-step, until it reaches a sample from the target distribution $p_1$ (the distribution of all valid, completed Sudoku boards).
 
 {/* Maybe add a dummy simulation of a sudoku that fills with x0, xt and x1, to draw a sudoku from pt = fill a sudoku from 0 to t?
 The sudoku has the advantage to be constrained spatially so S is fixed and it's easy to make consistent simulations */}
