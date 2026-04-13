@@ -1695,6 +1695,185 @@ which is exactly the statement in the proposition above.
 </div>
 </details>
 
+<table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+  <colgroup>
+    <col style={{ width: '50%' }} />
+    <col style={{ width: '50%' }} />
+  </colgroup>
+  <thead>
+    <tr>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous Diffusion</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Masked Discrete Diffusion</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    {/* ASPECT 1 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', borderTop: '1px solid #ccc', textAlign: 'center' }}>
+        <strong>1. Final target distribution after noising</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $x_1 \sim \mathcal{N}(0, I)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $x_1 \sim p_{\mathrm{mask}}$
+      </td>
+    </tr>
+
+    {/* ASPECT 2 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>2. Local view of the forward process</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $q(x_{t+\delta t} \mid x_t) = \mathcal{N}\!\left(x_t + f_t(x_t)\delta t,\; g_t^2 \delta t\, I\right)$ <br />
+        $q(x_{t+\delta t} \mid x_t) = \mathcal{N}\!\left(\sqrt{1-\beta_t \delta t}\,x_t,\; \beta_t \delta t\, I\right)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $q(x_{t+\delta t} \mid x_t) = \mathrm{Cat}\!\left(x_{t+\delta t};\, e_{x_t} + \delta t\, \dot{Q}_t(x_t) + o(\delta t)\right)$ <br />
+        $q(x_{t+\delta t} \mid x_t) = \mathrm{Cat}\!\left(x_{t+\delta t};\, (1-\beta_t \delta t)e_{x_t} + \beta_t \delta t\, e_m\right)$
+      </td>
+    </tr>
+
+    {/* ASPECT 3 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>3. Big jump view of the forward process</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $q(x_t \mid x_0) = \mathcal{N}\!\left(m_t x_0,\; \sigma_t^2 I\right)$ <br />
+        $m_t = \exp\!\left(\int_0^t f_s\,ds\right)$ <br />
+        $\sigma_t^2 = \int_0^t g_s^2 \exp\!\left(2\int_s^t f_r\,dr\right) ds$ <br />
+        $q(x_t \mid x_0) = \mathcal{N}\!\left(\sqrt{\alpha_t}\,x_0,\; (1-\alpha_t)I\right)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $q(x_t \mid x_0) = \mathrm{Cat}\!\left(x_t;\, Q_t x_0\right)$ <br />
+        $Q_t = \mathcal{T}\exp\!\left(\int_0^t \dot{Q}_s\,ds\right)$ <br />
+        $q(x_t \mid x_0) = \mathrm{Cat}\!\left(x_t;\, \alpha_t e_{x_0} + (1-\alpha_t)e_m\right)$
+      </td>
+    </tr>
+
+    {/* ASPECT 4 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>4. Forward noising equation</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $dX_t = f_t(X_t)\,dt + g_t\,dW_t$ <br />
+        Euler-Maruyama: $x_{t+\delta t} = x_t + f_t(x_t)\delta t + g_t\sqrt{\delta t}\,\varepsilon_t,\quad \varepsilon_t \sim \mathcal{N}(0,I)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $x_{t+\delta t} \sim \mathrm{Cat}\!\left(e_{x_t} + \delta t\, \dot{Q}_t(x_t) + o(\delta t)\right)$
+      </td>
+    </tr>
+
+    {/* ASPECT 5 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>5. Sandwich view</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $q(x_{t-\delta t} \mid x_t, x_0) = \mathcal{N}\!\left(\tilde{\mu}(x_0,t,x_t),\; \tilde{\beta}_t I\right)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $q(x_{t-\delta t} \mid x_t, x_0) = \mathrm{Cat}\!\left(x_{t-\delta t};\, e_{x_t} + \delta t\, R_t^{x_0}(x_t) + o(\delta t)\right)$
+      </td>
+    </tr>
+
+    {/* ASPECT 6 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>6. Learnable backward process</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $x_1 \sim \mathcal{N}(0, I)$ <br />
+        $p_{\theta,t}(x_{t-\delta t} \mid x_t) = \mathcal{N}\!\left(\mu_{\theta,t}(x_t),\; \sigma_t^2 I\right)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $x_1 \sim p_{\mathrm{mask}}$ <br />
+        $p_{\theta,t}(x_{t-\delta t} \mid x_t) = \mathrm{Cat}\!\left(x_{t-\delta t};\, e_{x_t} + \delta t\, \dot{R}_{\theta,t}(x_t) + o(\delta t)\right)$
+      </td>
+    </tr>
+
+    {/* ASPECT 7 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>7. Reverse sampling equation</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $dX_t = \left(f_t(X_t) - \dfrac{1}{2} g_t^2 \nabla \log p_{\theta,t}(X_t)\right)dt$ <br />
+        Euler: $x_{t-\delta t} = x_t - \delta t \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_{\theta,t}(x_t)\right)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $x_{t-\delta t} \sim \mathrm{Cat}\!\left(x_{t-\delta t};\, e_{x_t} + \delta t\, v_{\theta,t}(x_t) + o(\delta t)\right)$ <br />
+        $[v_{\theta,t}(x_t)]_y = [\dot{Q}_t(x_t)]_y\,\dfrac{p_{\theta,t}(y)}{p_{\theta,t}(x_t)} \quad (y \neq x_t)$
+      </td>
+    </tr>
+
+    {/* ASPECT 8 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>8. Concrete score</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $s_{\theta,t}(x_t) = \nabla \log p_{\theta,t}(x_t) = -\dfrac{\varepsilon_{\theta,t}(x_t)}{\sqrt{1-\alpha_t}}$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $s_{\theta,t}(x_t)_y = \dfrac{p_{\theta,t}(y)}{p_{\theta,t}(x_t)} = \dfrac{[\dot{R}_{\theta,t}(x_t)]_y}{[\dot{Q}_t(x_t)]_y}$
+      </td>
+    </tr>
+
+    {/* ASPECT 9 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>9. Training loss $\mathcal{L} = \mathrm{KL}\!\left(q(x_{0:T}),\, p_\theta(x_{0:T})\right)$</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $\mathcal{L} \propto \left\| \tilde{\mu}(x_0,t,x_t) - \mu_{\theta,t}(x_t) \right\|^2$ <br />
+        $\mathcal{L} \propto \left\| \varepsilon - \varepsilon_{\theta,t}(x_t) \right\|^2$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $\mathcal{L} = \mathrm{KL}\!\left(R_t^{x_0}(x_t),\, \dot{R}_{\theta,t}(x_t)\right)$ <br />
+        $\mathcal{L} = -\sum_{i=1}^S \mathbf{1}(x_t^i = m)\,\dfrac{1}{t}\,\log \big[D_{\theta,t}^i(x_t)\big]_{x_0^i}$
+      </td>
+    </tr>
+
+    {/* ASPECT 10 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>10. What to fit?</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '2px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        Predict the noise $\varepsilon_{\theta,t}(x_t)$, then recover $\mu_{\theta,t}(x_t)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '2px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        Predict the denoiser $D_{\theta,t}^i(x_t)$, then recover $\dot{R}_{\theta,t}(x_t)$
+      </td>
+    </tr>
+
+  </tbody>
+</table>
 
 {/*
 #### Complement: Equivalence Between Masked Diffusion Models and Any-Order Autoregressive Models
