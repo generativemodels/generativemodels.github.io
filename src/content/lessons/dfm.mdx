@@ -524,6 +524,18 @@ u_t(x^i | x_0^i, x_1^i)_v = \begin{cases}
 \end{equation}
 $$
 
+In the source-target setting, the flow moves mass directly from the source token $x_0^i$ toward the target token $x_1^i$, with no mask involved. All rows except the source row are identically zero — once a token is already at a state other than $x_0^i$, no transition occurs. Concretely, if the vocabulary has 3 tokens $\{1, 2, 3\}$, and $x_0^i = 1$, $x_1^i = 2$:
+
+$$
+u_t(x^i | x_0^i = 1,\, x_1^i = 2)_v = \begin{array}{c|ccc}
+\begin{matrix} x^i \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & 1 & 2 & 3 \\
+\hline
+1 & -\dfrac{1}{1-t} & \dfrac{1}{1-t} & 0 \\[0.3cm]
+2 & 0 & 0 & 0 \\[0.3cm]
+3 & 0 & 0 & 0
+\end{array}
+$$
+
 **Uniform Source**
 
 When $p_0$ is the uniform distribution, we can only condition on the target $z^i = x_1^i$. At time $t$, the token is the target $x_1^i$ with probability $t + (1 - t) \frac{1}{|\mathcal{V}|}$, or is drawn uniformly from other tokens in the vocabulary $\mathcal{V}$ with probability $(1 - t) \frac{1}{|\mathcal{V}|}$:
@@ -542,6 +554,18 @@ u_t(x^i | x_1^i)_v = \begin{cases}
 0 & \text{otherwise}
 \end{cases}
 \end{equation}
+$$
+
+Unlike the mask source, every non-target token can transition toward $x_1^i$, since the uniform source places initial mass everywhere. Concretely, if the vocabulary has 3 tokens $\{1, 2, 3\}$ and the conditioning target is $x_1^i = 2$:
+
+$$
+u_t(x^i | x_1^i = 2)_v = \begin{array}{c|ccc}
+\begin{matrix} x^i \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & 1 & 2 & 3 \\
+\hline
+1 & -\dfrac{1}{1-t} & \dfrac{1}{1-t} & 0 \\[0.3cm]
+2 & 0 & 0 & 0 \\[0.3cm]
+3 & 0 & \dfrac{1}{1-t} & -\dfrac{1}{1-t}
+\end{array}
 $$
 
 </div>
@@ -564,18 +588,46 @@ $$
 where $\pi(\mathbf{z})$ is the distribution over the conditioning variable $\mathbf{z}$ used during training.
 {/* Maybe =choice to be consistent*/}.
 
-By construction, this is a valid probability path from $p_0$ to $p_1$. Indeed, using the boundary conditions of each conditional path,
+We can show that this is a valid probability path from $p_0$ to $p_1$.
+
+<details>
+<summary>Proof</summary>
+<div>
+
+We verify the two boundary conditions separately:
+
+**At $t=0$**
+Recall the conditional path with $\mathbf{z} = \mathbf{x}_1$ and mask source:
 $$
-\begin{equation}
-p_{t=0}(\mathbf{x}) = \sum_{\mathbf{z}} p_0(\mathbf{x} | \mathbf{z})\,\pi(\mathbf{z}) = p_0(\mathbf{x}),
-\end{equation}
+q_0(x^i \mid x_1^i) = (1-0)\,\mathbb{I}(x^i = m) = \mathbb{I}(x^i = m).
+$$
+The value of $x_1^i$ plays no role, so $p_0(\mathbf{x} \mid \mathbf{z})$ does not depend on $\mathbf{z}$:
+$$
+p_0(\mathbf{x} \mid \mathbf{z}) = \prod_{j=1}^S \mathbb{I}(x^j = m) = p_{\mathrm{mask}}(\mathbf{x}) = p_0(\mathbf{x}).
+$$
+Marginalizing over $\mathbf{z}$ then trivially gives:
+$$
+p_{t=0}(\mathbf{x}) = \sum_{\mathbf{z}} p_0(\mathbf{x} \mid \mathbf{z})\,\pi(\mathbf{z}) = p_0(\mathbf{x})\sum_{\mathbf{z}} \pi(\mathbf{z}) = p_0(\mathbf{x}).
 $$
 
+**At $t=1$**
+We have:
 $$
-\begin{equation}
-p_{t=1}(\mathbf{x}) = \sum_{\mathbf{z}} p_1(\mathbf{x} | \mathbf{z})\,\pi(\mathbf{z}) = p_1(\mathbf{x}).
-\end{equation}
+q_1(x^i \mid x_1^i) = \mathbb{I}(x^i = x_1^i)
+\implies
+p_1(\mathbf{x} \mid \mathbf{z} = \mathbf{x}_1) = \prod_{j=1}^S \mathbb{I}(x^j = x_1^j) = \delta_{\mathbf{x}_1}(\mathbf{x}).
 $$
+Since $\pi(\mathbf{z}) = p_{\mathrm{data}}(\mathbf{x}_1)$,
+the delta collapses the sum directly:
+$$
+p_{t=1}(\mathbf{x})
+= \sum_{\mathbf{x}_1} \delta_{\mathbf{x}_1}(\mathbf{x})\, p_{\mathrm{data}}(\mathbf{x}_1)
+= p_{\mathrm{data}}(\mathbf{x})
+= p_1(\mathbf{x}).
+$$
+
+</div>
+</details>
 
 Just as the marginal probability is an average of conditional probabilities, the marginal velocity field $u_t(\mathbf{x})_{\mathbf{y}}$ can be expressed as the expectation of the conditional velocity over the conditioning variable $\mathbf{z}$:
 $$
@@ -641,7 +693,21 @@ So $u_t$ satisfies the Kolmogorov equation for $p_t$ and therefore generates $p_
 
 {/* If needed we can add the same figure u,ucond,p,pcond as the one in the CFM blogpost, because it's still valid.*/}
 
-This is the exact same logic as in continuous FM: once the target field is identified as a conditional expectation, learning reduces to a regression problem. In continuous spaces, this is typically introduced via the $L^2$ projection view. In discrete spaces, since we compare nonnegative rate vectors that behave like local probabilities, a KL-style objective is more natural. More generally, this conditional expectation is the minimizer for any Bregman divergence, and KL is the Bregman choice adapted to our setting.
+This is the exact same logic as in continuous FM: once the target field is identified as a
+conditional expectation, learning reduces to a regression problem. In continuous spaces, this is typically introduced via the $L^2$ projection view, the marginal velocity is the unique minimizer:
+$$
+\begin{equation}
+u_t(\mathbf{x}) = \underset{v}{\operatorname{argmin}}\ \mathbb{E}\!\left[\left\|u_t(\mathbf{x} \mid \mathbf{z}) - v\right\|^2 \,\Big|\, X_t = \mathbf{x}\right]
+\end{equation}
+$$
+In discrete spaces, since we compare nonneg­ative rate vectors that behave like local probabilities, a KL-style objective is more natural.
+More generally, this conditional expectation is the minimizer
+for any Bregman divergence, and KL is the Bregman choice adapted to our setting:
+$$
+\begin{equation}
+u_t(\mathbf{x}) = \underset{v}{\operatorname{argmin}}\ \mathbb{E}\!\left[\mathrm{KL}\left(u_t(\mathbf{x} \mid \mathbf{z}),\, v\right) \,\Big|\, X_t = \mathbf{x}\right]
+\end{equation}
+$$
 
 **Learning with Conditional Velocity Fields**
 
@@ -679,7 +745,7 @@ $$
 
 In discrete spaces, directly predicting a continuous vector field or instantaneous transition rates can feel unintuitive. Instead, a much more natural object to learn is a denoiser.
 
-A denoiser simply observes the current noisy, corrupted, or partially masked sequence $\mathbf{x}_t$ at time $t$ and attempts to predict the true, clean target token $X_1^i$ for each position $i$. We denote this learned neural network distribution as $P_{\theta,t}(X_1^i | \mathbf{x})$, also noted as $D_{\theta,t}^i(\mathbf{x})$.
+A denoiser simply observes the current noisy, corrupted, or partially masked sequence $\mathbf{x}_t$ at time $t$ and attempts to predict the true, clean target token $X_1^i$ for each position $i$. We denote this learned neural network distribution as $P_{\theta,t}(X_1^i \mid X_t = \mathbf{x})$, also noted as $D_{\theta,t}^i(\mathbf{x})$.
 
 We can directly connect the denoiser and velocity through this simple formula:
 
@@ -689,20 +755,58 @@ u_t^i(\mathbf{x})_v = \frac{1}{1 - t} \left( \mathbb{P}(X_1^i = v | X_t = \mathb
 \end{equation}
 $$
 
+<details>
+<summary>Proof</summary>
+<div>
+
+In a general configuration, the marginal velocity is the conditional expectation of the conditional velocity:
+$$
+\begin{equation}
+u_t^i(\mathbf{x})_v = \mathbb{E}_{x_1^i \sim \mathbb{P}(X_1^i \mid \mathbf{x})}\!\left[u_t^i(x^i \mid x_1^i)_v\right].
+\end{equation}
+$$
+We now evaluate this expectation explicitly using the conditional velocity for the mask source
+<span style="color: red">cite eq</span>:
+$$
+\begin{equation}
+u_t^i(x^i \mid x_1^i)_v = \frac{1}{1-t}\,\mathbb{I}(x^i = m)\left(\mathbb{I}(v = x_1^i) - \mathbb{I}(v = m)\right).
+\end{equation}
+$$
+
+**Case 1: $x^i \neq m$ (token already unmasked).**
+The indicator $\mathbb{I}(x^i = m) = 0$, so $u_t^i(x^i \mid x_1^i)_v = 0$ for all $x_1^i$.
+The expectation vanishes, and indeed the target formula also gives zero since
+$\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x}) = \mathbb{I}(v = x^i)$ (the clean token is already revealed).
+
+**Case 2: $x^i = m$ (token is masked).**
+Taking the expectation over $x_1^i$:
+$$
+\begin{align}
+u_t^i(\mathbf{x})_v
+&= \mathbb{E}_{x_1^i}\!\left[\frac{1}{1-t}\left(\mathbb{I}(v = x_1^i) - \mathbb{I}(v = m)\right)\right] \\
+&= \frac{1}{1-t}\left(\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x}) - \mathbb{I}(v = m)\right) \\
+&= \frac{1}{1-t}\left(\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x}) - \mathbb{I}(v = x^i)\right),
+\end{align}
+$$
+where the last equality uses $x^i = m$. Both cases match the claimed formula.
+
+</div>
+</details>
+
 Because the term $\mathbb{I}(v = x^i)$ is a known constant given the current state, learning the velocity field $u$ is mathematically exactly equivalent to learning the denoiser probability $\mathbb{P}(X_1^i = v | X_t = \mathbf{x})$.
 
 Consequently, we can train the denoiser directly. Using the KL divergence between the true clean token distribution and the learned one, the loss simplifies to the standard cross-entropy:
 
 $$
 \begin{equation}
-L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}) \right]
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i \mid X_t = \mathbf{x}) \right]
 \end{equation}
 $$
 
 In the specific context of masked diffusion, we usually restrict the learning process to predict only the tokens that are currently masked. Consequently, the loss is evaluated exclusively on these masked positions and scaled by the appropriate transition rate, becoming:
 $$
 \begin{equation}
-L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i : x_t^i = m} \frac{1}{1-t} \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}) \right]
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i : x_t^i = m} \frac{1}{1-t} \log P_{\theta,t}(X_1^i = x_1^i \mid X_t = \mathbf{x}) \right]
 \end{equation}
 $$
 
