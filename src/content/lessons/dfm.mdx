@@ -1485,14 +1485,13 @@ $$
 \end{align}
 $$
 
-Let $\Delta t = 1/T$, $t = j/T$, and $s = (j-1)/T$. We denote the token transition rate vectors of the denoiser forward process and the reverse model as $\dot{R}_t(x_t | x_0)$ and $\dot{R}_{\theta,t}(x_t)$ respectively. For a small time step $\Delta t$, the probability of transitioning to a token $y \in \mathcal{V} \cup \{m\}$ is approximated by:
+Let $\Delta t = 1/T$, $t = j/T$, and $s = (j-1)/T$. For a small time step $\Delta t$, the probability of transitioning to a token $y \in \mathcal{V} \cup \{m\}$ is approximated by (according to <span style="color: red"> cite eq </span> and <span style="color: red"> cite eq </span>):
 $$
 \begin{align}
     q(y | x_t, x_0) &\approx \mathbb{I}(y = x_t) + \Delta t [\dot{R}_t(x_t | x_0)]_y \\
     p_\theta(y | x_t) &\approx \mathbb{I}(y = x_t) + \Delta t [\dot{R}_{\theta,t}(x_t)]_y
 \end{align}
 $$
-where $[\dot{R}(x)]_y \geq 0$ for $y \neq x$, and the diagonal entries ensure normalization: $[\dot{R}(x)]_x = - \sum_{y \neq x} [\dot{R}(x)]_y$.
 
 We expand the KL divergence term inside the sum by summing over the vocabulary:
 $$
@@ -1693,7 +1692,7 @@ $$
 <details>
 <summary>Concrete Score Derivation</summary>
 <div>
-Consider the KL-derived loss:
+Consider the KL-derived loss: <span style="color: red"> cite eq </span>
 $$
 \begin{aligned}
 L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \left[ \sum_{y \neq x_t} \left( [\dot{R}_{\theta,t}(x_t)]_y - [\dot{R}_t(x_t | x_0)]_y \log [\dot{R}_{\theta,t}(x_t)]_y \right) \right]
@@ -1701,19 +1700,11 @@ L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \l
 \begin{equation} \end{equation}
 $$
 
-To express the true denoiser reverse rate, apply Bayes' theorem to $x_t \to x_s$ conditioned on $x_0$:
+To express the true denoiser reverse rate, we apply Bayes' theorem to $x_t \to x_s$ conditioned on $x_0$, a similar argument as in the proof of <span style="color: red"> cite eq </span>. We have:
 $$
 \begin{equation}
-q(x_s = y | x_t, x_0) = \frac{q(x_t | x_s = y, x_0)  q(x_s = y | x_0)}{q(x_t | x_0)}
+\dot{R}_t(x_t | x_0)_y = [\dot{Q}_t(x_t)]_y \frac{p_t(y|x_0)}{p_t(x_t|x_0)}
 \end{equation}
-$$
-
-With $q(x_t | x_s = y) \approx \Delta t [\dot{Q}_t(x_t)]_y$ and $q(x_s=y|x_0) \approx p_t(y|x_0)$:
-$$
-\begin{align}
-\Delta t [\dot{R}_t(x_t | x_0)]_y &\approx \Delta t [\dot{Q}_t(x_t)]_y  \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \\
-\implies [\dot{R}_t(x_t | x_0)]_y &= [\dot{Q}_t(x_t)]_y \frac{p_t(y|x_0)}{p_t(x_t|x_0)}
-\end{align}
 $$
 
 Substitute $[\dot{R}_{\theta,t}(x_t)]_y = [\dot{Q}_t(x_t)]_y s_{\theta,t}(x_t)_y$ and the expression above:
@@ -2081,15 +2072,16 @@ with the same $f(k, \mathbf{x}_0)$ defined in Step 1.
 
 While discrete diffusion and discrete flow matching share similar mathematical foundations, their primary difference lies in the time convention. In discrete diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. Discrete flow matching uses the exact opposite convention.
 
-#### Probability velocity field and reverse rate matrix
 
-We can perfectly translate between the two frameworks using a simple time reversal: $t_{\text{FM}} = 1 - t_{\text{DD}}$. Under this time change, the velocity field in flow matching directly corresponds to the entries of the reverse rate matrix in discrete diffusion:
+We can perfectly translate between the two frameworks using a simple time reversal: $t_{\text{FM}} = 1 - t_{\text{DD}}$. Concretely, if $(x_t)_{t \in [0,1]}$ denotes the discrete diffusion reverse process, then the time-reversed process $\tilde{x}_{t'} := x_{1-t'}$ is a valid discrete flow matching process: it has the same law as the flow matching process with velocity field:
 
 $$
 \begin{equation}
-u_{1-t}^{\text{FM}} = \dot{R}_t
+u_{t'}^{\text{FM}} = \dot{R}_{1-t'}
 \end{equation}
 $$
+
+In particular, sampling from discrete diffusion (running the reverse CTMC from $t=1$ to $t=0$) is equivalent to sampling from this flow matching process (running a CTMC from $t'=0$ to $t'=1$): the two procedures produce trajectories with identical distributions.
 
 <details>
 <summary>Proof</summary>
@@ -2121,55 +2113,24 @@ p(x^{\text{FM}}_{t' + \Delta t} = y \mid x^{\text{FM}}_{t'}) = \mathbb{I}(y = x^
 \end{equation}
 $$
 
-This is exactly the infinitesimal characterization of a CTMC with velocity field $u_{t'}^{\text{FM}} = \dot{R}_{1-t'}$. By uniqueness of the Kolmogorov forward equation for bounded generators, this fully determines the law of $x^{\text{FM}}$.
-
-</div>
-</details>
-
-#### Training
-
-In discrete flow matching, the matching loss at flow time $1-t$ is simply the negative log-likelihood of the clean token:
-$$
-\begin{equation}
-L_{\text{FM}}(1-t) = -\mathbb{E}\left[ \log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \right]
-\end{equation}
-$$
-
-Since both losses use the same denoiser $\mu_\theta^i(\mathbf{x}_t, t)$, we can compare them directly:
+Recall the definition of a probability velocity <span style="color: red">(**cite eq**)</span>: a velocity field $u_{t'}$ generates a process $x^{\text{FM}}_{t'}$ if and only if
 
 $$
 \begin{equation}
-L_{\text{DD}}(t) \approx \frac{-\dot{\alpha}_t}{1 - \alpha_t} \, L_{\text{FM}}(1-t)
+p(x^{\text{FM}}_{t' + \Delta t} = y \mid x^{\text{FM}}_{t'} = x) = \mathbb{I}(y = x^{\text{FM}}_{t'}) + \Delta t \, [u_{t'}(x^{\text{FM}}_{t'})]_y + o(\Delta t)
 \end{equation}
 $$
 
-<details>
-<summary>Derivation</summary>
-<div>
-We decompose the flow matching loss using the law of total expectation:
-$$
-\begin{aligned}
-L_{\text{FM}}(1-t) = (1 - \alpha_t) \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right] + \alpha_t \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i \neq m \right]
-\end{aligned}
-\begin{equation} \end{equation}
-$$
+Identifying the two first-order terms in $\Delta t$ directly gives:
 
-Since a well-trained denoiser can trivially reconstruct unmasked positions by copying the input, the second term vanishes, giving:
 $$
 \begin{equation}
-L_{\text{FM}}(1-t) \approx (1 - \alpha_t) \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right]
+[u_{t'}^{\text{FM}}(x)]_y = [\dot{R}_{1-t'}(x)]_y
 \end{equation}
 $$
 
-Similarly, applying the law of total expectation to the discrete diffusion loss extracts the masking probability $(1 - \alpha_t)$, which cancels with the denominator:
-$$
-\begin{aligned}
-L_{\text{DD}}(t) = (1 - \alpha_t) \cdot \frac{-\dot{\alpha}_t}{1 - \alpha_t} \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right] = -\dot{\alpha}_t \cdot \mathbb{E}\left[ -\log \mu_\theta^i(\mathbf{x}_t, t)_{x_1^i} \mid x_t^i = m \right]
-\end{aligned}
-\begin{equation} \end{equation}
-$$
+and therefore $u_{t'}^{\text{FM}} = \dot{R}_{1-t'}$.
 
-Both expressions share the same conditional expectation. Eliminating it yields the exact relationship (up to the vanishing unmasked-loss approximation).
 </div>
 </details>
 
@@ -2218,9 +2179,99 @@ Here, $w^i$ represents the normalized weight of position $i$ assigned by the pla
 
 <DFMSampling denoiser planner client:load />
 
-#### Very optional: "continuous" methods for discrete data generation.
+#### Training Losses
 
-(Dirichlet Flow Matching, Categorical Flow Maps) that could benefit from distillation techniques to accelerate the sampling.
+The **conditional flow matching (CFM) loss** is a KL divergence between rate vectors, specifically between the target conditional velocity $u_t(\cdot \mid x_t^i, x_1^i)$ and the learned velocity $u_{\theta,t}^i(\mathbf{x}_t)$:
+
+$$
+\begin{equation}
+L_{\text{CFM}} = \mathbb{E}_{t,\,\mathbf{x}_t,\,x_1}\!\left[\sum_{i=1}^S \mathrm{KL}^i\!\left(u_t(\cdot \mid x_t^i, x_1^i),\, u_{\theta,t}^i(\mathbf{x}_t)\right)\right]
+\end{equation}
+$$
+
+A complementary approach treats the model as a variational family over the clean token $x_1^i$, minimizing the KL between the true posterior $\mathbf{e}_{x_1^i}$ and the learned categorical distribution $P_{\theta,t}(X_1^i \mid \mathbf{x}_t)$, which reduces to a cross-entropy:
+
+$$
+\begin{equation}
+L_{\text{CM}} = \mathbb{E}_{t,\,\mathbf{x}_t,\,x_1}\!\left[-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)\right]
+\end{equation}
+$$
+
+**These two losses are not equivalent in general.** $L_{\text{CFM}}$ is a divergence between rate vectors, nonnegative objects that are not normalized to sum to one, while $L_{\text{CM}}$ is a divergence between probability distributions. Comparing them directly is not well-defined outside of a specific parameterization.
+
+**For the mask source**, the velocity field and the denoiser are linked by a simple rescaling (<span style="color:red">ref eq</span>), $u_{\theta,t}^i(\mathbf{x})_v = \frac{1}{1-t}\,P_{\theta,t}(X_1^i = v \mid \mathbf{x})$ for $v \neq m$, which makes the two losses directly comparable:
+
+$$
+\begin{equation}
+L_{\text{CFM}}(t) \approx \frac{1}{1-t} \, L_{\text{CM}}(t)
+\end{equation}
+$$
+
+<details>
+<summary>Derivation</summary>
+<div>
+
+The CFM loss for the mask source can be written as a weighted cross-entropy <span style="color:red">ref eq</span>:
+
+$$
+\begin{equation}
+L_{\text{CFM}}(t) = \mathbb{E}\!\left[\,\sum_{i=1}^S \mathbf{1}(x_t^i = m) \cdot \frac{1}{1-t} \cdot \left(-\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)\right)\right]
+\end{equation}
+$$
+
+Since $P(x_t^i = m) = 1-t$, applying the law of total expectation causes the masking probability to cancel the weight:
+
+$$
+\begin{aligned}
+L_{\text{CFM}}(t)
+  &= (1-t) \cdot \frac{1}{1-t} \cdot \mathbb{E}\!\left[
+      -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
+      \mid x_t^i = m
+    \right] \\
+  &= \mathbb{E}\!\left[
+      -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
+      \mid x_t^i = m
+    \right]
+\end{aligned}
+$$
+
+We decompose $L_{\text{CM}}$ using the same law of total expectation, splitting over masked and unmasked positions:
+
+$$
+\begin{aligned}
+L_{\text{CM}}(t)
+  &= (1-t) \cdot \mathbb{E}\!\left[
+      -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
+      \mid x_t^i = m
+    \right] \\
+  &\quad + t \cdot \mathbb{E}\!\left[
+      -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
+      \mid x_t^i \neq m
+    \right]
+\end{aligned}
+$$
+
+Since a well-trained denoiser trivially reconstructs unmasked positions by copying the input, the second term vanishes, giving:
+
+$$
+\begin{equation}
+L_{\text{CM}}(t) \approx (1-t) \cdot \mathbb{E}\!\left[
+  -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
+  \mid x_t^i = m
+\right]
+\end{equation}
+$$
+
+Both expressions share the same conditional expectation. Eliminating it yields the relationship (up to the vanishing unmasked-loss approximation):
+
+$$
+\begin{equation}
+L_{\text{CFM}}(t) \approx \frac{1}{1-t}\, L_{\text{CM}}(t)
+\end{equation}
+$$
+
+</div>
+</details>
 
 ### References
 
