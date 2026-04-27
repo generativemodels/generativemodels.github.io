@@ -172,11 +172,11 @@ Discrete diffusion models were first introduced independently by two simultaneou
 
 
 Like their continuous analogs, discrete flow matching and diffusion aim at mapping a simple source distribution to a complex target distribution (the actual data we want to generate).
-To do so, they create a sequence of intermediate distributions $(p_t)_{t}$ that progressively evolve from source to target distribution. <span style="color: red"> mention probability path or too soon/too complex? </span>
+To do so, they create a sequence of intermediate distributions $(p_t)_{t}$ that progressively evolve from source to target distribution.
 
 
 
-Here, we will deal with discrete data: the space on which the probability distributions are defined is $\mathcal{S} := \mathcal{V}^S$, namely the space of sequences of length $S \in \mathbb{N}$ over a given vocabulary $\mathcal{V}$.
+In this blog post, we deal with discrete data: the space on which the probability distributions are defined is $\mathcal{S} := \mathcal{V}^S$, namely the space of sequences of length $S \in \mathbb{N}$ over a given vocabulary $\mathcal{V}$.
 A sequence $x$ in $\mathcal{S}$ is denoted as $\mathbf{x} = x^1 \dots x^S$, the $x^i$'s being called *tokens*.
 In the vocabulary, we add a special token: the mask token, denoted as $m$.
 
@@ -185,16 +185,16 @@ The source distribution acts as our starting point for generation and is typical
 - The **mask distribution ($p_{\text{mask}} := \delta_{m\ldots m}$):** All sequences start entirely filled with the mask token $m$.
 - The **uniform distribution ($p_{\text{unif}}$):** All tokens in the starting sequence are sampled uniformly across the vocabulary $\mathcal{V}$.
 
-In this post, we will use the mask distribution ($p_{\text{mask}}$) as our running example; adaptations in the case of other distributions are available as toggleable content.
+In this post, *we use the mask distribution ($p_{\text{mask}}$) as our running example*; adaptations in the case of other distributions are available as toggleable content.
 
 As a first example, consider generating Sudoku grids. The vocabulary is $\mathcal{V} = \{1, 2, \ldots, 9, m\}$, and the sequence length is 81, as there are 81 cases in a grid.
-Discrete flow matching and diffusion start from a sample the source distribution, i.e. a fully masked grid here.
+Discrete flow matching and diffusion start from a sample from the source distribution, i.e. a fully masked grid here.
 The model then iteratively fills this grid, step-by-step, finally reaching a sample from the target distribution (a valid, completed Sudoku board).
 
-{/* Maybe add a dummy simulation of a sudoku that fills with x0, xt and x1, to draw a sudoku from pt = fill a sudoku from 0 to t?
-The sudoku has the advantage to be constrained spatially so S is fixed and it's easy to make consistent simulations */}
 
 <SudokuFlowMatching client:load />
+
+We first introduce Discrete Flow Matching; the reader already familiar with this technique can jump directly to [Discrete Diffusion](#discrete-diffusion).
 
 ### Discrete Flow Matching
 
@@ -202,7 +202,7 @@ The sudoku has the advantage to be constrained spatially so S is fixed and it's 
 
 In this section we adopt the Flow Matching convention: time goes from $t=0$ to $t=1$, the source distribution is $p_0$, and the target distribution is $p_1$.
 
-In Continuous Flow Matching, a central object is the *velocity field* $u: \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d$, that governs the generating process: samples are obtained as solutions at time $t=1$ of the ODE
+In the classical *Continuous* Flow Matching, a central object is the *velocity field* $u: \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d$, that governs the generating process: samples are obtained as solutions at time $t=1$ of the Ordinary Differential Equation
 $$
 \begin{equation}
 \begin{cases}
@@ -211,7 +211,7 @@ x(0) = x_0 \\
 \end{cases}
 \end{equation}
 $$
-and if $p_t$ is defined as the law of the solution $x(t)$ at time $t$ when $x_0 \sim p_0$, we say that $u$ generate $(p_t)$.
+and if $p_t$ is defined as the law of the solution $x(t)$ at time $t$ when $x_0 \sim p_0$, we say that $u$ generates $(p_t)$.
 
 Solving an ODE when the state space is discrete is not possible.
 Discrete FM relies on a different type of object, a *probability velocity*.
@@ -219,7 +219,7 @@ Discrete FM relies on a different type of object, a *probability velocity*.
 **Definition (Probability Velocity)**:
 Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, and $(X_t)_{t\in[0,1]}$ be random variables of laws $(p_t)_{t \in [0, 1]}$.
 Denote $u_t := u(\cdot, t)$.
-We say that $u$ *generates* the probability path $(p_t)_{t \in [0, 1]}$ if
+In the discrete case, we say that $u$ *generates* the probability path $(p_t)_{t \in [0, 1]}$ if
 $$
 \begin{equation}
 \mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{x} = \mathbf{y}) + h u_{t}(\mathbf{x})_{\mathbf{y}} + o(h)
@@ -250,7 +250,7 @@ $$
 \end{equation}
 $$
 
-The variable stays in state $\mathbf{x}$ with probability $h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
+As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
 We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**.
 
 **Remark (Mass conservation for probability velocities).**
