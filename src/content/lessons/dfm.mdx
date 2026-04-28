@@ -1146,18 +1146,14 @@ $$
 \end{equation}
 $$
 
-Expanding the right side, and using the fact that $\mathbf{e}_m^\top \mathbf{1} = 1$ (since the dot product of a one-hot vector and an all-ones vector is the scalar 1), we obtain:
+Expanding the right side and using $\mathbf{e}_m^\top \mathbf{1} = 1$, we obtain:
 $$
 \begin{aligned}
-\bar{Q}_s \bar{Q}_{t|s} &= \alpha_s \gamma I + \alpha_s (1-\gamma)\mathbf{1}\mathbf{e}_m^\top + \gamma (1-\alpha_s)\mathbf{1}\mathbf{e}_m^\top + (1-\alpha_s)(1-\gamma)\mathbf{1}(\mathbf{e}_m^\top \mathbf{1})\mathbf{e}_m^\top
-\end{aligned}
-\begin{equation} \end{equation}
-$$
-$$
-\begin{align}
+& \quad \bar{Q}_s \bar{Q}_{t|s} \\
+&= \alpha_s \gamma I + \alpha_s (1-\gamma)\mathbf{1}\mathbf{e}_m^\top + \gamma (1-\alpha_s)\mathbf{1}\mathbf{e}_m^\top + (1-\alpha_s)(1-\gamma)\mathbf{1}(\mathbf{e}_m^\top \mathbf{1})\mathbf{e}_m^\top \\
 &= \alpha_s \gamma I + \left[ \alpha_s(1-\gamma) + \gamma(1-\alpha_s) + (1-\alpha_s)(1-\gamma) \right]\mathbf{1}\mathbf{e}_m^\top \\
 &= \alpha_s \gamma I + (1 - \alpha_s \gamma)\mathbf{1}\mathbf{e}_m^\top
-\end{align}
+\end{aligned}
 $$
 
 By matching the coefficients with our target $\bar{Q}_t = \alpha_t I + (1-\alpha_t)\mathbf{1}\mathbf{e}_m^\top$, we find the required value for $\gamma$:
@@ -1771,7 +1767,7 @@ which is exactly the statement in the proposition above.
 </div>
 </details>
 
-<table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+<table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
   <colgroup>
     <col style={{ width: '50%' }} />
     <col style={{ width: '50%' }} />
