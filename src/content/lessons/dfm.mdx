@@ -750,14 +750,13 @@ Since it is more intuitive to think in terms of probabilities rather than veloci
 <summary>Proof of velocity-denoiser equivalence</summary>
 <div>
 
-In a general configuration, the marginal velocity is the conditional expectation of the conditional velocity:
+Remember that the marginal velocity is the conditional expectation of the conditional velocity:
 $$
 \begin{equation}
 u_t^i(\mathbf{x})_v = \mathbb{E}_{x_1^i \sim \mathbb{P}(X_1^i \mid \mathbf{x})}\!\left[u_t^i(x^i \mid x_1^i)_v\right].
 \end{equation}
 $$
-We now evaluate this expectation explicitly using the conditional velocity for the mask source
-<span style="color: red">cite eq</span>:
+and for the case of a masked source, we have:
 $$
 \begin{equation}
 u_t^i(x^i \mid x_1^i)_v = \frac{1}{1-t}\,\mathbb{I}(x^i = m)\left(\mathbb{I}(v = x_1^i) - \mathbb{I}(v = m)\right).
@@ -766,27 +765,8 @@ $$
 
 **Case 1: $x^i \neq m$ (token already unmasked).**
 
-The indicator $\mathbb{I}(x^i = m)=0$, so
-$$
-\begin{equation}
-u_t^i(x^i \mid x_1^i)_v
-=
-\frac{1}{1-t}\,\mathbb{I}(x^i = m)
-\left(\mathbb{I}(v = x_1^i) - \mathbb{I}(v = m)\right)
-= 0
-\qquad \forall x_1^i,\ v.
-\end{equation}
-$$
-Hence
-$$
-\begin{equation}
-u_t^i(x)_v
-=
-\mathbb{E}_{X_1^i \sim \mathbb{P}(X_1^i \mid X_t = \mathbf{x})}
-\left[u_t^i(x^i \mid X_1^i)_v\right]
-= 0.
-\end{equation}
-$$
+The indicator $\mathbb{I}(x^i = m)=0$, so $u_t^i(x^i \mid x_1^i)_v = 0$ for all $x_1^i, v$
+and hence $u_t^i(x)_v = 0$.
 
 It remains to check that the target formula also gives zero. By Bayes' rule,
 $$
@@ -802,36 +782,24 @@ $$
 \begin{equation}
 q_t(x^i \mid x_1^i)
 =
-t\,\mathbb{I}(x^i = x_1^i) + (1-t)\,\mathbb{I}(x^i = m).
+t\,\mathbb{I}(x^i = x_1^i) + (1-t)\,\mathbb{I}(x^i = m) = t\,\mathbb{I}(x^i = x_1^i)
 \end{equation}
 $$
-Since $x^i \neq m$, this becomes
-$$
-\begin{equation}
-q_t(x^i \mid x_1^i)
-=
-t\,\mathbb{I}(x^i = x_1^i).
-\end{equation}
-$$
+since $x^i \neq m$.
 Therefore, if $v \neq x^i$, then
 $$
-\begin{equation}
-\mathbb{P}(X_t = \mathbf{x} \mid X_1^i = v)
-=
-q_t(x^i \mid x_1^i = v)\,\mathbb{P}(X_t^{\neq i} = \mathbf{x}^{\neq i} \mid X_1^i = v)
-= 0.
-\end{equation}
+\begin{align}
+\mathbb{P}(X_t = \mathbf{x} |X_1^i = v)
+&=
+q_t(x^i |x_1^i = v)\,\mathbb{P}(X_t^{\neq i} = \mathbf{x}^{\neq i} |X_1^i = v) \\
+&= 0.
+\end{align}
 $$
-and hence
-$$
-\begin{equation}
-\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x})=0.
-\end{equation}
-$$
-Since the conditional probabilities over $v$ sum to one, we conclude that
+and hence $\mathbb{P}(X_1^i = v |X_t = \mathbf{x})=0$.
+Since the conditional probabilities sum to one over $v$ , we conclude that
 $$
 \begin{equation}
-\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x})=\mathbb{I}(v = x^i).
+\mathbb{P}(X_1^i = v |X_t = \mathbf{x})=\mathbb{I}(v = x^i).
 \end{equation}
 $$
 Substituting into the target formula gives
@@ -839,12 +807,7 @@ $$
 \begin{equation}
 \frac{1}{1-t}
 \left(
-\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x}) - \mathbb{I}(v = x^i)
-\right)
-=
-\frac{1}{1-t}
-\left(
-\mathbb{I}(v = x^i) - \mathbb{I}(v = x^i)
+\mathbb{P}(X_1^i = v |X_t = \mathbf{x}) - \mathbb{I}(v = x^i)
 \right)
 = 0.
 \end{equation}
