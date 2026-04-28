@@ -9,6 +9,7 @@ import rehypeKatex from 'rehype-katex'
 import { typst } from 'astro-typst';
 import rehypeToc from '@jsdevtools/rehype-toc';
 import rehypeSlug from 'rehype-slug';
+import typstMdxBlocks from './src/plugins/typstMdxBlocks.mjs';
 
 import react from '@astrojs/react';
 
@@ -50,5 +51,8 @@ export default defineConfig({
       rehypeToc,
     ],
   },
-  vite: { ssr: { external: ["@myriaddreamin/typst-ts-node-compiler"] } },
+  vite: {
+    plugins: [typstMdxBlocks()],
+    ssr: { external: ["@myriaddreamin/typst-ts-node-compiler"] },
+  },
 });

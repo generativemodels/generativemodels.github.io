@@ -765,9 +765,91 @@ u_t^i(x^i \mid x_1^i)_v = \frac{1}{1-t}\,\mathbb{I}(x^i = m)\left(\mathbb{I}(v =
 $$
 
 **Case 1: $x^i \neq m$ (token already unmasked).**
-The indicator $\mathbb{I}(x^i = m) = 0$, so $u_t^i(x^i \mid x_1^i)_v = 0$ for all $x_1^i$.
-The expectation vanishes, and indeed the target formula also gives zero since
-$\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x}) = \mathbb{I}(v = x^i)$ (the clean token is already revealed).
+
+The indicator $\mathbb{I}(x^i = m)=0$, so
+$$
+\begin{equation}
+u_t^i(x^i \mid x_1^i)_v
+=
+\frac{1}{1-t}\,\mathbb{I}(x^i = m)
+\left(\mathbb{I}(v = x_1^i) - \mathbb{I}(v = m)\right)
+= 0
+\qquad \forall x_1^i,\ v.
+\end{equation}
+$$
+Hence
+$$
+\begin{equation}
+u_t^i(x)_v
+=
+\mathbb{E}_{X_1^i \sim \mathbb{P}(X_1^i \mid X_t = \mathbf{x})}
+\left[u_t^i(x^i \mid X_1^i)_v\right]
+= 0.
+\end{equation}
+$$
+
+It remains to check that the target formula also gives zero. By Bayes' rule,
+$$
+\begin{equation}
+\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x})
+=
+\frac{\mathbb{P}(X_t = \mathbf{x} \mid X_1^i = v)\,\mathbb{P}(X_1^i = v)}
+{\mathbb{P}(X_t = \mathbf{x})}.
+\end{equation}
+$$
+Under the conditional probability path,
+$$
+\begin{equation}
+q_t(x^i \mid x_1^i)
+=
+t\,\mathbb{I}(x^i = x_1^i) + (1-t)\,\mathbb{I}(x^i = m).
+\end{equation}
+$$
+Since $x^i \neq m$, this becomes
+$$
+\begin{equation}
+q_t(x^i \mid x_1^i)
+=
+t\,\mathbb{I}(x^i = x_1^i).
+\end{equation}
+$$
+Therefore, if $v \neq x^i$, then
+$$
+\begin{equation}
+\mathbb{P}(X_t = \mathbf{x} \mid X_1^i = v)
+=
+q_t(x^i \mid x_1^i = v)\,\mathbb{P}(X_t^{\neq i} = \mathbf{x}^{\neq i} \mid X_1^i = v)
+= 0.
+\end{equation}
+$$
+and hence
+$$
+\begin{equation}
+\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x})=0.
+\end{equation}
+$$
+Since the conditional probabilities over $v$ sum to one, we conclude that
+$$
+\begin{equation}
+\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x})=\mathbb{I}(v = x^i).
+\end{equation}
+$$
+Substituting into the target formula gives
+$$
+\begin{equation}
+\frac{1}{1-t}
+\left(
+\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x}) - \mathbb{I}(v = x^i)
+\right)
+=
+\frac{1}{1-t}
+\left(
+\mathbb{I}(v = x^i) - \mathbb{I}(v = x^i)
+\right)
+= 0.
+\end{equation}
+$$
+Thus both expressions coincide in the case $x^i \neq m$.
 
 **Case 2: $x^i = m$ (token is masked).**
 Taking the expectation over $x_1^i$:
