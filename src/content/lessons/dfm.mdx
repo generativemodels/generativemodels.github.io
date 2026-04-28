@@ -404,17 +404,17 @@ $$
 
 <DFMSampling client:load />
 
-<span style="color: red"> Discuss this animation </span>
+<span style="color: red"> Discuss this animation: explain what it is showing and what it highlights specifically </span>
 
-We are now ready to build the probability path of Discrete Flow Matching!
+Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of Discrete Flow Matching!
 
 #### Building the probability path
 
-Similarly to continuous flow matching, there are infinitely many possible choices for the probability path $(p_t)$.
-To build one, we borrow the core trick from Conditional Flow Matching (CFM): we first define **conditional** probability paths for which the exact conditional velocity is known.
+Similarly to continuous flow matching, there are infinitely many possible choices for a probability path $(p_t)$ going from source $p_0$ to target $p_1$.
+To build a specific one, we borrow the core idea from Continuous Flow Matching: we first define **conditional** probability paths for which the exact conditional velocity is known.
 Then, we show that the resulting global velocity (obtained by marginalizing the conditional velocities) is guaranteed to generate a probability path that transports $p_0$ to $p_1$. All that's left is to learn it as a simple conditional expectation from data, which neural networks know how to do!
 
-The conditioning variable $\mathbf{z} \in \mathcal{Z}^S$ can be either:
+The conditioning variable $\mathbf{z} \in \mathcal{Z}^S$ that we use to build conditional paths and velocities can be either:
 * **A target sample:** $\mathbf{z} = \mathbf{x}_1$ (useful when the source $p_0$ is a known, simple distribution like uniform or mask).
 * **A source-target pair:** $\mathbf{z} = (\mathbf{x}_0, \mathbf{x}_1)$ (useful when transforming between two arbitrary datasets).
 
@@ -423,16 +423,15 @@ Having chosen $\mathbf{z}$, we chose a conditional probability path.
 In order to have factorized velocities (simpler to learn) as per <span style="color:red"> cite Factorization proposition</span>, we pick the conditional path to be factorized:
 $$
 \begin{align}
-& p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | z^j) \\
-&\text{with} \quad
-q_t(x^i | x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = m)
+& p_t(\mathbf{x} | \mathbf{x_1}) = \prod_{i=1}^S  \big( \underbrace{ t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = m) } _{:= q_t(x^j | x_1^j)} \big)\\
 \end{align}
 $$
-This means that at time $t$, the $i$-th token $x^i_t$ equals the target token $x_1^i$ with probability $t$, or it remains the mask token $m$ with probability $1 - t$.
+This means that at time $t$, the $i$-th token $x^i_t$ equals the target token $x_1^i$ with probability $t$, or it is the mask token $m$ with probability $1 - t$:
+$p_0(\cdot | \mathbf{x}_1)$ is a Dirac at the all-masked sequence, while $p_1(\cdot | \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_1$.
 The interest of this conditional probability path is that we can derive the associated probability velocity.
 
 **Proposition (Conditional velocity)**:
-The conditional velocity driving the transition <span style="color:red"> XXX eqref </span> is:
+The conditional velocity generating $p_t(\cdot | \mathbf{x}_1)$ <span style="color:red"> XXX eqref </span> is:
 $$
 \begin{equation}
 u_t(x^i | x_1^i)_v = \begin{cases}
@@ -445,16 +444,16 @@ $$
 
 Remember that $u$ is a rate of change of probability: $u_t(x^i | x_1^i)_v$ quantifies the instantaneous probability flow from the current token $x^i$ toward token $v$.
 In the masked-source setting, the flow progressively removes mass from $m$ and transfers it to the target token $x_1^i$.
-Concretely, if the vocabulary has  3 tokens $\{1, 2, 3\}$ and a mask token $m$, and if the conditioning target is $x_1^i = 2$:
-
+As an example, if the vocabulary has 3 tokens $\{1, 2, 3\}$ and a mask token $m$, and if the conditioning target is $x_1^i = 2$, then the conditional velocity field is given by:
+{/* \begin{matrix} x^i  \\[-2pt] \diagdown \\[-2pt] v \end{matrix} */}
 $$
 u_t(x^i | x_1^i = 2)_v = \begin{array}{c|cccc}
-\begin{matrix} x^i  \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & 1 & 2 & 3 & m \\
+\diagbox{a}{b} & 1 & 2 & 3 & m \\
 \hline
-1 & 0 & 0 & 0 & 0 \\[0.3cm]
-2 & 0 & 0 & 0 & \dfrac{1}{1-t} \\[0.3cm]
+1 & 0 & 0 & 0 & 0 \\[0.1cm]
+2 & 0 & 0 & 0 & \tfrac{1}{1-t} \\[0.1cm]
 3 & 0 & 0 & 0 & 0 \\[0.3cm]
-m & 0 & 0 & 0 & -\dfrac{1}{1-t}
+m & 0 & 0 & 0 & -\tfrac{1}{1-t}
 \end{array}
 $$
 
@@ -479,9 +478,9 @@ $$
 Now, let's examine the right-hand side using the analytic formulation of the velocity field $u_{t}(v \mid x_1^{i})_{y^{i}} = \frac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = v) \right) \mathbb{I}(v = m)$:
 $$
 \begin{align}
-&\sum_{v \in \mathcal{V} \cup \{m\}} u_t(v \mid x_1^i)_{y^i} \, q_t(v \mid x_1^{i}) \\
-&= \sum_{v \in \mathcal{V} \cup \{m\}} \frac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = v) \right) \mathbb{I}(v = m) \, q_t(v \mid x_1^{i}) \\
-&= \frac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) q_t(m \mid x_1^{i})
+&\sum_{v \in \mathcal{V} \cup \{m\}} u_t(v | x_1^i)_{y^i} \, q_t(v | x_1^{i}) \\
+&= \sum_{v \in \mathcal{V} \cup \{m\}} \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = v) \right) \mathbb{I}(v = m) \, q_t(v | x_1^{i}) \\
+&= \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) q_t(m \mid x_1^{i})
 \end{align}
 $$
 
@@ -577,7 +576,7 @@ $$
 
 #### From conditional to unconditional velocity
 
-Now that we have defined our conditional probability paths and velocities, we need to connect them back to the global, unconditional process.
+Now that we have defined our conditional probability paths and velocities, we need to connect them back to the global, unconditional ones.
 
 The overall marginal distribution $p_t$ is obtained simply by marginalizing over all possible conditional paths:
 $$
