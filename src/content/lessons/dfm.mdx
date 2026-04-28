@@ -693,13 +693,25 @@ u_t(\mathbf{x}) = \underset{u}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\ma
 \end{equation}
 $$
 
-**Learning with Conditional Velocity Fields**
+<span style="color:red">A discussion on KL (negative entries, how to enforce posititvty and summing to 0?)</span>
+
+<span style="color:red">For me (MM) we are done, it only remains to introduce the loss over $\theta$:
+The exact conditional expectation is approximated by a neural network $u_{\theta,t}$, trained by minimizing over $\theta$</span>
+$$
+\begin{align}
+L_{\text{CDFM}}(\theta)
+&= \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x} \sim p_t( \cdot | \mathbf{z})}}\left[ \mathrm{KL}\left(u_t(\mathbf{x}_t | \mathbf{z}), u_{\theta,t}(\mathbf{x})\right) \right] \\
+& =\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t( \cdot | \mathbf{z})}}\left[ \sum_{i=1}^S \mathrm{KL}\left( u_t(x^i_t | z^i), u_{\theta,t}^i(\mathbf{x}_t) \right) \right]
+\end{align}
+$$
+
+{/* **Learning with Conditional Velocity Fields**
 
 To train our model, we use the KL divergence to measure the difference between velocity fields. The loss that minimizes the KL between the true marginal velocity $u_t$ and our learned velocity $u_{\theta,t}$ is:
 
 $$
 \begin{equation}
-L_{\text{DFM}}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x} \sim p_t}}\left[ \mathrm{KL}\left(u_t(\mathbf{x}), u_{\theta,t}(\mathbf{x})\right) \right]
+L_{\text{DFM}}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_t \sim p_t}}\left[ \mathrm{KL}\left(u_t(\mathbf{x}_t), u_{\theta,t}(\mathbf{x})\right) \right]
 \end{equation}
 $$
 
@@ -715,17 +727,10 @@ $$
 $$
 L_{\text{CDFM}}(\theta) = L_{\text{DFM}}(\theta) + C.
 $$
-In particular, both objectives have the same minimizers.
+In particular, both objectives have the same minimizers. */}
 
-In practice, thanks to our factorization assumption, we write the loss as a sum over individual token positions:
 
-$$
-\begin{equation}
-L_{\text{CDFM}}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x} \sim p_t( \cdot | \mathbf{z})}}\left[ \sum_{i=1}^S \mathrm{KL}\left( u_t(x^i | z^i), u_{\theta,t}^i(\mathbf{x}) \right) \right]
-\end{equation}
-$$
-
-#### Denoiser
+#### Learning with denoiser parameterization
 
 As we saw in <span style="color: red">cite eq</span>, velocity fields follow very similar properties to probability distributions, and the KL divergence is a natural way to compare them.
 Since it is more intuitive to think in terms of probabilities rather than velocities, we can reparameterize the velocity field $u_t^i(\mathbf{x})$ in terms of a denoiser $D_{\theta,t}^i(\mathbf{x}) = P_{\theta,t}(X_1^i \mid X_t = \mathbf{x})$. It corresponds to the probability distribution over clean tokens at position $i$, given the current noisy sequence $\mathbf{x}_t$. <span style="color: red">Discuss this argument</span>
@@ -837,7 +842,7 @@ $$
 
 <DFMSampling denoiser client:load />
 
-<table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+<table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
   <colgroup>
     <col style={{ width: '50%' }} />
     <col style={{ width: '50%' }} />
