@@ -222,10 +222,8 @@ Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, and $(X_t)_{t\in[0,1]}$ be
 Denote $u_t := u(\cdot, t)$.
 In the discrete case, we say that $u$ *generates* the probability path $(p_t)_{t \in [0, 1]}$ if
 $$
-\begin{equation}
 \mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{x} = \mathbf{y}) + h u_{t}(\mathbf{x})_{\mathbf{y}} + o(h)
-\end{equation}
-$$
+$$ <eq-prob-velocity>
 If we index the state space as $\mathcal{S} = \{\mathbf{y}_1, \dots, \mathbf{y}_{S}\}$ and choose $k$ such that $\mathbf{y}_k = \mathbf{x}$ (the current state), then the full transition-probability vector reads
 $$
 \begin{equation}
@@ -244,7 +242,7 @@ $$
 $$
 
 Intuitively, $u_t(\mathbf{x})_{\mathbf{y}}$ is the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
-Much like the ODE TODO cite ODE can be discretized with Euler's method, the sampling process TODO cite eq can be discretized as
+Much like the ODE TODO cite ODE can be discretized with Euler's method, the sampling process @eq-prob-velocity can be discretized as
 $$
 \begin{equation}
 \mathbf{x}_{t + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_t} + h u_\tau(\mathbf{x}_t)\right)

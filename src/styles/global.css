@@ -384,7 +384,4 @@ figure {
 
 html, body {
 	scroll-padding-top: 20vh;
-	:target {
-		outline: 0.1px solid var(--accent);
-	}
 }
