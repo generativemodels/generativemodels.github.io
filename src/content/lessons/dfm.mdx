@@ -575,17 +575,17 @@ $$
 #### From conditional to unconditional velocity
 
 Now that we have defined our conditional probability paths and velocities, we can use them to build global, unconditional ones.
-The overall marginal distribution $p_t$ is obtained by marginalizing over all possible conditional paths:
+The overall distribution $p_t$ is obtained by marginalizing the conditional paths over the conditioning variable $\mathbf{z}$:
 $$
 \begin{equation}
-p_t(\mathbf{x}) = \sum_{\mathbf{z}} p_t(\mathbf{x} | \mathbf{z}) \pi(\mathbf{z})
+p_t(\mathbf{x}) := \sum_{\mathbf{z}} p_t(\mathbf{x} | \mathbf{z}) \pi(\mathbf{z})
 \end{equation}
 $$
-where $\pi(\mathbf{z})$ is the distribution over the conditioning variable $\mathbf{z}$ used during training.
-In our case, $\mathbf{z} = \mathbf{x}_1$ and $\pi= p_1$, and the path defined by marginalization indeed goes from $p_0$ to $p_1$.
+where $\pi(\mathbf{z})$ is the distribution of $\mathbf{z}$.
+In our case, $\mathbf{z} = \mathbf{x}_1$ and $\pi= p_1$; as the proof below shows, the path defined by marginalization indeed goes from $p_0$ to $p_1$.
 
 <details>
-<summary>Proof of path correctness</summary>
+<summary>Proof that path goes from $p_0$ to $p_1$</summary>
 <div>
 
 We verify the two boundary conditions separately:
@@ -604,12 +604,12 @@ $$
 p_{t=0}(\mathbf{x}) = \sum_{\mathbf{z}} p_0(\mathbf{x} \mid \mathbf{z})\,\pi(\mathbf{z}) = p_0(\mathbf{x})\sum_{\mathbf{z}} \pi(\mathbf{z}) = p_0(\mathbf{x}).
 $$
 
-**At $t=1$**
+**At $t=1$**:
 We have:
 $$
 \begin{align}
 q_1(x^i \mid x_1^i) &= \mathbb{I}(x^i = x_1^i) \\
-p_1(\mathbf{x} \mid \mathbf{z} = \mathbf{x}_1) &= \prod_{j=1}^S \mathbb{I}(x^j = x_1^j) = \delta_{\mathbf{x}_1}(\mathbf{x})
+p_1(\mathbf{x} \mid \mathbf{x}_1) &= \prod_{j=1}^S \mathbb{I}(x^j = x_1^j) = \delta_{\mathbf{x}_1}(\mathbf{x})
 \end{align}
 $$
 Since $\pi(\mathbf{z}) = p_{\mathrm{data}}(\mathbf{x}_1)$,
@@ -624,52 +624,40 @@ $$
 </div>
 </details>
 
-Just as the marginal probability is an average of conditional probabilities, the marginal velocity field $u_t(\mathbf{x})_{\mathbf{y}}$ can be expressed as the expectation of the conditional velocity over the conditioning variable $\mathbf{z}$:
+We now arrive to the heart of Discrete Flow Matching: building a velocity that transports $p_0$ to $p_1$.
+
+**Fundamental Theorem of Discrete FM.** The probability velocity obtained by taking the conditional expectation of the conditional velocities,
 $$
 \begin{equation}
 \begin{aligned}
 u_t(\mathbf{x})_{\mathbf{y}}
-&= \mathbb{E}_{\substack{\mathbf{z}}}\!\left[u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}} \mid X_t = \mathbf{x}\right] \\
-&= \sum_{\mathbf{z}} u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z = \mathbf{z} \mid X_t = \mathbf{x}).
+&:= \mathbb{E}_{\substack{\mathbf{z}}}\!\left[u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}} \mid X_t = \mathbf{x}\right] \\
+&= \sum_{\mathbf{z}} u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(\mathbf{z} \mid X_t = \mathbf{x}) \, ,
 \end{aligned}
 \end{equation}
 $$
-
-**Theorem.** If we define
-$$
-u_t(\mathbf{x})_{\mathbf{y}} := \mathbb{E}_{\substack{\mathbf{z}}}\!\left[u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}} \mid X_t = \mathbf{x}\right],
-$$
-then this velocity field generates the induced probability path
-$$
-p_t(\mathbf{x}) = \sum_{\mathbf{z}} p_t(\mathbf{x}\mid\mathbf{z})\,\pi(\mathbf{z}).
-$$
+generates the probability path $p_t(\mathbf{x}) = \sum_{\mathbf{z}} p_t(\mathbf{x}\mid\mathbf{z})\,\pi(\mathbf{z})$.
 
 <details>
 <summary>Proof</summary>
 <div>
-From the definition of probability velocity,
+We want to show
 $$
 \begin{equation}
 \mathbb{P}(X_{t+h}=\mathbf{y}\mid X_t=\mathbf{x})
 = \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h).
 \end{equation}
 $$
-Conditioning on $Z$ and using total probability,
+Introducing $Z$ and using the law of total probability,
 $$
 \begin{align*}
-\mathbb{P}(X_{t+h}=\mathbf{y}\mid X_t=\mathbf{x})
+\mathbb{P}(&X_{t+h}=\mathbf{y}\mid X_t=\mathbf{x}) \\
 &= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}, Z=\mathbf{z}\mid X_t=\mathbf{x}) \\
 &= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}\mid X_t=\mathbf{x}, Z=\mathbf{z})\,\mathbb{P}(Z=\mathbf{z}\mid X_t=\mathbf{x}) \\
 &= \sum_{\mathbf{z}}\Big(\mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}} + o(h)\Big)\,\mathbb{P}(Z=\mathbf{z}\mid X_t=\mathbf{x}) \\
-&= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\sum_{\mathbf{z}}u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}\mid X_t=\mathbf{x}) + o(h).
+&= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\sum_{\mathbf{z}}u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}\mid X_t=\mathbf{x}) + o(h) \\
+&= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h).
 \end{align*}
-\begin{equation} \end{equation}
-$$
-Hence,
-$$
-\begin{equation*}
-u_t(\mathbf{x})_{\mathbf{y}} = \sum_{\mathbf{z}}u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}\mid X_t=\mathbf{x}) = \mathbb{E}_{\substack{\mathbf{z}}}\!\left[u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}} \mid X_t=\mathbf{x}\right].
-\end{equation*}
 \begin{equation} \end{equation}
 $$
 Alternative proof: apply the Kolmogorov equation to each conditional process and average over $\mathbf{z}$:
@@ -688,19 +676,20 @@ So $u_t$ satisfies the Kolmogorov equation for $p_t$ and therefore generates $p_
 
 {/* If needed we can add the same figure u,ucond,p,pcond as the one in the CFM blogpost, because it's still valid.*/}
 
-This is the exact same logic as in continuous FM: once the target field is identified as a
-conditional expectation, learning reduces to a regression problem. In continuous spaces, this is typically introduced via the $L^2$ projection view, the marginal velocity is the unique minimizer:
+This is the exact same logic as in continuous FM: since the target field is identified as a
+conditional expectation, it can be learned through regression problem.
+In continuous spaces, this is typically introduced via the $L^2$ projection view, as the conditional expectation solves
 $$
 \begin{equation}
-u_t(\mathbf{x}) = \underset{v}{\operatorname{argmin}}\ \mathbb{E}\!\left[\left\|u_t(\mathbf{x} \mid \mathbf{z}) - v\right\|^2 \,\Big|\, X_t = \mathbf{x}\right]
+u_t(\mathbf{x}) = \underset{u}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\mathbf{z} \sim \pi \\ \mathbf{x_t} \sim p_t(\cdot | \mathbf{z})}}\!\left[\left\|u_t(\mathbf{x}_t | \mathbf{z}) - u(\mathbf{x_t})\right\|^2 \right]
 \end{equation}
 $$
-In discrete spaces, since we compare nonneg­ative rate vectors that behave like local probabilities, a KL-style objective is more natural.
+In discrete spaces, since we compare nonneg­ative rate vectors that behave like local probabilities, a Kullback-Leibler style objective is more natural.
 More generally, this conditional expectation is the minimizer
 for any Bregman divergence, and KL is the Bregman choice adapted to our setting:
 $$
 \begin{equation}
-u_t(\mathbf{x}) = \underset{v}{\operatorname{argmin}}\ \mathbb{E}\!\left[\mathrm{KL}\left(u_t(\mathbf{x} \mid \mathbf{z}),\, v\right) \,\Big|\, X_t = \mathbf{x}\right]
+u_t(\mathbf{x}) = \underset{u}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\mathbf{z} \sim \pi \\ \mathbf{x_t} \sim p_t(\cdot | \mathbf{z})}}\!\left[ \mathrm{KL} \left(u(\mathbf{x}_t | \mathbf{z}), u(\mathbf{x_t})\right)  \right]
 \end{equation}
 $$
 
