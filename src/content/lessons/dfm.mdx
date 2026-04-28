@@ -546,8 +546,8 @@ The conditional velocity field driving this transition is:
 $$
 \begin{equation}
 u_t(x^i | x_1^i)_v = \begin{cases}
-\dfrac{1}{1-t} & \text{if } v = x_1^i \text{ and } x^i \neq x_1^i \\[0.3cm]
--\dfrac{1}{1-t} & \text{if } v = x^i \neq x_1^i \\[0.3cm]
+\tfrac{1}{1-t} & \text{if } v = x_1^i \text{ and } x^i \neq x_1^i \\[0.3cm]
+-\tfrac{1}{1-t} & \text{if } v = x^i \neq x_1^i \\[0.3cm]
 0 & \text{otherwise}
 \end{cases}
 \end{equation}
@@ -559,9 +559,9 @@ $$
 u_t(x^i | x_1^i = 2)_v = \begin{array}{c|ccc}
 \begin{matrix} x^i \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & 1 & 2 & 3 \\
 \hline
-1 & -\dfrac{1}{1-t} & \dfrac{1}{1-t} & 0 \\[0.3cm]
-2 & 0 & 0 & 0 \\[0.3cm]
-3 & 0 & \dfrac{1}{1-t} & -\dfrac{1}{1-t}
+1 & -\tfrac{1}{1-t} & \dfrac{1}{1-t} & 0 \\[0.1cm]
+2 & 0 & 0 & 0 \\[0.1cm]
+3 & 0 & \tfrac{1}{1-t} & -\tfrac{1}{1-t}
 \end{array}
 $$
 
@@ -574,29 +574,26 @@ $$
 
 #### From conditional to unconditional velocity
 
-Now that we have defined our conditional probability paths and velocities, we need to connect them back to the global, unconditional ones.
-
-The overall marginal distribution $p_t$ is obtained simply by marginalizing over all possible conditional paths:
+Now that we have defined our conditional probability paths and velocities, we can use them to build global, unconditional ones.
+The overall marginal distribution $p_t$ is obtained by marginalizing over all possible conditional paths:
 $$
 \begin{equation}
 p_t(\mathbf{x}) = \sum_{\mathbf{z}} p_t(\mathbf{x} | \mathbf{z}) \pi(\mathbf{z})
 \end{equation}
 $$
 where $\pi(\mathbf{z})$ is the distribution over the conditioning variable $\mathbf{z}$ used during training.
-{/* Maybe =choice to be consistent*/}.
-
-We can show that this is a valid probability path from $p_0$ to $p_1$.
+In our case, $\mathbf{z} = \mathbf{x}_1$ and $\pi= p_1$, and the path defined by marginalization indeed goes from $p_0$ to $p_1$.
 
 <details>
-<summary>Proof</summary>
+<summary>Proof of path correctness</summary>
 <div>
 
 We verify the two boundary conditions separately:
 
-**At $t=0$**
+**At $t=0$**:
 Recall the conditional path with $\mathbf{z} = \mathbf{x}_1$ and mask source:
 $$
-q_0(x^i \mid x_1^i) = (1-0)\,\mathbb{I}(x^i = m) = \mathbb{I}(x^i = m).
+q_0(x^i \mid x_1^i) = \mathbb{I}(x^i = m).
 $$
 The value of $x_1^i$ plays no role, so $p_0(\mathbf{x} \mid \mathbf{z})$ does not depend on $\mathbf{z}$:
 $$
@@ -610,9 +607,10 @@ $$
 **At $t=1$**
 We have:
 $$
-q_1(x^i \mid x_1^i) = \mathbb{I}(x^i = x_1^i)
-\implies
-p_1(\mathbf{x} \mid \mathbf{z} = \mathbf{x}_1) = \prod_{j=1}^S \mathbb{I}(x^j = x_1^j) = \delta_{\mathbf{x}_1}(\mathbf{x}).
+\begin{align}
+q_1(x^i \mid x_1^i) &= \mathbb{I}(x^i = x_1^i) \\
+p_1(\mathbf{x} \mid \mathbf{z} = \mathbf{x}_1) &= \prod_{j=1}^S \mathbb{I}(x^j = x_1^j) = \delta_{\mathbf{x}_1}(\mathbf{x})
+\end{align}
 $$
 Since $\pi(\mathbf{z}) = p_{\mathrm{data}}(\mathbf{x}_1)$,
 the delta collapses the sum directly:
