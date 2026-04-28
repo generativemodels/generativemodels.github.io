@@ -732,19 +732,22 @@ In particular, both objectives have the same minimizers. */}
 
 #### Learning with denoiser parameterization
 
-As we saw in <span style="color: red">cite eq</span>, velocity fields follow very similar properties to probability distributions, and the KL divergence is a natural way to compare them.
-Since it is more intuitive to think in terms of probabilities rather than velocities, we can reparameterize the velocity field $u_t^i(\mathbf{x})$ in terms of a denoiser $D_{\theta,t}^i(\mathbf{x}) = P_{\theta,t}(X_1^i \mid X_t = \mathbf{x})$. It corresponds to the probability distribution over clean tokens at position $i$, given the current noisy sequence $\mathbf{x}_t$. <span style="color: red">Discuss this argument</span>
 
-We can directly connect the denoiser and velocity through this simple formula:
-
+In continuous flow matching withs straight interpolation paths $x_t = (1-t) x_0 + tx_1$, learning the ideal velocity $\mathbb{E}[x_1 - x_0 | x_t=x]$ is mathematically equivalent to learning the ideal denoiser $\mathbb{E}[x_1 | x_t = x]$, since the two are linked via $\mathbb{E}[x_1 - x_0 | x_t=x] = \frac{1}{1 - t} ( \mathbb{E}[x_1 | x_t = x] - x)$.
+It turns out the same type of denoiser-velocity equivalence holds in the discrete case:
 $$
 \begin{equation}
 u_t^i(\mathbf{x})_v = \frac{1}{1 - t} \left( \mathbb{P}(X_1^i = v | X_t = \mathbf{x}) - \mathbb{I}(v = x^i) \right)
 \end{equation}
 $$
+where $\mathbb{P}(X_1^i = v | X_t = \mathbf{x})$ can be interpreted as a denoiser: it gives the probability of the $i$-th token in the final sequence $\mathbf{x}_1$ being $v$, given the full noisy sequence $\mathbf{x}_t$.
+
+{/* As we saw in <span style="color: red">cite eq</span>, velocity fields follow very similar properties to probability distributions, and the KL divergence is a natural way to compare them.
+Since it is more intuitive to think in terms of probabilities rather than velocities, we can reparameterize the velocity field $u_t^i(\mathbf{x})$ in terms of a denoiser $D_{\theta,t}^i(\mathbf{x}) = P_{\theta,t}(X_1^i \mid X_t = \mathbf{x})$. It corresponds to the probability distribution over clean tokens at position $i$, given the current noisy sequence $\mathbf{x}_t$. <span style="color: red">Discuss this argument</span> */}
+
 
 <details>
-<summary>Proof</summary>
+<summary>Proof of velocity-denoiser equivalence</summary>
 <div>
 
 In a general configuration, the marginal velocity is the conditional expectation of the conditional velocity:
