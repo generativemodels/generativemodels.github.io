@@ -135,23 +135,24 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 - **$\mathcal{S} = \mathcal{V}^S$** space of all possible sequences of length $S$ over the vocabulary
 - **$\mathbf{x} = x^1 \dots x^S$** sequence of $S$ tokens, where each token $x^i$ takes values in $\mathcal{V}$
 - **$\mathbf{e}_v$** one-hot vector in $\mathbb{R}^{|\mathcal{V}|}$ for token $v \in \mathcal{V}$
-- **$m$** mask token $m \notin \mathcal{V}$, represented as the one-hot vector $(0, \dots, 0, 1) \in \mathbb{R}^{|\mathcal{V}|+1}$
-- **$\mathbf{x}^{\neq i}$** sub-sequence of $\mathbf{x}$ at all positions except $i$;
+- **$m$** mask token$
+- **$\mathbf{x}^{\neq i}$** sub-sequence of $\mathbf{x}$ at all positions except $i$
 - **$p_0$** source distribution (mask or uniform)
 - **$p_{\text{mask}}$** mask source distribution: $p_{\text{mask}}(v) = \mathbb{I}(v = m)$
 - **$p_{\text{unif}}$** uniform source distribution: $p_{\text{unif}}(v) = \frac{1}{|\mathcal{V}|}$
 - **$p_1$** target distribution
-- **$p_t$** marginal distribution at time $t \in [0,1]$; the probability path representing the trajectory that transports $p_0$ to $p_1$
-- **$p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | z^j)$** factorized conditional probability path given a conditioning variable $z$
-- **$q_t(x | z)$** token-wise conditional distribution given $z$.
-- **$q_t(x | x_0, x_1)$** source-target token-wise conditional distribution: $q_t(x | x_0, x_1) = \kappa_t \mathbb{I}(x = x_1) + (1 - \kappa_t) \mathbb{I}(x = x_0)$
-- **$\kappa_t$** interpolation schedule; boundary conditions are $\kappa_0 = 0$ and $\kappa_1 = 1$, with a natural choice being $\kappa_t = t$
+- **$p_t$** marginal distribution at time $t \in [0,1];$ the probability path representing the trajectory that transports $p_0$ to $p_1$
+- **$\mathbf{z}$** conditioning variable, of law $\pi(\mathbf{z})$
+- **$p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | z^j)$** factorized conditional probability path given the conditioning variable $\mathbf{z}$
+- **$q_t(x | z)$** token-wise conditional distribution given $\mathbf{z}$
+{/* - **$q_t(x | x_0, x_1)$** source-target token-wise conditional distribution: $q_t(x | x_0, x_1) = \kappa_t \mathbb{I}(x = x_1) + (1 - \kappa_t) \mathbb{I}(x = x_0)$ */}
 - **$u_t(\mathbf{x})_{\mathbf{y}}$** probability velocity: the instantaneous rate at which the sequence transitions from $\mathbf{x}$ to $\mathbf{y}$ at time $t$
 - **$u_t^i(\mathbf{x})_v$** token-wise velocity at position $i$: the instantaneous rate at which the $i$-th token of $\mathbf{x}$ transitions to $v$ at time $t$
-- **$u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}}$** conditional velocity field given $z$; it relates to the marginal velocity via expectation, formulated as $u_t(\mathbf{x})_{\mathbf{y}} = \mathbb{E}_{\substack{\mathbf{z}}}[u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}} \mid X_t = \mathbf{x}] $
-- **$u_t(x | x_0, x_1)$** source-target token-wise conditional velocity: $u_t(x | x_0, x_1)_v = \frac{\dot{\kappa}_t}{1 - \kappa_t} \left( \mathbb{I}(v = x_1) - \mathbb{I}(v = x) \right)$
+- **$u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}}$** conditional velocity field given $\mathbf{z}$
+{/* it relates to the marginal velocity via expectation, formulated as $u_t(\mathbf{x})_{\mathbf{y}} = \mathbb{E}_{\substack{\mathbf{z}}}[u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}} \mid X_t = \mathbf{x}] $ */}
+{/* - **$u_t(x | x_0, x_1)$** source-target token-wise conditional velocity: $u_t(x | x_0, x_1)_v = \frac{\dot{\kappa}_t}{1 - \kappa_t} \left( \mathbb{I}(v = x_1) - \mathbb{I}(v = x) \right)$ */}
 - **$u_{\theta,t}^i(\mathbf{x})_v$** learned velocity field parameterized by $\theta$
-- **$P_{\theta,t}(X_1^i | \mathbf{x}_t)$** learned denoiser: at coordinate j, conditional probability that the $i$-th token at time 1 is $\mathbf{e}_j$, given current sequence $\mathbf{x}_t$
+- **$P_{\theta,t}(X_1^i | \mathbf{x}_t)$** learned denoiser: at coordinate j, probability that the $i$-th token at time 1 is $\mathbf{e}_j$, given current sequence $\mathbf{x}_t$
 
 <label for="cb-glossary">Hide Glossary</label>
 </div>
@@ -1030,19 +1031,23 @@ $$
 
 #### Forward and Reverse Diffusion Processes
 
-We first consider a sentence where we progressively replace each word with a special mask token, transforming the sequence $\mathbf{x}$ into a sequence of masks over time. This forward process is applied independently to each token. Thus, for $s < t$, we can compute the transition probability from time $s$ to $t$ and define the conditional transition matrix $\bar{Q}_{t|s}$ satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$. In matrix form, this is explicitly:
+We first consider the forward process: we start from a sequence, and we progressively replace each token by the mask token, transforming the sequence $\mathbf{x}$ into a sequence of masks over time.
+This forward process is applied independently to each token.
+Thus, for $s < t$, we can compute the transition probability from time $s$ to $t$ and define the conditional transition matrix $\bar{Q}_{t|s}$ satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$.
+In matrix form, this is explicitly:
 $$
-\begin{equation}
-\bar{Q}_{t|s} =
+\begin{align}
+\bar{Q}_{t|s}
+&=
 \begin{pmatrix}
 \frac{\alpha_t}{\alpha_s} & 0 & \dots & 0 & 1 - \frac{\alpha_t}{\alpha_s} \\
 0 & \frac{\alpha_t}{\alpha_s} & \dots & 0 & 1 - \frac{\alpha_t}{\alpha_s} \\
 \vdots & \vdots & \ddots & \vdots & \vdots \\
 0 & 0 & \dots & \frac{\alpha_t}{\alpha_s} & 1 - \frac{\alpha_t}{\alpha_s} \\
 0 & 0 & \dots & 0 & 1
-\end{pmatrix}
-= \frac{\alpha_t}{\alpha_s} I + \left(1 - \frac{\alpha_t}{\alpha_s}\right)\mathbf{1}\mathbf{e}_m^\top
-\end{equation}
+\end{pmatrix} \\
+&= \frac{\alpha_t}{\alpha_s} I + \left(1 - \frac{\alpha_t}{\alpha_s}\right)\mathbf{1}\mathbf{e}_m^\top
+\end{align}
 $$
 where $\alpha_t$ is the probability of a token remaining unmasked at time $t$.
 Interpretation: if the token at time $s$ is $x_s$, then for $t > s$.:
