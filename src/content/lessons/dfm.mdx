@@ -905,7 +905,7 @@ $$
     {/* ASPECT 1 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', borderTop: '1px solid #ccc', textAlign: 'center' }}>
-        <strong>1. Define a variable $\mathbf{z}$ with some known distribution $p(\mathbf{z})$</strong>
+        <strong>1. Define a conditioning variable $\mathbf{z}$ with some known distribution $p(\mathbf{z})$</strong>
       </td>
     </tr>
     <tr>
@@ -958,7 +958,7 @@ $$
         $D_{L^2}(x_1 - x_0, u_{\theta,t}(\mathbf{x}_t))$ <br /> $= \sum_{i=1}^S \left(u_{\theta,t}^i(\mathbf{x}_t) - (x_1^i - x_0^i)\right)^2$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $\sum_{i=1}^S \mathrm{KL}^i(u(x_t^i \mid (x_1, x_0)), u_{\theta,t}^i(\mathbf{x}_t))$ <br /> $= \sum_{i=1}^S \Big[\sum_{v \neq x_t^i} u_{\theta,t}^i(\mathbf{x}_t)_v$ <br /> $\quad - \mathbb{I}(x_t^i = x_0^i) \frac{1}{1 - t} \log u_{\theta,t}^i(\mathbf{x}_t)_{x_1^i}\Big]$
+        $\sum_{i=1}^S \mathrm{KL}(u(x_t^i \mid (x_1, x_0)), u_{\theta,t}^i(\mathbf{x}_t))$ <br /> $= \sum_{i=1}^S \Big[\sum_{v \neq x_t^i} u_{\theta,t}^i(\mathbf{x}_t)_v$ <br /> $\quad - \mathbb{I}(x_t^i = x_0^i) \frac{1}{1 - t} \log u_{\theta,t}^i(\mathbf{x}_t)_{x_1^i}\Big]$
       </td>
     </tr>
 
@@ -1000,10 +1000,10 @@ $$
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        Numerical Integration (Euler ODE): <br /> $\mathbf{x}_{k+1} = \mathbf{x}_k + \frac{1}{N} u_{\theta,t}(\mathbf{x}_k)$ <br /> <em>If learned denoiser:</em> <br /> $u_{\theta,t}(\mathbf{x}) = \frac{1}{1-t}\!\left(\mathbb{E}_\theta[X_1 \mid X_t = \mathbf{x}] - \mathbf{x}\right)$
+        Numerical Integration (Euler ODE): <br /> $\mathbf{x}_{k+1} = \mathbf{x}_k + \frac{1}{N} u_{\theta,t}(\mathbf{x}_k)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}(\mathbf{x}) = \frac{1}{1-t}\!\left(\mathbb{E}_\theta[X_1 \mid X_t = \mathbf{x}] - \mathbf{x}\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        Continuous Time Markov Chain: <br /> $x_{k+1}^i \sim \text{Cat}\!\left(\mathbf{e}_{x_k^i} + \frac{1}{N} u_{\theta,t}^i(\mathbf{x}_k)\right)$ <br /> <em>If learned denoiser:</em> <br /> $u_{\theta,t}^i(\mathbf{x}) = \frac{1}{1-t}\!\left(P_{\theta,t}(X_1^i \mid \mathbf{x}) - (\mathbf{e}_{x^i})\right)$
+        Continuous Time Markov Chain: <br /> $x_{k+1}^i \sim \text{Cat}\!\left(\mathbf{e}_{x_k^i} + \frac{1}{N} u_{\theta,t}^i(\mathbf{x}_k)\right)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}^i(\mathbf{x}) = \frac{1}{1-t}\!\left(P_{\theta,t}(X_1^i \mid \mathbf{x}) - (\mathbf{e}_{x^i})\right)$
       </td>
     </tr>
 
@@ -1023,6 +1023,8 @@ $$
     </tr>
   </tbody>
 </table>
+
+<br />
 
 ### Discrete Diffusion
 
