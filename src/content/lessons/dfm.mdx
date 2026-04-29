@@ -1257,7 +1257,7 @@ To generate data, we define a reverse process that progressively unmasks tokens.
 Similarly to continuous diffusion where the reverse process can be derived reversing the forward SDE:
 $$
 \begin{equation}
-dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_{\theta,t}(x_t)\right)dt
+dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt
 \end{equation}
 $$
 we can reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
@@ -1297,92 +1297,6 @@ By identifying this result with the definition of the reverse local transition $
 
 </div>
 </details>
-
-{/*
-The probability of reverting to the clean token $x_0$ yields a reverse matrix $R_{s|t}^{x_0}$:
-$$
-\begin{equation}
-R_{s|t}^{x_0} =
-\begin{pmatrix}
- & & & 0 \\
- & I_{|\mathcal{V}|} & & \vdots \\
- & & & 0 \\
-0 & \dots \, \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \, \dots & 0 & \frac{1 - \alpha_s}{1 - \alpha_t}
-\end{pmatrix}
-= I + \frac{\alpha_s - \alpha_t}{1 - \alpha_t} m (x_0 - m)^\top
-\end{equation}
-$$
-where the term $\frac{\alpha_s - \alpha_t}{1 - \alpha_t}$ in the last row appears at the column index corresponding to the clean token $x_0$.
-It represents the probability that a masked token $x_t=m$ at time $t$ will jump to the clean token $x_0$ between $t$ and $s$.
-
-Interpretation: if the token at time $t$ is $m$, and $s < t$, then:
-$$
-\begin{equation}
-x_s = \begin{cases}
-x_0, & \text{with probability } \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \\
-m, & \text{with probability } 1 - \frac{\alpha_s - \alpha_t}{1 - \alpha_t}
-\end{cases}
-\end{equation}
-$$
-
-<details>
-<summary>Construction of $R_{s|t}^{x_0}$</summary>
-<div>
-
-We want to estimate the probability that a token at time $s < t$ remains unmasked, given that we know the original token $x_0$ and that at time $t$ the token is masked.
-
-Using Bayes' theorem:
-$$
-\begin{align}
-\mathbb{P}(x_s = x_0 | x_0, x_t = m) &= \frac{\mathbb{P}(x_t = m | x_s = x_0)  \mathbb{P}(x_s = x_0 | x_0)}{\mathbb{P}(x_t = m | x_0)} \\
-&= \frac{\left(1 - \frac{\alpha_t}{\alpha_s}\right)  \alpha_s}{1 - \alpha_t} \\
-&= \frac{\alpha_s - \alpha_t}{1 - \alpha_t}
-\end{align}
-$$
-
-We can define the reverse transition distribution $q(x_s | x_t, x_0)$ via a reverse matrix $R_{s|t}^{x_0}$ conditioned on the clean token $x_0$:
-$$
-\begin{equation}
-q(x_s | x_t, x_0) = \text{Cat}(x_s; \ (R_{s|t}^{x_0})^\top x_t)
-\end{equation}
-$$
-
-Thus, the matrix $R_{s|t}^{x_0}$ is defined as follows.
-$$
-\begin{align}
-R_{s|t}^{x_0} =
-\left(
-\begin{array}{ccc|c}
- & & & 0 \\
- & I_{|\mathcal{V}|} & & \vdots \\
- & & & 0 \\
-\hline
-0 & \dots \quad \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \quad \dots & 0 & \frac{1 - \alpha_s}{1 - \alpha_t}
-\end{array}
-\right) \in \mathbb{R}^{K \times K}
-\end{align}
-$$
-where the term $\frac{\alpha_s - \alpha_t}{1 - \alpha_t}$ in the last row appears at the column index corresponding to the clean token $x_0$.
-
-</div>
-</details>
-
-By taking the first-order Taylor expansion for a small time step $\Delta t$, we define the conditional reverse rate matrix $\dot{R}_t^{x_0}$:
-$$
-\begin{equation}
-\dot{R}_t^{x_0} =
-\begin{pmatrix}
- & & & 0 \\
- & \mathbf{0}_{|\mathcal{V}|} & & \vdots \\
- & & & 0 \\
-0 & \dots \, r_t \, \dots & 0 & -r_t
-\end{pmatrix}
-= r_t \, m (x_0 - m)^\top
-\end{equation}
-$$
-where $r_t = -\frac{\dot{\alpha}_t}{1 - \alpha_t}$ is the instantaneous unmasking rate. While $\dot{R}_t^{x_0}$ represents the conditional reverse rate assuming the clean target $x_0$ is explicitly known, the true marginal reverse rate $\dot{R}_t(x_t)$ is obtained by taking $\dot{R}_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)} [\dot{R}_t(x_t | x_0)]$.
-*/}
-
 
 #### Training
 
@@ -1689,8 +1603,7 @@ which matches the sequence-level training loss defined previously.
 </div>
 </details>
 
-
-In the continuous-time limit $T \to \infty$, each discrete transition is replaced by an instantaneous rate. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
+Our goal is now to derive a loss that can be generalized for other noising processes. In the continuous-time limit $T \to \infty$, each discrete transition $q(x_s | x_t)$ is replaced by an instantaneous rate $\dot{R}_t(x_t)$. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
 
 $$
 \begin{equation}
@@ -1721,7 +1634,7 @@ where $r_t = -\dot{\alpha}_t / (1 - \alpha_t)$ is the instantaneous unmasking ra
 
 To derive $\dot{R}_t(x_t | x_0)$, we write the reverse transition probabilities $q(x_s | x_t, x_0)$ for arbitrary $s < t$ using a matrix $R_{s|t}^{x_0}$, and then write the first-order Taylor expansion as $\Delta t = t - s \to 0$ of this matrix (analogous method that we did to find $\dot{R}_t$).
 
-The reverse transition $q(x_s | x_t, x_0)$ can be written as a categorical distribution governed by a reverse matrix $R_{s|t}^{x_0}$:
+Using the <span style="color: red">cite lemma</span>, the reverse transition $q(x_s | x_t, x_0)$ can be written as a categorical distribution governed by a reverse matrix $R_{s|t}^{x_0}$:
 $$
 \begin{equation}
 q(x_s | x_t, x_0) = \mathrm{Cat}\!\left(x_s;\ (R_{s|t}^{x_0})^\top x_t\right)
@@ -1788,16 +1701,16 @@ $$
 \end{align}
 $$
 
-Let $\Delta t = 1/T$, $t = j/T$, and $s = (j-1)/T$. For a small time step $\Delta t$, the probability of transitioning to a token $y \in \mathcal{V}$ is approximated by (<span style="color: red">cite eq</span> and <span style="color: red">cite eq</span>):
+Let $\Delta t = 1/T$, $t = j/T$, and $s = (j-1)/T$. The probability of transitioning to a token $y \in \mathcal{V}$ is given by the first-order Taylor expansion (<span style="color: red">cite eq</span> and <span style="color: red">cite eq</span>):
 
 $$
 \begin{align}
-    q(y | x_t, x_0) &\approx \mathbb{I}(y = x_t) + \Delta t\, [\dot{R}_t(x_t | x_0)]_y \\
-    p_\theta(y | x_t) &\approx \mathbb{I}(y = x_t) + \Delta t\, [\dot{R}_{\theta,t}(x_t)]_y
+    q(y | x_t, x_0) &= \mathbb{I}(y = x_t) + \Delta t\, [\dot{R}_t(x_t | x_0)]_y + o(\Delta t) \\
+    p_\theta(y | x_t) &= \mathbb{I}(y = x_t) + \Delta t\, [\dot{R}_{\theta,t}(x_t)]_y + o(\Delta t)
 \end{align}
 $$
 
-We expand the KL divergence term inside the sum by summing over the vocabulary:
+We expand the KL divergence term summing over the vocabulary:
 
 $$
 \begin{align}
@@ -1811,17 +1724,17 @@ Separating the sum into the case where the token changes ($y \neq x_t$) and stay
 
 $$
 \begin{align}
-    \Delta t\, [\dot{R}_t(x_t | x_0)]_y \log \frac{\Delta t\, [\dot{R}_t(x_t | x_0)]_y}{\Delta t\, [\dot{R}_{\theta,t}(x_t)]_y} = \Delta t\, [\dot{R}_t(x_t | x_0)]_y \log \frac{[\dot{R}_t(x_t | x_0)]_y}{[\dot{R}_{\theta,t}(x_t)]_y}
+    (\Delta t\, [\dot{R}_t(x_t | x_0)]_y + o(\Delta t)) \log \frac{\Delta t\, [\dot{R}_t(x_t | x_0)]_y + o(\Delta t)}{\Delta t\, [\dot{R}_{\theta,t}(x_t)]_y + o(\Delta t)} = \Delta t\, [\dot{R}_t(x_t | x_0)]_y \log \frac{[\dot{R}_t(x_t | x_0)]_y}{[\dot{R}_{\theta,t}(x_t)]_y} + o(\Delta t)
 \end{align}
 $$
 
-2. For $y = x_t$, using the approximation $\log \frac{1+a}{1+b} \approx a - b$:
+2. For $y = x_t$, using the expansion $\log \frac{1+a}{1+b} = a - b + o(|a|+|b|)$:
 
 $$
 \begin{align}
-    (1 + \Delta t\, [\dot{R}_t(x_t | x_0)]_{x_t}) \log \frac{1 + \Delta t\, [\dot{R}_t(x_t | x_0)]_{x_t}}{1 + \Delta t\, [\dot{R}_{\theta,t}(x_t)]_{x_t}}
-    &\approx \Delta t\, [\dot{R}_t(x_t | x_0)]_{x_t} - \Delta t\, [\dot{R}_{\theta,t}(x_t)]_{x_t} \\
-    &= \Delta t \left( - \sum_{y \neq x_t} [\dot{R}_t(x_t | x_0)]_y + \sum_{y \neq x_t} [\dot{R}_{\theta,t}(x_t)]_y \right)
+    (1 + \Delta t\, [\dot{R}_t(x_t | x_0)]_{x_t} + o(\Delta t)) \log \frac{1 + \Delta t\, [\dot{R}_t(x_t | x_0)]_{x_t} + o(\Delta t)}{1 + \Delta t\, [\dot{R}_{\theta,t}(x_t)]_{x_t} + o(\Delta t)}
+    &= \Delta t\, [\dot{R}_t(x_t | x_0)]_{x_t} - \Delta t\, [\dot{R}_{\theta,t}(x_t)]_{x_t} + o(\Delta t) \\
+    &= \Delta t \left( - \sum_{y \neq x_t} [\dot{R}_t(x_t | x_0)]_y + \sum_{y \neq x_t} [\dot{R}_{\theta,t}(x_t)]_y \right) + o(\Delta t)
 \end{align}
 $$
 
@@ -1829,7 +1742,7 @@ Combining these terms, the KL divergence becomes:
 
 $$
 \begin{align}
-    \mathrm{KL} \approx \Delta t \sum_{y \neq x_t} \left( [\dot{R}_t(x_t | x_0)]_y \log \frac{[\dot{R}_t(x_t | x_0)]_y}{[\dot{R}_{\theta,t}(x_t)]_y} - [\dot{R}_t(x_t | x_0)]_y + [\dot{R}_{\theta,t}(x_t)]_y \right)
+    \mathrm{KL} = \Delta t \sum_{y \neq x_t} \left( [\dot{R}_t(x_t | x_0)]_y \log \frac{[\dot{R}_t(x_t | x_0)]_y}{[\dot{R}_{\theta,t}(x_t)]_y} - [\dot{R}_t(x_t | x_0)]_y + [\dot{R}_{\theta,t}(x_t)]_y \right) + o(\Delta t)
 \end{align}
 $$
 
@@ -1844,172 +1757,7 @@ $$
 </div>
 </details>
 
-{/*
-
-
-The ELBO for a general discrete diffusion process is given by:
-
-$$
-\begin{align}
-\text{ELBO}(x_0) = - \mathrm{KL}(q( \cdot | x_0) , p_{\text{source}}) - \int_0^1 \mathbb{E}_{x_t \sim q( \cdot | x_0)} \left[ \mathrm{KL}(\dot{R}_t(x_t | x_0) , \dot{R}_{\theta,t}(x_t)) \right] dt
-\end{align}
-$$
-
-<details>
-<summary>Training Loss Proof</summary>
-<div>
-
-We start with the known inequality for variational inference:
-$$
-\begin{equation}
-    \log p_\theta(x_0) \geq \text{ELBO}(x_0),
-\end{equation}
-$$
-where the evidence lower bound is defined as:
-$$
-\begin{equation}
-    \text{ELBO}(x_0) = \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log p_\theta(x_{0:T}) - \log q(x_{1:T}|x_0) \right],
-\end{equation}
-$$
-and $x_{j:T} = (x_{j/T}, x_{(j+1)/T}, \dots, x_1)$ denotes the sequence of states from time $j/T$ to $t=1$.
-
-The forward process follows the Markovian memoryless propzerty:
-$$
-\begin{align}
-    q(x_{1:T}|x_0) = \prod_{j=1}^{T} q(x_{j/T} | x_{(j-1)/T}, x_{(j-2)/T}, \dots, x_0) = \prod_{j=1}^{T} q(x_{j/T} | x_{(j-1)/T}, x_0)
-\end{align}
-$$
-where the last equality holds because the forward process is memoryless given the previous states.
-
-Similarly, the reverse model decomposes as:
-$$
-\begin{equation}
-    p_\theta(x_{0:T}) = p_\theta(x_1) \prod_{j=1}^{T} p_\theta(x_{(j-1)/T} | x_{j/T}).
-\end{equation}
-$$
-
-Substituting the Markovian decompositions into the ELBO:
-$$
-\begin{align}
-    \text{ELBO}(x_0) &= \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log p_\theta(x_1) \right] \\
-    &\quad + \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log p_\theta(x_{(j-1)/T} | x_{j/T}) - \log q(x_{j/T} | x_{(j-1)/T}, x_0) \right]
-\end{align}
-$$
-
-Using Bayes' theorem, we can rewrite the forward process conditional:
-$$
-\begin{align}
-    \log q(x_{j/T} | x_{(j-1)/T}, x_0) = \log q(x_{(j-1)/T} | x_{j/T}, x_0) + \log q(x_{j/T} | x_0) - \log q(x_{(j-1)/T} | x_0).
-\end{align}
-$$
-
-Substituting Bayes' rule into the ELBO and observing that consecutive terms telescope:
-$$
-\begin{align}
-    \text{ELBO}(x_0) &= \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log q(x_0 | x_0) \right] \\
-    &\quad + \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log p_\theta(x_1) \right] + \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log p_\theta(x_{(j-1)/T} | x_{j/T}) - \log q(x_{(j-1)/T} | x_{j/T}, x_0) \right]
-\end{align}
-$$
-
-Note that $\log q(x_0 | x_0) = \log(1) = 0$, so:
-$$
-\begin{align}
-    \text{ELBO}(x_0) &= - \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right] \\
-    &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_{(j-1)/T} | x_{j/T}, x_0) - \log p_\theta(x_{(j-1)/T} | x_{j/T}) \right]
-\end{align}
-$$
-
-We can simplify the expectations over the joint distribution $q(x_{1:T}|x_0)$ by marginalizing:
-
-For the first term:
-$$
-\begin{align}
-    \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right] = \mathbb{E}_{\substack{x_1 \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right]
-\end{align}
-$$
-
-For the sum, we marginalize over all intermediate variables:
-$$
-\begin{align}
-    &\mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_{(j-1)/T} | x_{j/T}, x_0) - \log p_\theta(x_{(j-1)/T} | x_{j/T}) \right] \\
-    &= \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathbb{E}_{\substack{x_{(j-1)/T} \sim q( \cdot | x_{j/T}, x_0)}} \left[ \log q(x_{(j-1)/T} | x_{j/T}, x_0) - \log p_\theta(x_{(j-1)/T} | x_{j/T}) \right] \right]
-\end{align}
-$$
-
-Therefore, the ELBO becomes:
-$$
-\begin{align}
-    \text{ELBO}(x_0) &= - \mathrm{KL}\left(q(x_1|x_0) , p_\theta(x_1)\right) \\
-    &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right]
-\end{align}
-$$
-
-**Conclusion**
-
-For a general discrete diffusion process acting on tokens, we start from the full ELBO derived earlier:
-$$
-\begin{align}
-    \text{ELBO}(x_0) &= - \mathrm{KL}\left(q(x_1 | x_0) , p_\theta(x_1)\right) \\
-    &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right]
-\end{align}
-$$
-
-Let $\Delta t = 1/T$, $t = j/T$, and $s = (j-1)/T$. For a small time step $\Delta t$, the probability of transitioning to a token $y \in \mathcal{V}$ is approximated by (according to <span style="color: red"> cite eq </span> and <span style="color: red"> cite eq </span>):
-$$
-\begin{align}
-    q(y | x_t, x_0) &\approx \mathbb{I}(y = x_t) + \Delta t [\dot{R}_t(x_t | x_0)]_y \\
-    p_\theta(y | x_t) &\approx \mathbb{I}(y = x_t) + \Delta t [\dot{R}_{\theta,t}(x_t)]_y
-\end{align}
-$$
-
-We expand the KL divergence term inside the sum by summing over the vocabulary:
-$$
-\begin{align}
-\mathrm{KL}\left(q( \cdot | x_t, x_0) , p_\theta( \cdot | x_t)\right) = \sum_{y \in \mathcal{V}} q(y | x_t, x_0) \log \frac{q(y | x_t, x_0)}{p_\theta(y | x_t)}
-\end{align}
-$$
-
-Separating the sum into the case where the token changes ($y \neq x_t$) and stays the same ($y = x_t$):
-
-1. For $y \neq x_t$:
-$$
-\begin{align}
-    \Delta t [\dot{R}_t(x_t | x_0)]_y \log \frac{\Delta t [\dot{R}_t(x_t | x_0)]_y}{\Delta t [\dot{R}_{\theta,t}(x_t)]_y} = \Delta t [\dot{R}_t(x_t | x_0)]_y \log \frac{[\dot{R}_t(x_t | x_0)]_y}{[\dot{R}_{\theta,t}(x_t)]_y}
-\end{align}
-$$
-
-2. For $y = x_t$:
-Using the approximation $\log \frac{1+a}{1+b} \approx a-b$:
-$$
-\begin{align}
-    (1 + \Delta t [\dot{R}_t(x_t | x_0)]_{x_t}) \log \frac{1 + \Delta t [\dot{R}_t(x_t | x_0)]_{x_t}}{1 + \Delta t [\dot{R}_{\theta,t}(x_t)]_{x_t}}
-    &\approx 1 \cdot (\Delta t [\dot{R}_t(x_t | x_0)]_{x_t} - \Delta t [\dot{R}_{\theta,t}(x_t)]_{x_t}) \\
-    &= \Delta t \left( - \sum_{y \neq x_t} [\dot{R}_t(x_t | x_0)]_y + \sum_{y \neq x_t} [\dot{R}_{\theta,t}(x_t)]_y \right)
-\end{align}
-$$
-
-Combining these terms, the KL divergence becomes:
-$$
-\begin{align}
-    \mathrm{KL} \approx \Delta t \sum_{y \neq x_t} \left( [\dot{R}_t(x_t | x_0)]_y \log \frac{[\dot{R}_t(x_t | x_0)]_y}{[\dot{R}_{\theta,t}(x_t)]_y} - [\dot{R}_t(x_t | x_0)]_y + [\dot{R}_{\theta,t}(x_t)]_y \right)
-\end{align}
-$$
-This expression corresponds to $\Delta t \cdot \mathrm{KL}(\dot{R}_t(x_t | x_0) , \dot{R}_{\theta,t}(x_t))$, the generalized KL divergence between the instantaneous transition rate vectors for the token $x_t$.
-
-Substituting this back into the ELBO, the sum over $j$ becomes a Riemann sum. Taking the limit as $T \to \infty$:
-$$
-\begin{align}
-    \text{ELBO}(x_0) = - \mathrm{KL}\left(q(x_1 | x_0) , p_\theta(x_1)\right) - \int_0^1 \mathbb{E}_{\substack{x_t \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(\dot{R}_t(x_t | x_0) , \dot{R}_{\theta,t}(x_t)\right) \right] dt
-\end{align}
-$$
-Note that $p_\theta(x_1)$ corresponds to the known base distribution $p_{\text{source}}$ (typically the fully masked state or uniform distribution).
-
-</div>
-</details>
-
-*/}
-
-Ignoring constants independent of $\theta$, the general KL objective can be written explicitly as:
+Ignoring constants independent of $\theta$, the discrete diffusion loss can be written explicitly as:
 
 $$
 \begin{align}
@@ -2022,30 +1770,33 @@ $$
 In continuous diffusion, the score function $\nabla \log p_t(x)$ dictates the deterministic reverse ODE:
 $$
 \begin{equation}
-dx = \left[h(x, t) - \tfrac{1}{2}g(t)^2 \,\nabla \log p_t(x)\right]dt
+dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt
 \end{equation}
 $$
-which has the same marginal densities as the time-reversed stochastic process. In a discrete state space, there is no notion of a continuous gradient. However, one can write the sampling equation for the reverse process.
-Define $s_t(x)_y = \frac{q(X_t = y)}{q(X_t = x_t)}$.
+Thus, to sample samples from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
+
+In a discrete state space, there is no notion of a continuous gradient. However, one can write the sampling equation for the reverse process.
+Define $s_t(x_t)_y = \frac{q(X_t = y)}{q(X_t = x_t)}$.
 Then, remembering from <span style="color: red"> cite eq </span> that:
 $$
 \begin{equation}
-s_t(x)_y = \frac{[\dot{R}_t(x)]_y}{[\dot{Q}_t(x)]_y}
+s_t(x_t)_y = \frac{[\dot{R}_t(x_t)]_y}{[\dot{Q}_t(x_t)]_y}
 \end{equation}
 $$
 we can directly write the sampling used with a learned concrete score:
 $$
 \begin{equation}
-\mathbb{P}\!\left(X_{t-h} = y | X_t = x\right) = \mathbb{I}(x=y) + h\,[\dot{Q}_t(x)]_y\,s_{\theta,t}(x)_y + o(h)
+\mathbb{P}\!\left(X_{t-h} = y | X_t = x_t\right) = \mathbb{I}(x_t=y) + h\,[\dot{Q}_t(x_t)]_y\,s_{\theta,t}(x_t)_y + o(h)
 \end{equation}
 $$
 
-Then, we can express the loss <span style="color: red"> cite eq </span> in terms of concrete score:
+**Proposition**(concrete score matching): We can express the loss <span style="color: red"> cite eq </span> in terms of concrete score:
 $$
 \begin{align}
 L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \left[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y \left( s_{\theta,t}(x_t)_y - \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \log s_{\theta,t}(x_t)_y \right) \right] + C
 \end{align}
 $$
+where $C$ is a constant independent of $\theta$.
 
 <details>
 <summary>Concrete Score Derivation</summary>
@@ -2057,7 +1808,7 @@ L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \l
 \end{align}
 $$
 
-To express the true denoiser reverse rate, we apply Bayes' theorem to $x_t \to x_s$ conditioned on $x_0$, a similar argument as in the proof of <span style="color: red"> cite eq </span>. We have:
+To express the true denoiser reverse rate, we apply Bayes' theorem to $x_t \to x_s$ conditioned on $x_0$. We get:
 $$
 \begin{equation}
 \dot{R}_t(x_t | x_0)_y = [\dot{Q}_t(x_t)]_y \frac{p_t(y|x_0)}{p_t(x_t|x_0)}
