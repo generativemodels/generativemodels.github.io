@@ -9,6 +9,7 @@ import { useRafFn } from '@vueuse/core'
 const margin = 30
 const size = 50
 const depth = 25
+const vocabStackGap = 20
 
 const state = useDFMStore()
 const x1str = computedStringFromList(state, 'x1')
@@ -21,18 +22,18 @@ function tokenColor(token: string): string {
   return tokenIndexColor(index)
 }
 
+const vocabStackX = computed(
+  () => state.horizontalBins + 1 + (state.x1L * depth + vocabStackGap) / size,
+)
+
 // SVG domain: dynamic based on actual content, clamped to reasonable bounds
 const svgDomain = computed<[number, number, number, number]>(() => {
   const vocabSize = state.masked ? state.vocabulary.length + 1 : state.vocabulary.length
   const seqLen = Math.max(state.x1L, 3) // floor at 3 so tiny inputs don't explode
-  const rightX = (state.horizontalBins + 2) * size + seqLen * depth + margin
+  const stackRightX = vocabStackX.value * size + size + depth
+  const rightX = Math.max((state.horizontalBins + 2) * size + seqLen * depth, stackRightX) + margin
   const topY = Math.max(vocabSize, 3) * size + seqLen * depth + margin
-  return [
-    -margin,
-    -topY,
-    rightX,
-    margin,
-  ]
+  return [-margin, -topY, rightX, margin]
 })
 
 // Play/pause animation using requestAnimationFrame
@@ -98,8 +99,8 @@ const ProbTable = ({
           .slice()
           .reverse()
           .map((p, iv) => {
-            const isMaskCube = (ps.length - 1 - iv) >= state.vocabulary.length
-            const cubeOpacity = transparentMask ? (isMaskCube ? 0 : p) : (hideLowP ? p : 1)
+            const isMaskCube = ps.length - 1 - iv >= state.vocabulary.length
+            const cubeOpacity = transparentMask ? (isMaskCube ? 0 : p) : hideLowP ? p : 1
             if (cubeOpacity < 0.01) return null
             return (
               <SVGCube
@@ -118,12 +119,43 @@ const ProbTable = ({
     </g>
   )
 }
+
+const VocabularyStack = () => (
+  <g class="vocabulary-stack">
+    {[...state.vocabLabels].reverse().map((token, index) => {
+      const isMask = token === state.maskToken
+      return (
+        <SVGCube
+          key={token}
+          x={vocabStackX.value}
+          y={-index}
+          size={size}
+          depth={depth}
+          color={isMask ? '#555' : tokenColor(token)}
+          text={isMask ? 'm' : token}
+          textColor="white"
+          textSize={size * 0.5}
+        />
+      )
+    })}
+  </g>
+)
 </script>
 <template>
   <div class="dfm-card">
     <h2 class="dfm-title">Conditional Probability Paths</h2>
 
-    <D3Wrapper class="svg-vis" :class="{ 'dense-xprobat': state.showTransparentMask && state.showXfocuseprobat && state.masked && state.x1IsDecreasing }" :domain="svgDomain">
+    <D3Wrapper
+      class="svg-vis"
+      :class="{
+        'dense-xprobat':
+          state.showTransparentMask &&
+          state.showXfocuseprobat &&
+          state.masked &&
+          state.x1IsDecreasing,
+      }"
+      :domain="svgDomain"
+    >
       <ProbTable :prob="state.x0proba" class="proba x0proba" :x="0" />
       <ProbTable
         v-if="!state.showXfocuseprobat"
@@ -157,6 +189,7 @@ const ProbTable = ({
         />
       </template>
       <ProbTable :prob="state.x1onehot" class="proba x1onehot" :x="state.horizontalBins" />
+      <VocabularyStack />
       <defs>
         <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
           <polygon points="0 0, 10 3.5, 0 7" fill="darkred" />
@@ -217,8 +250,17 @@ const ProbTable = ({
     </label>
 
     <label v-if="state.showXfocuseprobat && state.masked" class="checkbox-label">
-      <input type="checkbox" v-model="state.showTransparentMask" :disabled="!state.x1IsDecreasing" />
-      <span class="label-text">Show full cube <span v-if="!state.x1IsDecreasing" style="opacity: 0.5">(requires x₁ in decreasing order)</span></span>
+      <input
+        type="checkbox"
+        v-model="state.showTransparentMask"
+        :disabled="!state.x1IsDecreasing"
+      />
+      <span class="label-text"
+        >Show full cube
+        <span v-if="!state.x1IsDecreasing" style="opacity: 0.5"
+          >(requires x₁ in decreasing order)</span
+        ></span
+      >
     </label>
 
     <div v-if="!state.showXfocuseprobat" class="samples-section">
@@ -229,8 +271,11 @@ const ProbTable = ({
             v-for="(token, pos) in sample"
             :key="pos"
             class="sample-token"
-            :style="{ color: token === state.maskToken ? 'rgba(255,255,255,0.35)' : tokenColor(token) }"
-          >{{ token === state.maskToken ? 'm' : token }}</span>
+            :style="{
+              color: token === state.maskToken ? 'rgba(255,255,255,0.35)' : tokenColor(token),
+            }"
+            >{{ token === state.maskToken ? 'm' : token }}</span
+          >
         </div>
       </div>
     </div>
@@ -238,11 +283,13 @@ const ProbTable = ({
 </template>
 
 <style>
-.dense-xprobat .xfocusprobat g>polygon:nth-child(3n) {
+.dense-xprobat .xfocusprobat g > polygon:nth-child(3n) {
   opacity: 0;
 }
 
-html, body, #app {
+html,
+body,
+#app {
   margin: 0;
   padding: 0;
 }
@@ -391,7 +438,9 @@ svg {
   font-family: 'DM Mono', monospace;
   font-size: 13px;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 
 .toggle-btn:first-child {
@@ -419,7 +468,9 @@ svg {
   cursor: pointer;
   font-family: 'DM Mono', monospace;
   font-size: 13px;
-  transition: background 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
 }
 
 .play-btn {

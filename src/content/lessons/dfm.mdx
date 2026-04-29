@@ -149,7 +149,7 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 - **$u_t(\mathbf{x})_{\mathbf{y}}$** probability velocity: the instantaneous rate at which the sequence transitions from $\mathbf{x}$ to $\mathbf{y}$ at time $t$
 - **$u_t^i(\mathbf{x})_v$** token-wise velocity at position $i$: the instantaneous rate at which the $i$-th token of $\mathbf{x}$ transitions to $v$ at time $t$
 - **$u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}}$** conditional velocity field given $\mathbf{z}$
-{/* it relates to the marginal velocity via expectation, formulated as $u_t(\mathbf{x})_{\mathbf{y}} = \mathbb{E}_{\substack{\mathbf{z}}}[u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}} \mid X_t = \mathbf{x}] $ */}
+{/* it relates to the marginal velocity via expectation, formulated as $u_t(\mathbf{x})_{\mathbf{y}} = \mathbb{E}_{\substack{\mathbf{z}}}[u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} | X_t = \mathbf{x}] $ */}
 {/* - **$u_t(x | x_0, x_1)$** source-target token-wise conditional velocity: $u_t(x | x_0, x_1)_v = \frac{\dot{\kappa}_t}{1 - \kappa_t} \left( \mathbb{I}(v = x_1) - \mathbb{I}(v = x) \right)$ */}
 - **$u_{\theta,t}^i(\mathbf{x})_v$** learned velocity field parameterized by $\theta$
 - **$P_{\theta,t}(X_1^i | \mathbf{x}_t)$** learned denoiser: at coordinate j, probability that the $i$-th token at time 1 is $\mathbf{e}_j$, given current sequence $\mathbf{x}_t$
@@ -224,10 +224,10 @@ In the discrete case, we say that $u$ *generates* the probability path $(p_t)_{t
 $$
 \mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{x} = \mathbf{y}) + h u_{t}(\mathbf{x})_{\mathbf{y}} + o(h)
 $$ <eq-prob-velocity>
-If we index the state space as $\mathcal{S} = \{\mathbf{y}_1, \dots, \mathbf{y}_{S}\}$ and choose $k$ such that $\mathbf{y}_k = \mathbf{x}$ (the current state), then the full transition-probability vector reads
+If we index the state space as $\mathcal{S} = \{\mathbf{y}_1, \dots, \mathbf{y}_{|\mathcal{S}|}\}$ and choose $k$ such that $\mathbf{y}_k = \mathbf{x}$ (the current state), then the full transition-probability vector reads
 $$
 \begin{equation}
-\underbrace{\mathbb{P}(X_{t+h} = \cdot \mid X_t=\mathbf{x})}_{\in \mathbb{R}^{S}}  =
+\underbrace{\mathbb{P}(X_{t+h} = \cdot | X_t=\mathbf{x})}_{\in \mathbb{R}^{|\mathcal{S}|}}  =
 \begin{bmatrix}
   h u_t(\mathbf{x})_{\mathbf{y}_1} \\
   \vdots \\
@@ -235,11 +235,13 @@ $$
   1 + h u_t(\mathbf{x})_{\mathbf{y}_k}  \\
   h u_t(\mathbf{x})_{\mathbf{y}_{k+1}} \\
   \vdots \\
-  h u_t(\mathbf{x})_{\mathbf{y}_{S}}
+  h u_t(\mathbf{x})_{\mathbf{y}_{|\mathcal{S}|}}
 \end{bmatrix}
 + o(h),
 \end{equation}
 $$
+
+where $\mathbf{e}_{\mathbf{x}}$ is the one-hot vector corresponding to the current state $\mathbf{x}$.
 
 Intuitively, $u_t(\mathbf{x})_{\mathbf{y}}$ is the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
 Much like the ODE TODO cite ODE can be discretized with Euler's method, the sampling process @eq-prob-velocity can be discretized as
@@ -249,13 +251,13 @@ $$
 \end{equation}
 $$
 
-As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
-We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**.
+As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
+We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**. This explains why we are allowed to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
 
 **Remark (Mass conservation for probability velocities).**
 The probability velocity $u$ must preserve probability mass: for TODO cite eq to define a valid probability, for every $t\in [0, 1]$ $u_t$ must satisfy:
 1. **Positivity:** $u_t(\mathbf{x})_{\mathbf{y}} \ge 0$ for all $\mathbf{y} \neq \mathbf{x}$.
-2. **Normalization:** $\sum_{\mathbf{y} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} = 0$ for all $\mathbf{x} \in \mathcal{S}$
+2. **Normalization:** $\sum_{\mathbf{y} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} = 0$ for all $\mathbf{x} \in \mathcal{S}$ (and so $u_t(\mathbf{x})_{\mathbf{x}} \le 0$).
 
 {/*
 Hence, for each state $\mathbf{x}$,
@@ -268,13 +270,13 @@ $u_t(\mathbf{x})_{\mathbf{x}} = -\sum_{\mathbf{y} \neq \mathbf{x}} u_t(\mathbf{x
 Positivity guarantees nonnegative off-diagonal transition probabilities:
 $$
 \begin{equation}
-\mathbb{P}(X_{t+h}=\mathbf{y}\mid X_t=\mathbf{x}) = h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h) \ge 0, \qquad \mathbf{y}\neq\mathbf{x}.
+\mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x}) = h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h) \ge 0, \qquad \mathbf{y}\neq\mathbf{x}.
 \end{equation}
 $$
 Normalization guarantees total mass conservation:
 $$
 \begin{equation}
-\sum_{\mathbf{y}\in\mathcal{S}} \mathbb{P}(X_{t+h}=\mathbf{y}\mid X_t=\mathbf{x})
+\sum_{\mathbf{y}\in\mathcal{S}} \mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x})
 = 1 + h\sum_{\mathbf{y}\in\mathcal{S}}u_t(\mathbf{x})_{\mathbf{y}} + o(h) = 1 + o(h).
 \end{equation}
 $$
@@ -346,11 +348,13 @@ As the next proposition shows, this has a fundamental consequence: the probabili
 Let $(X_t)$ be random variables of laws $p_t$; assume that the probability path $(p_t)$ is  generated by $u_t$.
 In addition, assume that the transition probabilities factorize over tokens, namely for $\mathbf{x}, \mathbf{y} \in \mathcal{S}$:
 $$
-\begin{aligned}
-\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) &= \mathbb{P}(X_{t+h}^1 = y_1, X_{t+h}^2 = y_2, \dots, X_{t+h}^S = y_S | X_t = \mathbf{x}) \\
+\begin{align}
+\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) &:= \mathbb{P}(X_{t+h}^1 = y_1, X_{t+h}^2 = y_2, \dots, X_{t+h}^S = y_S | X_t = \mathbf{x}) \\
 &= \prod_{i=1}^S \mathbb{P}(X_{t+h}^i = y^i | X_t = \mathbf{x})
-\end{aligned}
+\end{align}
 $$
+
+Suppose that there is a probabilility velocity $u_t$ generating $p_t$.
 Then, the probability velocity writes as a sum of $S$ *tokenwise* probability velocities $u_t^i$, taking values in $\mathcal{V}$:
 
 $$
@@ -365,28 +369,26 @@ $$
 <div>
 By definition, the transition probability for a single token at position $i$ is:
 $$
+\begin{equation}
 \mathbb{P}(X_{t+h}^i = y^i | X_t = \mathbf{x}) = \mathbb{I}(y^i = x^i) + h u_t^i(\mathbf{x})_{y^i} + o(h)
+\end{equation}
 $$
 
-Substituting this into our factorized joint probability gives:
+Substituting this into our factorized joint probability, we get:
 $$
-\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \prod_{i=1}^S \left[ \mathbb{I}(y^i = x^i) + h u_t^i(\mathbf{x})_{y^i} + o(h) \right]
+\begin{align}
+\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) &= \prod_{i=1}^S \left[ \mathbb{I}(y^i = x^i) + h u_t^i(\mathbf{x})_{y^i} + o(h) \right] \\
+&= \prod_{i=1}^S \mathbb{I}(y^i = x^i) + h \sum_{i=1}^S \left[ \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i} \right] + o(h) \\
+&= \mathbb{I}(\mathbf{y} = \mathbf{x}) + h \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i} + o(h)
+\end{align}
 $$
+where $\mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})$ equals 1 if $\mathbf{y}$ and $\mathbf{x}$ differ at most at position $i$, and we used $\prod_{i=1}^S \mathbb{I}(y^i = x^i) = \mathbb{I}(\mathbf{y} = \mathbf{x})$.
 
-Expanding this product and keeping only the first-order terms in $h$, we get:
+By comparing this result with the definition of the probability velocity <span style="color: red">cite eq</span> $\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{x} = \mathbf{y}) + h u_t(\mathbf{x})_{\mathbf{y}} + o(h)$, we directly identify:
 $$
-\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \prod_{i=1}^S \mathbb{I}(y^i = x^i) + h \sum_{i=1}^S \left[ \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i} \right] + o(h)
-$$
-where $\mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})$ equals 1 if $\mathbf{y}$ and $\mathbf{x}$ differ at most at position $i$.
-
-Recognizing that $\prod_{i=1}^S \mathbb{I}(y^i = x^i) = \mathbb{I}(\mathbf{y} = \mathbf{x})$, we can rewrite the expansion as:
-$$
-\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{y} = \mathbf{x}) + h \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i} + o(h)
-$$
-
-By comparing this result with the fundamental definition of the probability velocity $\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{x} = \mathbf{y}) + h u_t(\mathbf{x})_{\mathbf{y}} + o(h)$, we directly identify:
-$$
+\begin{equation}
 u_t(\mathbf{x})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i}
+\end{equation}
 $$
 </div>
 </details>
@@ -401,11 +403,13 @@ x_{\tau+h}^i \sim \text{Cat}\left(\mathbf{e}_{x_\tau^i} + h u_\tau^i(\mathbf{x}_
 \end{equation}
 $$
 
-{/* Maybe here add the simulation of my toy example (4 characters), 10 steps and we show u and the drawings at each steps*/}
+<figure>
+  <DFMSampling client:load />
+  <figcaption>
+    This animation shows the generation process of a sequence of lenghth 4 with a known probability velocity $u_t$. We can observe that at each step, all tokens are updated independently and that most of the times, the tokens stay at their masked state. The probability of drawing the mask token $m$ decreases at each step, while the probability of drawing other tokens increases. Once a token is unmasked, it cannot be remasked again until the end of the process. Different samples can be generated from the same initial sequence (change the seed!), because the sampling is stochastic at each step.
+  </figcaption>
+</figure>
 
-<DFMSampling client:load />
-
-<span style="color: red"> Discuss this animation: explain what it is showing and what it highlights specifically </span>
 
 Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of Discrete Flow Matching!
 
@@ -467,7 +471,7 @@ $$
 We verify that the conditional velocity field $u_t(\cdot | \mathbf{x}_1)$ generates the conditional probability path $p_t(\cdot | \mathbf{x_1})$ by ensuring that the pair satisfies the Kolmogorov equation. For a token at position $i$, we need to check:
 $$
 \begin{equation}
-\frac{d}{dt} q_t(y^{i} | x_1^{i}) = \sum_{v \in \mathcal{V} } u_{t}(v \mid x_1^{i})_{y^{i}} \, q_t(v \mid x_1^{i})
+\frac{d}{dt} q_t(y^{i} | x_1^{i}) = \sum_{v \in \mathcal{V} } u_{t}(v | x_1^{i})_{y^{i}} \, q_t(v | x_1^{i})
 \end{equation}
 $$
 
@@ -478,17 +482,17 @@ $$
 \end{equation}
 $$
 
-Now, let's examine the right-hand side using the analytic formulation of the velocity field $u_{t}(v \mid x_1^{i})_{y^{i}} = \frac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = v) \right) \mathbb{I}(v = m)$:
+Now, let's examine the right-hand side using the analytic formulation of the velocity field $u_{t}(v | x_1^{i})_{y^{i}} = \frac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = v) \right) \mathbb{I}(v = m)$:
 $$
 \begin{align}
 &\sum_{v \in \mathcal{V} } u_t(v | x_1^i)_{y^i} \, q_t(v | x_1^{i}) \\
 &= \sum_{v \in \mathcal{V} } \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = v) \right) \mathbb{I}(v = m) \, q_t(v | x_1^{i}) \\
-&= \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) q_t(m \mid x_1^{i}) \\
+&= \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) q_t(m | x_1^{i}) \\
 &= \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right)
 \end{align}
 $$
 
-since $q_t(m \mid x_1^{i}) = (1-t)$.
+since $q_t(m | x_1^{i}) = (1-t)$.
 Hence $(u_t(\cdot | x_1^i), q_t(\cdot | x_1^i))$ satisfies the Kolmogorov equation.
 
 
@@ -592,30 +596,30 @@ We verify the two boundary conditions separately:
 **At $t=0$**:
 Recall the conditional path with $\mathbf{z} = \mathbf{x}_1$ and mask source:
 $$
-q_0(x^i \mid x_1^i) = \mathbb{I}(x^i = m).
+q_0(x^i | x_1^i) = \mathbb{I}(x^i = m).
 $$
-The value of $x_1^i$ plays no role, so $p_0(\mathbf{x} \mid \mathbf{z})$ does not depend on $\mathbf{z}$:
+The value of $x_1^i$ plays no role, so $p_0(\mathbf{x} | \mathbf{z})$ does not depend on $\mathbf{z}$:
 $$
-p_0(\mathbf{x} \mid \mathbf{z}) = \prod_{j=1}^S \mathbb{I}(x^j = m) = p_{\mathrm{mask}}(\mathbf{x}) = p_0(\mathbf{x}).
+p_0(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S \mathbb{I}(x^j = m) = p_{\mathrm{mask}}(\mathbf{x}) = p_0(\mathbf{x}).
 $$
 Marginalizing over $\mathbf{z}$ then trivially gives:
 $$
-p_{t=0}(\mathbf{x}) = \sum_{\mathbf{z}} p_0(\mathbf{x} \mid \mathbf{z})\,\pi(\mathbf{z}) = p_0(\mathbf{x})\sum_{\mathbf{z}} \pi(\mathbf{z}) = p_0(\mathbf{x}).
+p_{t=0}(\mathbf{x}) = \sum_{\mathbf{z}} p_0(\mathbf{x} | \mathbf{z})\,\pi(\mathbf{z}) = p_0(\mathbf{x})\sum_{\mathbf{z}} \pi(\mathbf{z}) = p_0(\mathbf{x}).
 $$
 
 **At $t=1$**:
 We have:
 $$
 \begin{align}
-q_1(x^i \mid x_1^i) &= \mathbb{I}(x^i = x_1^i) \\
-p_1(\mathbf{x} \mid \mathbf{x}_1) &= \prod_{j=1}^S \mathbb{I}(x^j = x_1^j) = \delta_{\mathbf{x}_1}(\mathbf{x})
+q_1(x^i | x_1^i) &= \mathbb{I}(x^i = x_1^i) \\
+p_1(\mathbf{x} | \mathbf{x}_1) &= \prod_{j=1}^S \mathbb{I}(x^j = x_1^j) = \mathbb{I}(\mathbf{x} = \mathbf{x}_1)
 \end{align}
 $$
 Since $\pi(\mathbf{z}) = p_{\mathrm{data}}(\mathbf{x}_1)$,
-the delta collapses the sum directly:
+the indicator collapses the sum directly:
 $$
 p_{t=1}(\mathbf{x})
-= \sum_{\mathbf{x}_1} \delta_{\mathbf{x}_1}(\mathbf{x})\, p_{\mathrm{data}}(\mathbf{x}_1)
+= \sum_{\mathbf{x}_1} \mathbb{I}(\mathbf{x} = \mathbf{x}_1)\, p_{\mathrm{data}}(\mathbf{x}_1)
 = p_{\mathrm{data}}(\mathbf{x})
 = p_1(\mathbf{x}).
 $$
@@ -630,12 +634,12 @@ $$
 \begin{equation}
 \begin{aligned}
 u_t(\mathbf{x})_{\mathbf{y}}
-&:= \mathbb{E}_{\substack{\mathbf{z}}}\!\left[u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}} \mid X_t = \mathbf{x}\right] \\
-&= \sum_{\mathbf{z}} u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(\mathbf{z} \mid X_t = \mathbf{x}) \, ,
+&:= \mathbb{E}_{\substack{\mathbf{z}}}\!\left[u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} | X_t = \mathbf{x}\right] \\
+&= \sum_{\mathbf{z}} u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(\mathbf{z} | X_t = \mathbf{x}) \, ,
 \end{aligned}
 \end{equation}
 $$
-generates the probability path $p_t(\mathbf{x}) = \sum_{\mathbf{z}} p_t(\mathbf{x}\mid\mathbf{z})\,\pi(\mathbf{z})$.
+generates the probability path $p_t(\mathbf{x}) = \sum_{\mathbf{z}} p_t(\mathbf{x}|\mathbf{z})\,\pi(\mathbf{z})$.
 
 <details>
 <summary>Proof</summary>
@@ -643,18 +647,18 @@ generates the probability path $p_t(\mathbf{x}) = \sum_{\mathbf{z}} p_t(\mathbf{
 We want to show
 $$
 \begin{equation}
-\mathbb{P}(X_{t+h}=\mathbf{y}\mid X_t=\mathbf{x})
+\mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x})
 = \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h).
 \end{equation}
 $$
 Introducing $Z$ and using the law of total probability,
 $$
 \begin{align*}
-\mathbb{P}(&X_{t+h}=\mathbf{y}\mid X_t=\mathbf{x}) \\
-&= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}, Z=\mathbf{z}\mid X_t=\mathbf{x}) \\
-&= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}\mid X_t=\mathbf{x}, Z=\mathbf{z})\,\mathbb{P}(Z=\mathbf{z}\mid X_t=\mathbf{x}) \\
-&= \sum_{\mathbf{z}}\Big(\mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}} + o(h)\Big)\,\mathbb{P}(Z=\mathbf{z}\mid X_t=\mathbf{x}) \\
-&= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\sum_{\mathbf{z}}u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}\mid X_t=\mathbf{x}) + o(h) \\
+\mathbb{P}(&X_{t+h}=\mathbf{y}| X_t=\mathbf{x}) \\
+&= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}, Z=\mathbf{z}| X_t=\mathbf{x}) \\
+&= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x}, Z=\mathbf{z})\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) \\
+&= \sum_{\mathbf{z}}\Big(\mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} + o(h)\Big)\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) \\
+&= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\sum_{\mathbf{z}}u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) + o(h) \\
 &= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h).
 \end{align*}
 \begin{equation} \end{equation}
@@ -663,9 +667,9 @@ Alternative proof: apply the Kolmogorov equation to each conditional process and
 $$
 \begin{align}
 \frac{d}{dt}p_t(\mathbf{y})
-&= \sum_{\mathbf{z}} \pi(\mathbf{z})\,\frac{d}{dt}p_t(\mathbf{y}\mid\mathbf{z}) \\
-&= \sum_{\mathbf{z}}\pi(\mathbf{z})\sum_{\mathbf{x}}u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}}\,p_t(\mathbf{x}\mid\mathbf{z}) \\
-&= \sum_{\mathbf{x}}\left(\sum_{\mathbf{z}}u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}\mid X_t=\mathbf{x})\right)p_t(\mathbf{x}) \\
+&= \sum_{\mathbf{z}} \pi(\mathbf{z})\,\frac{d}{dt}p_t(\mathbf{y}|\mathbf{z}) \\
+&= \sum_{\mathbf{z}}\pi(\mathbf{z})\sum_{\mathbf{x}}u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,p_t(\mathbf{x}|\mathbf{z}) \\
+&= \sum_{\mathbf{x}}\left(\sum_{\mathbf{z}}u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x})\right)p_t(\mathbf{x}) \\
 &= \sum_{\mathbf{x}} u_t(\mathbf{x})_{\mathbf{y}}\,p_t(\mathbf{x}).
 \end{align}
 $$
@@ -742,7 +746,7 @@ $$
 where $\mathbb{P}(X_1^i = v | X_t = \mathbf{x})$ can be interpreted as a denoiser: it gives the probability of the $i$-th token in the final sequence $\mathbf{x}_1$ being $v$, given the full noisy sequence $\mathbf{x}_t$.
 
 {/* As we saw in <span style="color: red">cite eq</span>, velocity fields follow very similar properties to probability distributions, and the KL divergence is a natural way to compare them.
-Since it is more intuitive to think in terms of probabilities rather than velocities, we can reparameterize the velocity field $u_t^i(\mathbf{x})$ in terms of a denoiser $D_{\theta,t}^i(\mathbf{x}) = P_{\theta,t}(X_1^i \mid X_t = \mathbf{x})$. It corresponds to the probability distribution over clean tokens at position $i$, given the current noisy sequence $\mathbf{x}_t$. <span style="color: red">Discuss this argument</span> */}
+Since it is more intuitive to think in terms of probabilities rather than velocities, we can reparameterize the velocity field $u_t^i(\mathbf{x})$ in terms of a denoiser $D_{\theta,t}^i(\mathbf{x}) = P_{\theta,t}(X_1^i | X_t = \mathbf{x})$. It corresponds to the probability distribution over clean tokens at position $i$, given the current noisy sequence $\mathbf{x}_t$. <span style="color: red">Discuss this argument</span> */}
 
 
 <details>
@@ -752,34 +756,34 @@ Since it is more intuitive to think in terms of probabilities rather than veloci
 Remember that the marginal velocity is the conditional expectation of the conditional velocity:
 $$
 \begin{equation}
-u_t^i(\mathbf{x})_v = \mathbb{E}_{x_1^i \sim \mathbb{P}(X_1^i \mid \mathbf{x})}\!\left[u_t^i(x^i \mid x_1^i)_v\right].
+u_t^i(\mathbf{x})_v = \mathbb{E}_{x_1^i \sim \mathbb{P}(X_1^i | \mathbf{x})}\!\left[u_t^i(x^i | x_1^i)_v\right].
 \end{equation}
 $$
 and for the case of a masked source, we have:
 $$
 \begin{equation}
-u_t^i(x^i \mid x_1^i)_v = \frac{1}{1-t}\,\mathbb{I}(x^i = m)\left(\mathbb{I}(v = x_1^i) - \mathbb{I}(v = m)\right).
+u_t^i(x^i | x_1^i)_v = \frac{1}{1-t}\,\mathbb{I}(x^i = m)\left(\mathbb{I}(v = x_1^i) - \mathbb{I}(v = m)\right).
 \end{equation}
 $$
 
 **Case 1: $x^i \neq m$ (token already unmasked).**
 
-The indicator $\mathbb{I}(x^i = m)=0$, so $u_t^i(x^i \mid x_1^i)_v = 0$ for all $x_1^i, v$
+The indicator $\mathbb{I}(x^i = m)=0$, so $u_t^i(x^i | x_1^i)_v = 0$ for all $x_1^i, v$
 and hence $u_t^i(x)_v = 0$.
 
 It remains to check that the target formula also gives zero. By Bayes' rule,
 $$
 \begin{equation}
-\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x})
+\mathbb{P}(X_1^i = v | X_t = \mathbf{x})
 =
-\frac{\mathbb{P}(X_t = \mathbf{x} \mid X_1^i = v)\,\mathbb{P}(X_1^i = v)}
+\frac{\mathbb{P}(X_t = \mathbf{x} | X_1^i = v)\,\mathbb{P}(X_1^i = v)}
 {\mathbb{P}(X_t = \mathbf{x})}.
 \end{equation}
 $$
 Under the conditional probability path,
 $$
 \begin{equation}
-q_t(x^i \mid x_1^i)
+q_t(x^i | x_1^i)
 =
 t\,\mathbb{I}(x^i = x_1^i) + (1-t)\,\mathbb{I}(x^i = m) = t\,\mathbb{I}(x^i = x_1^i)
 \end{equation}
@@ -790,7 +794,7 @@ $$
 \begin{align}
 \mathbb{P}(X_t = \mathbf{x} |X_1^i = v)
 &=
-q_t(x^i |x_1^i = v)\,\mathbb{P}(X_t^{\neq i} = \mathbf{x}^{\neq i} |X_1^i = v) \\
+q_t(x^i | v)\,\mathbb{P}(X_t^{\neq i} = \mathbf{x}^{\neq i} |X_1^i = v) \\
 &= 0.
 \end{align}
 $$
@@ -819,8 +823,8 @@ $$
 \begin{align}
 u_t^i(\mathbf{x})_v
 &= \mathbb{E}_{x_1^i}\!\left[\frac{1}{1-t}\left(\mathbb{I}(v = x_1^i) - \mathbb{I}(v = m)\right)\right] \\
-&= \frac{1}{1-t}\left(\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x}) - \mathbb{I}(v = m)\right) \\
-&= \frac{1}{1-t}\left(\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x}) - \mathbb{I}(v = x^i)\right),
+&= \frac{1}{1-t}\left(\mathbb{P}(X_1^i = v | X_t = \mathbf{x}) - \mathbb{I}(v = m)\right) \\
+&= \frac{1}{1-t}\left(\mathbb{P}(X_1^i = v | X_t = \mathbf{x}) - \mathbb{I}(v = x^i)\right),
 \end{align}
 $$
 where the last equality uses $x^i = m$. Both cases match the claimed formula.
@@ -834,7 +838,7 @@ Consequently, we can train the denoiser directly. Using the KL divergence betwee
 
 $$
 \begin{equation}
-L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i \mid X_t = \mathbf{x}) \right]
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right]
 \end{equation}
 $$
 
@@ -843,11 +847,11 @@ $$
 
 <div>
 
-We want to learn the denoiser by minimizing the KL divergence between the true posterior $P_t(X_1^i \mid X_t = \mathbf{x})$ and the learned one:
+We want to learn the denoiser by minimizing the KL divergence between the true posterior $P_t(X_1^i | X_t = \mathbf{x})$ and the learned one:
 
 $$
 \begin{equation}
-L(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x} \sim p_t}}\left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i \mid X_t = \mathbf{x}),\, P_{\theta,t}(X_1^i \mid X_t = \mathbf{x})\right) \right]
+L(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x} \sim p_t}}\left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x}),\, P_{\theta,t}(X_1^i | X_t = \mathbf{x})\right) \right]
 \end{equation}
 $$
 
@@ -855,15 +859,15 @@ By the same argument as in <span style="color: red">cite thm</span>, this loss h
 
 $$
 \begin{equation}
-L(\theta) \equiv \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}}\left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i \mid X_t = \mathbf{x},\, \mathbf{x}_1),\, P_{\theta,t}(X_1^i \mid X_t = \mathbf{x})\right) \right]
+L(\theta) \equiv \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}}\left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x},\, \mathbf{x}_1),\, P_{\theta,t}(X_1^i | X_t = \mathbf{x})\right) \right]
 \end{equation}
 $$
 
-Given $\mathbf{x}_1$, the true conditional posterior is a one-hot: $P_t(X_1^i \mid X_t = \mathbf{x}, \mathbf{x}_1) = \mathbf{e}_{x_1^i}$. The KL between a one-hot and any distribution reduces to a single log term:
+Given $\mathbf{x}_1$, the true conditional posterior is a one-hot: $P_t(X_1^i | X_t = \mathbf{x}, \mathbf{x}_1) = \mathbf{e}_{x_1^i}$. The KL between a one-hot and any distribution reduces to a single log term:
 
 $$
 \begin{equation}
-\mathrm{KL}\left(\mathbf{e}_{x_1^i},\, P_{\theta,t}(X_1^i \mid \mathbf{x})\right) = -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x})
+\mathrm{KL}\left(\mathbf{e}_{x_1^i},\, P_{\theta,t}(X_1^i | \mathbf{x})\right) = -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x})
 \end{equation}
 $$
 
@@ -871,7 +875,7 @@ which gives directly:
 
 $$
 \begin{equation}
-L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i \mid X_t = \mathbf{x}) \right]
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right]
 \end{equation}
 $$
 
@@ -882,7 +886,7 @@ $$
 In the specific context of masked diffusion, we usually restrict the learning process to predict only the tokens that are currently masked. Consequently, the loss is evaluated exclusively on these masked positions and scaled by the appropriate transition rate, becoming:
 $$
 \begin{equation}
-L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i : x_t^i = m} \frac{1}{1-t} \log P_{\theta,t}(X_1^i = x_1^i \mid X_t = \mathbf{x}) \right]
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i : x_t^i = m} \frac{1}{1-t} \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right]
 \end{equation}
 $$
 */}
@@ -919,7 +923,7 @@ $$
     {/* ASPECT 2 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>2. Define a simple conditional distribution $p_t(\mathbf{x} \mid \mathbf{z})$</strong>
+        <strong>2. Define a simple conditional distribution $p_t(\mathbf{x} | \mathbf{z})$</strong>
       </td>
     </tr>
     <tr>
@@ -927,22 +931,22 @@ $$
         $\mathcal{N}((1 - t) x_0 + t x_1, \sigma^2 \text{Id})$ <br /> $= \prod_{i=1}^S \mathcal{N}((1-t)x_0^i + t x_1^i, \sigma^2)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $p_t(\mathbf{x} \mid \mathbf{z}) = \prod_{j=1}^S q_t(x^j \mid x_0^j, x_1^j)$ <br /> where $q_t \sim \text{Cat}((1 - t) \mathbf{e}_{x_0^j} + t \mathbf{e}_{x_1^j} )$
+        $p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | x_0^j, x_1^j)$ <br /> where $q_t \sim \text{Cat}((1 - t) \mathbf{e}_{x_0^j} + t \mathbf{e}_{x_1^j} )$
       </td>
     </tr>
 
     {/* ASPECT 3 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>3. Compute an associated conditional velocity field $u_t(\mathbf{x} \mid \mathbf{z})$</strong>
+        <strong>3. Compute an associated conditional velocity field $u_t(\mathbf{x} | \mathbf{z})$</strong>
       </td>
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $u_t(\mathbf{x} \mid \mathbf{z}) = x_1 - x_0 = \sum_{i=1}^S u_t(x^i \mid z^i)\, \mathbf{e}_i$ <br /> $u_t(x^i \mid z^i) = x_1^i - x_0^i$
+        $u_t(\mathbf{x} | \mathbf{z}) = x_1 - x_0 = \sum_{i=1}^S u_t(x^i | z^i)\, \mathbf{e}_i$ <br /> $u_t(x^i | z^i) = x_1^i - x_0^i$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $u_t(\mathbf{x} \mid \mathbf{z})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})\, u_t(x^i \mid z^i)_{y^i}$ <br /> $u_t(x^i \mid z^i) = \frac{1}{1-t}\mathbb{I}(x^i = x_0^i)\left(\mathbf{e}_{x_1^i} - \mathbf{e}_{x_0^i}\right)$
+        $u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})\, u_t(x^i | z^i)_{y^i}$ <br /> $u_t(x^i | z^i) = \frac{1}{1-t}\mathbb{I}(x^i = x_0^i)\left(\mathbf{e}_{x_1^i} - \mathbf{e}_{x_0^i}\right)$
       </td>
     </tr>
 
@@ -957,29 +961,29 @@ $$
         $D_{L^2}(x_1 - x_0, u_{\theta,t}(\mathbf{x}_t))$ <br /> $= \sum_{i=1}^S \left(u_{\theta,t}^i(\mathbf{x}_t) - (x_1^i - x_0^i)\right)^2$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $\sum_{i=1}^S \mathrm{KL}(u(x_t^i \mid (x_1, x_0)), u_{\theta,t}^i(\mathbf{x}_t))$ <br /> $= \sum_{i=1}^S \Big[\sum_{v \neq x_t^i} u_{\theta,t}^i(\mathbf{x}_t)_v$ <br /> $\quad - \mathbb{I}(x_t^i = x_0^i) \frac{1}{1 - t} \log u_{\theta,t}^i(\mathbf{x}_t)_{x_1^i}\Big]$
+        $\sum_{i=1}^S \mathrm{KL}(u(x_t^i | (x_1, x_0)), u_{\theta,t}^i(\mathbf{x}_t))$ <br /> $= \sum_{i=1}^S \Big[\sum_{v \neq x_t^i} u_{\theta,t}^i(\mathbf{x}_t)_v$ <br /> $\quad - \mathbb{I}(x_t^i = x_0^i) \frac{1}{1 - t} \log u_{\theta,t}^i(\mathbf{x}_t)_{x_1^i}\Big]$
       </td>
     </tr>
 
     {/* ASPECT 5 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>5. Variational family $q_{\theta,t}(x_1 \mid \mathbf{x}_t)$ </strong> <br /> $L = - \mathbb{E}_{x_1} \log q_{\theta,t}(x_1 \mid \mathbf{x}_t) = - \mathbb{E}_{x_1} \sum_{i=1}^S \log q_{\theta,t}^i(x_1^i \mid \mathbf{x}_t)$
+        <strong>5. Variational family $q_{\theta,t}(x_1 | \mathbf{x}_t)$ </strong> <br /> $L = - \mathbb{E}_{x_1} \log q_{\theta,t}(x_1 | \mathbf{x}_t) = - \mathbb{E}_{x_1} \sum_{i=1}^S \log q_{\theta,t}^i(x_1^i | \mathbf{x}_t)$
       </td>
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q_{\theta,t}(x_1^i \mid \mathbf{x}_t) = \mathcal{N}(\mathbb{E}_\theta[x_1^i \mid \mathbf{x}_t], \sigma^2)$ <br /> $L = D_{L^2}(x_1, \mathbb{E}_\theta[X_1 \mid X_t = \mathbf{x}_t])$ <br /> $= \sum_{i=1}^S \left(x_1^i - \mathbb{E}_\theta[X_1^i \mid X_t = \mathbf{x}_t]\right)^2$
+        $q_{\theta,t}(x_1^i | \mathbf{x}_t) = \mathcal{N}(\mathbb{E}_\theta[x_1^i | \mathbf{x}_t], \sigma^2)$ <br /> $L = D_{L^2}(x_1, \mathbb{E}_\theta[X_1 | X_t = \mathbf{x}_t])$ <br /> $= \sum_{i=1}^S \left(x_1^i - \mathbb{E}_\theta[X_1^i | X_t = \mathbf{x}_t]\right)^2$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q_{\theta,t}(x_1^i \mid \mathbf{x}_t) = \text{Cat}(P_{\theta,t}(X_1^i \mid \mathbf{x}_t))$ <br /> $L = \sum_{i=1}^S \mathrm{KL}^i(\mathbf{e}_{x_1^i}, P_{\theta,t}(X_1^i \mid X_t = \mathbf{x}_t))$ <br /> $= -\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)$
+        $q_{\theta,t}(x_1^i | \mathbf{x}_t) = \text{Cat}(P_{\theta,t}(X_1^i | \mathbf{x}_t))$ <br /> $L = \sum_{i=1}^S \mathrm{KL}^i(\mathbf{e}_{x_1^i}, P_{\theta,t}(X_1^i | X_t = \mathbf{x}_t))$ <br /> $= -\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)$
       </td>
     </tr>
 
     {/* ASPECT 6 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>6. Training in practice</strong> <br /> <em>Sample $t \sim \mathcal{U}_{[0,1]}, \mathbf{z} \sim p_z, \mathbf{x}_t \sim p(\mathbf{x} \mid t, \mathbf{z})$</em>
+        <strong>6. Training in practice</strong> <br /> <em>Sample $t \sim \mathcal{U}_{[0,1]}, \mathbf{z} \sim p_z, \mathbf{x}_t \sim p(\mathbf{x} | t, \mathbf{z})$</em>
       </td>
     </tr>
     <tr>
@@ -987,7 +991,7 @@ $$
         $\Vert u_{\theta, t}(\mathbf{x}_t) - (x_1 - x_0) \Vert^2$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)$
+        $-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)$
       </td>
     </tr>
 
@@ -999,10 +1003,10 @@ $$
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        Numerical Integration (Euler ODE): <br /> $\mathbf{x}_{k+1} = \mathbf{x}_k + \frac{1}{N} u_{\theta,t}(\mathbf{x}_k)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}(\mathbf{x}) = \frac{1}{1-t}\!\left(\mathbb{E}_\theta[X_1 \mid X_t = \mathbf{x}] - \mathbf{x}\right)$
+        Numerical Integration (Euler ODE): <br /> $\mathbf{x}_{k+1} = \mathbf{x}_k + \frac{1}{N} u_{\theta,t}(\mathbf{x}_k)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}(\mathbf{x}) = \frac{1}{1-t}\!\left(\mathbb{E}_\theta[X_1 | X_t = \mathbf{x}] - \mathbf{x}\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        Continuous Time Markov Chain: <br /> $x_{k+1}^i \sim \text{Cat}\!\left(\mathbf{e}_{x_k^i} + \frac{1}{N} u_{\theta,t}^i(\mathbf{x}_k)\right)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}^i(\mathbf{x}) = \frac{1}{1-t}\!\left(P_{\theta,t}(X_1^i \mid \mathbf{x}) - (\mathbf{e}_{x^i})\right)$
+        Continuous Time Markov Chain: <br /> $x_{k+1}^i \sim \text{Cat}\!\left(\mathbf{e}_{x_k^i} + \frac{1}{N} u_{\theta,t}^i(\mathbf{x}_k)\right)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}^i(\mathbf{x}) = \frac{1}{1-t}\!\left(P_{\theta,t}(X_1^i | \mathbf{x}) - (\mathbf{e}_{x^i})\right)$
       </td>
     </tr>
 
@@ -1803,10 +1807,10 @@ which is exactly the statement in the proposition above.
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_{t+\delta t} \mid x_t) = \mathcal{N}\!\left(\sqrt{1-\beta_t}\,x_t,\; \beta_t I\right)$
+        $q(x_{t+\delta t} | x_t) = \mathcal{N}\!\left(\sqrt{1-\beta_t}\,x_t,\; \beta_t I\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_{t+\delta t} \mid x_t) = \mathrm{Cat}\!\left(x_{t+\delta t};\, (1-\beta_t)e_{x_t} + \beta_t e_m\right)$
+        $q(x_{t+\delta t} | x_t) = \mathrm{Cat}\!\left(x_{t+\delta t};\, (1-\beta_t)e_{x_t} + \beta_t e_m\right)$
       </td>
     </tr>
 
@@ -1820,10 +1824,10 @@ which is exactly the statement in the proposition above.
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_t \mid x_0) = \mathcal{N}\!\left(\sqrt{\alpha_t}\,x_0,\; (1-\alpha_t)I\right)$
+        $q(x_t | x_0) = \mathcal{N}\!\left(\sqrt{\alpha_t}\,x_0,\; (1-\alpha_t)I\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_t \mid x_0) = \mathrm{Cat}\!\left(x_t;\, \alpha_t e_{x_0} + (1-\alpha_t)e_m\right)$
+        $q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\, \alpha_t e_{x_0} + (1-\alpha_t)e_m\right)$
       </td>
     </tr>
 
@@ -1851,12 +1855,12 @@ which is exactly the statement in the proposition above.
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_t \mid x_0) = \mathcal{N}\!\left(m_t\, x_0,\; \sigma_t^2 I\right)$ <br />
+        $q(x_t | x_0) = \mathcal{N}\!\left(m_t\, x_0,\; \sigma_t^2 I\right)$ <br />
         $m_t = \exp\!\left(\int_0^t f_s\,ds\right), \quad \sigma_t^2 = \int_0^t g_s^2\,\exp\!\left(2\int_s^t f_r\,dr\right)ds$ <br />
         DDPM: $m_t = \sqrt{\alpha_t},\quad \sigma_t^2 = 1 - \alpha_t$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_t \mid x_0) = \mathrm{Cat}\!\left(x_t;\, Q_t\, e_{x_0}\right)$ <br />
+        $q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\, Q_t\, e_{x_0}\right)$ <br />
         $Q_t = \mathcal{T}\!\exp\!\left(\int_0^t \dot{Q}_s\,ds\right)$ <br />
         Masked diffusion: $Q_t = \alpha_t I + (1-\alpha_t)\, e_m \mathbf{1}^\top$
       </td>
@@ -1870,10 +1874,10 @@ which is exactly the statement in the proposition above.
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_{t-\delta t} \mid x_t, x_0) = \mathcal{N}\!\left(\tilde{\mu}(x_0,t,x_t),\; \tilde{\beta}_t I\right)$
+        $q(x_{t-\delta t} | x_t, x_0) = \mathcal{N}\!\left(\tilde{\mu}(x_0,t,x_t),\; \tilde{\beta}_t I\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_{t-\delta t} \mid x_t, x_0) = \mathrm{Cat}\!\left(x_{t-\delta t};\; \dfrac{\alpha_{t-\delta t} - \alpha_t}{1 - \alpha_t}\, e_{x_0} + \dfrac{1 - \alpha_{t-\delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
+        $q(x_{t-\delta t} | x_t, x_0) = \mathrm{Cat}\!\left(x_{t-\delta t};\; \dfrac{\alpha_{t-\delta t} - \alpha_t}{1 - \alpha_t}\, e_{x_0} + \dfrac{1 - \alpha_{t-\delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
       </td>
     </tr>
 
@@ -1887,11 +1891,11 @@ which is exactly the statement in the proposition above.
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
         $x_1 \sim \mathcal{N}(0, I)$ <br />
-        $p_{\theta,t}(x_{t-\delta t} \mid x_t) = \mathcal{N}\!\left(\mu_{\theta,t}(x_t),\; \sigma_t^2 I\right)$
+        $p_{\theta,t}(x_{t-\delta t} | x_t) = \mathcal{N}\!\left(\mu_{\theta,t}(x_t),\; \sigma_t^2 I\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
         $x_1 \sim p_{\mathrm{mask}}$ <br />
-        $p_{\theta,t}(x_{t-\delta t} \mid x_t) = \mathrm{Cat}\!\left(x_{t-\delta t};\; \dfrac{\alpha_{t-\delta t} - \alpha_t}{1 - \alpha_t}\, D_{\theta,t}(x_t) + \dfrac{1 - \alpha_{t-\delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
+        $p_{\theta,t}(x_{t-\delta t} | x_t) = \mathrm{Cat}\!\left(x_{t-\delta t};\; \dfrac{\alpha_{t-\delta t} - \alpha_t}{1 - \alpha_t}\, D_{\theta,t}(x_t) + \dfrac{1 - \alpha_{t-\delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
       </td>
     </tr>
 
@@ -2016,17 +2020,17 @@ $$
 Applying the law of total expectation by conditioning on $|\mathcal{M}|$:
 $$
 \begin{equation}
-\mathbb{E}_{\mathcal{M}}[g(\mathbf{x}_{\mathcal{M}})] = \sum_{k=0}^{S} \mathbb{P}(|\mathcal{M}| = k) \;\mathbb{E}[g(\mathbf{x}_{\mathcal{M}}) \mid |\mathcal{M}| = k]
+\mathbb{E}_{\mathcal{M}}[g(\mathbf{x}_{\mathcal{M}})] = \sum_{k=0}^{S} \mathbb{P}(|\mathcal{M}| = k) \;\mathbb{E}[g(\mathbf{x}_{\mathcal{M}}) | |\mathcal{M}| = k]
 \end{equation}
 $$
 It remains to identify the conditional distribution of $\mathcal{M}$ given $|\mathcal{M}| = k$. For any subset $A \subseteq [S]$ with $|A| = k$:
 $$
 \begin{aligned}
-\mathbb{P}(\mathcal{M} = A \mid |\mathcal{M}| = k) = \frac{\mathbb{P}(\mathcal{M} = A)}{\mathbb{P}(|\mathcal{M}| = k)} = \frac{t^k(1-t)^{S-k}}{\binom{S}{k}\, t^k(1-t)^{S-k}} = \frac{1}{\binom{S}{k}}
+\mathbb{P}(\mathcal{M} = A | |\mathcal{M}| = k) = \frac{\mathbb{P}(\mathcal{M} = A)}{\mathbb{P}(|\mathcal{M}| = k)} = \frac{t^k(1-t)^{S-k}}{\binom{S}{k}\, t^k(1-t)^{S-k}} = \frac{1}{\binom{S}{k}}
 \end{aligned}
 \begin{equation} \end{equation}
 $$
-so $\mathcal{M} \mid |\mathcal{M}| = k$ is uniformly distributed over all size-$k$ subsets of $[S]$, i.e., $\mathbb{E}[\,\cdot \mid |\mathcal{M}| = k] = \mathbb{E}_{\mathcal{M} \sim \text{Unif}(\binom{[S]}{k})}[\,\cdot\,]$.
+so $\mathcal{M} | |\mathcal{M}| = k$ is uniformly distributed over all size-$k$ subsets of $[S]$, i.e., $\mathbb{E}[\,\cdot | |\mathcal{M}| = k] = \mathbb{E}_{\mathcal{M} \sim \text{Unif}(\binom{[S]}{k})}[\,\cdot\,]$.
 Define:
 $$
 \begin{equation}
@@ -2080,7 +2084,7 @@ $$
 \mathbb{P}(\mathcal{M}_i = A,\; \pi(i) = j) = \frac{(S-k)!\,(k-1)!}{S!} = \frac{1}{\binom{S}{k} \cdot k}
 \end{equation}
 $$
-Summing over $j \in A$ gives $\mathbb{P}(\mathcal{M}_i = A) = 1/\binom{S}{k}$, and conditionally $\mathbb{P}(\pi(i) = j \mid \mathcal{M}_i = A) = 1/k$. We can now replace the expectation over $\pi$ with expectations over $\mathcal{M}$ and $j$. For any function $h$:
+Summing over $j \in A$ gives $\mathbb{P}(\mathcal{M}_i = A) = 1/\binom{S}{k}$, and conditionally $\mathbb{P}(\pi(i) = j | \mathcal{M}_i = A) = 1/k$. We can now replace the expectation over $\pi$ with expectations over $\mathcal{M}$ and $j$. For any function $h$:
 $$
 \begin{align}
 \mathbb{E}_{\pi \sim \mathcal{U}_\pi}\left[h(\mathcal{M}_i, \pi(i))\right] &= \frac{1}{S!}\sum_{\pi} h(\mathcal{M}_i, \pi(i)) \\
@@ -2129,7 +2133,7 @@ We start from the infinitesimal reverse-time transition of the discrete diffusio
 
 $$
 \begin{equation}
-p(x_{t-\Delta t} = y \mid x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t)]_y + o(\Delta t)
+p(x_{t-\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t)]_y + o(\Delta t)
 \end{equation}
 $$
 
@@ -2137,7 +2141,7 @@ $$
 
 $$
 \begin{equation}
-p(x_{1-t'-\Delta t} = y \mid x_{1-t'}) = \mathbb{I}(y = x_{1-t'}) + \Delta t \, [\dot{R}_{1-t'}(x_{1-t'})]_y + o(\Delta t)
+p(x_{1-t'-\Delta t} = y | x_{1-t'}) = \mathbb{I}(y = x_{1-t'}) + \Delta t \, [\dot{R}_{1-t'}(x_{1-t'})]_y + o(\Delta t)
 \end{equation}
 $$
 
@@ -2147,7 +2151,7 @@ Substituting directly into the equation above:
 
 $$
 \begin{equation}
-p(x^{\text{FM}}_{t' + \Delta t} = y \mid x^{\text{FM}}_{t'}) = \mathbb{I}(y = x^{\text{FM}}_{t'}) + \Delta t \, [\dot{R}_{1-t'}(x^{\text{FM}}_{t'})]_y + o(\Delta t)
+p(x^{\text{FM}}_{t' + \Delta t} = y | x^{\text{FM}}_{t'}) = \mathbb{I}(y = x^{\text{FM}}_{t'}) + \Delta t \, [\dot{R}_{1-t'}(x^{\text{FM}}_{t'})]_y + o(\Delta t)
 \end{equation}
 $$
 
@@ -2155,7 +2159,7 @@ Recall the definition of a probability velocity <span style="color: red">(**cite
 
 $$
 \begin{equation}
-p(x^{\text{FM}}_{t' + \Delta t} = y \mid x^{\text{FM}}_{t'} = x) = \mathbb{I}(y = x^{\text{FM}}_{t'}) + \Delta t \, [u_{t'}(x^{\text{FM}}_{t'})]_y + o(\Delta t)
+p(x^{\text{FM}}_{t' + \Delta t} = y | x^{\text{FM}}_{t'} = x) = \mathbb{I}(y = x^{\text{FM}}_{t'}) + \Delta t \, [u_{t'}(x^{\text{FM}}_{t'})]_y + o(\Delta t)
 \end{equation}
 $$
 
@@ -2219,25 +2223,25 @@ Here, $w^i$ represents the normalized weight of position $i$ assigned by the pla
 
 #### Training Losses
 
-The **conditional flow matching (CFM) loss** is a KL divergence between rate vectors, specifically between the target conditional velocity $u_t(\cdot \mid x_t^i, x_1^i)$ and the learned velocity $u_{\theta,t}^i(\mathbf{x}_t)$:
+The **conditional flow matching (CFM) loss** is a KL divergence between rate vectors, specifically between the target conditional velocity $u_t(\cdot | x_t^i, x_1^i)$ and the learned velocity $u_{\theta,t}^i(\mathbf{x}_t)$:
 
 $$
 \begin{equation}
-L_{\text{CFM}} = \mathbb{E}_{t,\,\mathbf{x}_t,\,x_1}\!\left[\sum_{i=1}^S \mathrm{KL}^i\!\left(u_t(\cdot \mid x_t^i, x_1^i),\, u_{\theta,t}^i(\mathbf{x}_t)\right)\right]
+L_{\text{CFM}} = \mathbb{E}_{t,\,\mathbf{x}_t,\,x_1}\!\left[\sum_{i=1}^S \mathrm{KL}^i\!\left(u_t(\cdot | x_t^i, x_1^i),\, u_{\theta,t}^i(\mathbf{x}_t)\right)\right]
 \end{equation}
 $$
 
-A complementary approach treats the model as a variational family over the clean token $x_1^i$, minimizing the KL between the true posterior $\mathbf{e}_{x_1^i}$ and the learned categorical distribution $P_{\theta,t}(X_1^i \mid \mathbf{x}_t)$, which reduces to a cross-entropy:
+A complementary approach treats the model as a variational family over the clean token $x_1^i$, minimizing the KL between the true posterior $\mathbf{e}_{x_1^i}$ and the learned categorical distribution $P_{\theta,t}(X_1^i | \mathbf{x}_t)$, which reduces to a cross-entropy:
 
 $$
 \begin{equation}
-L_{\text{CM}} = \mathbb{E}_{t,\,\mathbf{x}_t,\,x_1}\!\left[-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)\right]
+L_{\text{CM}} = \mathbb{E}_{t,\,\mathbf{x}_t,\,x_1}\!\left[-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right]
 \end{equation}
 $$
 
 **These two losses are not equivalent in general.** $L_{\text{CFM}}$ is a divergence between rate vectors, nonnegative objects that are not normalized to sum to one, while $L_{\text{CM}}$ is a divergence between probability distributions. Comparing them directly is not well-defined outside of a specific parameterization.
 
-**For the mask source**, the velocity field and the denoiser are linked by a simple rescaling (<span style="color:red">ref eq</span>), $u_{\theta,t}^i(\mathbf{x})_v = \frac{1}{1-t}\,P_{\theta,t}(X_1^i = v \mid \mathbf{x})$ for $v \neq m$, which makes the two losses directly comparable:
+**For the mask source**, the velocity field and the denoiser are linked by a simple rescaling (<span style="color:red">ref eq</span>), $u_{\theta,t}^i(\mathbf{x})_v = \frac{1}{1-t}\,P_{\theta,t}(X_1^i = v | \mathbf{x})$ for $v \neq m$, which makes the two losses directly comparable:
 
 $$
 \begin{equation}
@@ -2253,7 +2257,7 @@ The CFM loss for the mask source can be written as a weighted cross-entropy <spa
 
 $$
 \begin{equation}
-L_{\text{CFM}}(t) = \mathbb{E}\!\left[\,\sum_{i=1}^S \mathbf{1}(x_t^i = m) \cdot \frac{1}{1-t} \cdot \left(-\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)\right)\right]
+L_{\text{CFM}}(t) = \mathbb{E}\!\left[\,\sum_{i=1}^S \mathbf{1}(x_t^i = m) \cdot \frac{1}{1-t} \cdot \left(-\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right)\right]
 \end{equation}
 $$
 
@@ -2263,12 +2267,12 @@ $$
 \begin{aligned}
 L_{\text{CFM}}(t)
   &= (1-t) \cdot \frac{1}{1-t} \cdot \mathbb{E}\!\left[
-      -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
-      \mid x_t^i = m
+      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)
+      | x_t^i = m
     \right] \\
   &= \mathbb{E}\!\left[
-      -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
-      \mid x_t^i = m
+      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)
+      | x_t^i = m
     \right]
 \end{aligned}
 $$
@@ -2279,12 +2283,12 @@ $$
 \begin{aligned}
 L_{\text{CM}}(t)
   &= (1-t) \cdot \mathbb{E}\!\left[
-      -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
-      \mid x_t^i = m
+      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)
+      | x_t^i = m
     \right] \\
   &\quad + t \cdot \mathbb{E}\!\left[
-      -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
-      \mid x_t^i \neq m
+      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)
+      | x_t^i \neq m
     \right]
 \end{aligned}
 $$
@@ -2294,8 +2298,8 @@ Since a well-trained denoiser trivially reconstructs unmasked positions by copyi
 $$
 \begin{equation}
 L_{\text{CM}}(t) \approx (1-t) \cdot \mathbb{E}\!\left[
-  -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
-  \mid x_t^i = m
+  -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)
+  | x_t^i = m
 \right]
 \end{equation}
 $$
