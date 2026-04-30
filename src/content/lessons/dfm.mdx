@@ -1036,23 +1036,13 @@ Therefore, as in continuous diffusion, we follow the same three steps:
 2. Show that the reverse process is also a Markov chain, and derive its associated dynamics.
 3. Learn the reverse process by training a neural network to align the trajectories of the forward and reverse processes.
 
+<span style="color: red"> if we chose not to talk about concrete score, we can concatenate in 2 steps: define a forward, then learn a reverse that align trajectories. </span>
+
 #### Forward Process
 
 We first consider the forward process: we start from a clean sequence $\mathbf{x_0}$, and we progressively replace each token by the mask token, transforming the sequence into $\mathbf{x_1} = mm...m$. Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token in the following.
 
-We model the forward process as a continuous-time Markov chain. To fully specify the process, we need to define the transition probabilities between states at different time steps.
-We start to fix a noise schedule $\alpha(t)$ that gives the probability of a token remaining unmasked at time $t$.
-
-**Properties on $\alpha(t)$**:
-- $\alpha(0) = 1$: at time $t=0$, all tokens are unmasked.
-- $\alpha(1) = 0$: at time $t=1$, all tokens are masked.
-- $\alpha(t)$ is dicreasing in $t$: as time increases, the probability of a token being unmasked decreases.
-
-<details>
-<summary>Local view</summary>
-<div>
-
-In continuous Gaussian diffusion, we start by defining a local noising process over $T$ steps, where each step slightly corrupts the signal by adding Gaussian noise:
+In continuous Denoising Diffusion Probabilistic Models (DDPM), we start by defining a local noising process over $T$ steps, where each step slightly corrupts the signal by adding Gaussian noise:
 
 $$
 \begin{equation}
@@ -1072,19 +1062,18 @@ m, & \text{with probability } \beta_j
 $$
 
 We now consider the continuous-time limit $T \to \infty$, to avoid tying the model to a fixed number of noise steps.
-
 In continuous diffusion, applying $tT$ steps gives the cumulative schedule $\bar{\alpha}_t = \prod_{i=1}^{tT}(1 - \beta_i)$, which appears in the forward marginal $q(x_t | x_0) = \mathcal{N}(x_t;\ \sqrt{\bar{\alpha}_t}\, x_0,\ (1 - \bar{\alpha}_t) I)$ and controls the signal amplitude, i.e how much of $x_0$ remains in $x_t$. In the discrete setting, the same product gives the survival probability of a token:
 
 $$
 \begin{align}
-\mathbb{P}(x_t = x_0) &= \prod_{i=1}^{tT}(1 - \beta_i) \\
+q(x_t = x_0 | x_0) &= \prod_{i=1}^{tT}(1 - \beta_i) \\
 &= \exp\!\left(\sum_{i=1}^{tT} \log(1 - \beta_i)\right) \\
 &\approx \exp\!\left(-\sum_{i=1}^{tT} \beta_i\right) \\
 &\xrightarrow[T \to \infty]{} \exp\!\left(-\int_0^t \beta(s)\, ds\right)
 \end{align}
 $$
 
-We therefore define the noise schedule as:
+We define the noise schedule $\alpha_t$ that gives the probability of a token remaining unmasked at time $t$:
 
 $$
 \begin{equation}
@@ -1092,10 +1081,10 @@ $$
 \end{equation}
 $$
 
-This is the direct discrete analogue of $\bar{\alpha}_t$: both start at $1$, decay monotonically, and reach $0$ at $t = 1$.
-
-</div>
-</details>
+**Properties on $\alpha_t$**:
+- $\alpha_0 = 1$: at time $t=0$, all tokens are unmasked.
+- $\alpha_1 = 0$: at time $t=1$, all tokens are masked.
+- $\alpha_t$ is decreasing in $t$: as time increases, the probability of a token being unmasked decreases.
 
 Using the Markov property of the process, we can compute the transition probabilities between any two time steps $s < t$:
 $$
@@ -1106,6 +1095,42 @@ m, & \text{with probability } 1 - \frac{\alpha_t}{\alpha_s}
 \end{cases}
 \end{equation}
 $$
+
+<details>
+<summary>Proof</summary>
+<div>
+
+By the Markov property, the marginal $q(x_t | x_0)$ factorizes through any intermediate time $s$:
+
+$$
+\begin{equation}
+q(x_t | x_0) = \sum_{x_s} q(x_t | x_s)\, q(x_s | x_0)
+\end{equation}
+$$
+
+Using $q(x_s | x_0) = \alpha_s\, \mathbb{I}(x_s = x_0) + (1 - \alpha_s)\, \mathbb{I}(x_s = m)$, the sum simplifies to:
+
+$$
+\begin{equation}
+q(x_t | x_0) = \alpha_s\, q(x_t | x_s = x_0) + (1 - \alpha_s)\, q(x_t | x_s = m)
+\end{equation}
+$$
+
+Since masking is irreversible, $q(x_t | x_s = m) = \mathbb{I}(x_t = m)$.
+Writing $q(x_t | x_s = x_0) = a\, \mathbb{I}(x_t = x_0) + (1 - a)\, \mathbb{I}(x_t = m)$, for $x_t = x_0$, CITE EQ becomes:  $\alpha_t = \alpha_s \cdot a$, so $a = \dfrac{\alpha_t}{\alpha_s}$
+
+Therefore, for an unmasked token $x_s \neq m$:
+
+$$
+\begin{equation}
+q(x_t | x_s) = \frac{\alpha_t}{\alpha_s}\, \mathbb{I}(x_t = x_s) + \left(1 - \frac{\alpha_t}{\alpha_s}\right) \mathbb{I}(x_t = m)
+\end{equation}
+$$
+
+</div>
+</details>
+
+<span style="color: red"> START FACULATIVE IF NOT CONCRETE SCORE. BUT NEEDED TO ESTABLISH EQUIVALENCE WITH FLOW MATCHING, so I would keep it. (What's next: local transition "equations" for forward and reverse processes)  </span>
 
 **Matrix view**: we can represent these transition probabilities in a Matrix $\bar{Q}_{t|s} \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$, satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$.
 $$
@@ -1122,53 +1147,6 @@ $$
 &= \frac{\alpha_t}{\alpha_s} I + \left(1 - \frac{\alpha_t}{\alpha_s}\right)\mathbf{1}\mathbf{e}_m^\top
 \end{align}
 $$
-
-<details>
-<summary>Proof of the transition matrix $\bar{Q}_{t|s}$</summary>
-<div>
-
-We first define the cumulative transition matrix $\bar{Q}_t$ such that $q(x_t \mid x_0) = \text{Cat}(x_t;\ \bar{Q}_t^\top x_0)$. Since masking is absorbing, this matrix has the compact form:
-
-$$
-\begin{equation}
-\bar{Q}_t = \alpha_t I + (1 - \alpha_t)\,\mathbf{1}\mathbf{e}_m^\top \in \mathbb{R}^{K \times K}
-\end{equation}
-$$
-
-where $\mathbf{1}\mathbf{e}_m^\top$ is the matrix with all-ones in the $m$-th column and zeros elsewhere.
-
-By the Markov property, the forward marginals satisfy $\bar{Q}_t = \bar{Q}_s\, \bar{Q}_{t|s}$. We suppose that $\bar{Q}_{t|s}$ shares the same structural form, parameterized by some survival probability $\gamma \in [0,1]$:
-
-$$
-\begin{equation}
-\bar{Q}_{t|s} = \gamma I + (1 - \gamma)\,\mathbf{1}\mathbf{e}_m^\top
-\end{equation}
-$$
-
-We calculate:
-
-$$
-\begin{align}
-\bar{Q}_s\,\bar{Q}_{t|s}
-&= \left(\alpha_s I + (1-\alpha_s)\mathbf{1}\mathbf{e}_m^\top\right)\left(\gamma I + (1-\gamma)\mathbf{1}\mathbf{e}_m^\top\right) \\
-&= \alpha_s \gamma\, I
-+ \alpha_s(1-\gamma)\mathbf{1}\mathbf{e}_m^\top
-+ \gamma(1-\alpha_s)\mathbf{1}\mathbf{e}_m^\top
-+ (1-\alpha_s)(1-\gamma)\mathbf{1}\underbrace{(\mathbf{e}_m^\top\mathbf{1})}_{=1}\mathbf{e}_m^\top \\
-&= \alpha_s \gamma\, I + \bigl(1 - \alpha_s \gamma\bigr)\,\mathbf{1}\mathbf{e}_m^\top
-\end{align}
-$$
-
-Identifying with $\bar{Q}_t = \alpha_t I + (1-\alpha_t)\mathbf{1}\mathbf{e}_m^\top$ gives $\alpha_s \gamma = \alpha_t$, so $\gamma = \alpha_t / \alpha_s$. Plugging back yields:
-
-$$
-\begin{equation}
-\bar{Q}_{t|s} = \frac{\alpha_t}{\alpha_s}\, I + \left(1 - \frac{\alpha_t}{\alpha_s}\right)\mathbf{1}\mathbf{e}_m^\top
-\end{equation}
-$$
-
-</div>
-</details>
 
 Now, the goal is to find an analog to the continuous time ODE of the forward process in continuous diffusion:
 $$
@@ -1298,9 +1276,12 @@ By identifying this result with the definition of the reverse local transition $
 </div>
 </details>
 
+<span style="color: red"> END FACULATIVE IF NOT CONCRETE SCORE </span>
+
 #### Training
 
-Now that we know the dynamics of the forward and reverse processes, our objective is to minimize the KL divergence between the distribution induced by the forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
+<span style="color: red"> if we remove the section on backwrad process, add a sentence </span>
+Our objective is to minimize the KL divergence between the distribution induced by the forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
 
 $$
 \begin{equation}
@@ -1602,6 +1583,8 @@ which matches the sequence-level training loss defined previously.
 
 </div>
 </details>
+
+<span style="color: red"> UNTIL THE END, FACULATIVE IF NOT CONCRETE SCORE </span>
 
 Our goal is now to derive a loss that can be generalized for other noising processes. In the continuous-time limit $T \to \infty$, each discrete transition $q(x_s | x_t)$ is replaced by an instantaneous rate $\dot{R}_t(x_t)$. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
 
