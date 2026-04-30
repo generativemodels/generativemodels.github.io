@@ -1046,7 +1046,7 @@ $$
 
 <div>
 
-We want to learn the denoiser by minimizing the KL divergence between the true posterior $P_t(X_1^i | X_t = \mathbf{x})$ and the learned one:
+{/* We want to learn the denoiser by minimizing the KL divergence between the true posterior $P_t(X_1^i | X_t = \mathbf{x})$ and the learned one:
 
 $$
 \begin{equation}
@@ -1054,14 +1054,24 @@ $$
 L(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x} \sim p_t}}\left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x}),\, P_{\theta,t}(X_1^i | X_t = \mathbf{x})\right) \right]
 \end{equation}
 $$
+*/}
 
-By the same argument as in <span style="color: red">cite thm</span>, this loss has the same minimizers as the conditional version, where we additionally condition on $\mathbf{x}_1$:
+By the same argument as in @eq:kl-proj, the true denoiser is the KL projection of the conditional clean-token distribution:
 
 $$
-\begin{align}
-L(\theta) \equiv {} & \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}}  \label{eq:posterior-kl-cond-1} \\
-& \left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x},\, \mathbf{x}_1),\, P_{\theta,t}(X_1^i | X_t = \mathbf{x})\right) \right] \label{eq:posterior-kl-cond-2}
-\end{align}
+\begin{equation}
+\label{eq:denoiser-kl-proj}
+P_t(X_1^i | X_t = \mathbf{x}) ={} \underset{P}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t(\cdot | \mathbf{x}_1)}} \!\left[ \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x},\, \mathbf{x}_1),\, P(X_1^i | X_t = \mathbf{x})\right) \right]
+\end{equation}
+$$
+
+Thus, we want to minimize:
+
+$$
+\begin{equation}
+\label{eq:posterior-kl-cond}
+L(\theta) \equiv \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x},\, \mathbf{x}_1),\, P_{\theta,t}(X_1^i | X_t = \mathbf{x})\right) \right]
+\end{equation}
 $$
 
 Given $\mathbf{x}_1$, the true conditional posterior is a one-hot: $P_t(X_1^i | X_t = \mathbf{x}, \mathbf{x}_1) = \mathbf{e}_{x_1^i}$. The KL between a one-hot and any distribution reduces to a single log term:
@@ -1540,12 +1550,10 @@ and $p_\theta(x_{0:T}) = p_\theta(x_0)\, p_\theta(x_{1:T}|x_0)$:
 
 $$
 \begin{align}
-\mathrm{KL}\!\Big(q(x_{0:T}),\, p_\theta(x_{0:T})\Big) \label{eq:kl-elbo-proof-1}
-&= \mathbb{E}_{q(x_{0:T})}\!\left[\log \frac{q(x_{0:T})}{p_\theta(x_{0:T})}\right]  \label{eq:kl-elbo-proof-2} \\
-&= \mathbb{E}_{q(x_0)}\!\left[\mathbb{E}_{q(x_{1:T}|x_0)}\!\left[\log \frac{q(x_0)\,q(x_{1:T}|x_0)}{p_\theta(x_{0:T})}\right]\right]  \label{eq:kl-elbo-proof-3} \\
-&= \mathbb{E}_{q(x_0)}\!\left[\log q(x_0)\right] \label{eq:kl-elbo-proof-4}
-+ \mathbb{E}_{q(x_0)}\!\left[\mathbb{E}_{q(x_{1:T}|x_0)}\!\left[\log q(x_{1:T}|x_0) - \log p_\theta(x_{0:T})\right]\right]  \label{eq:kl-elbo-proof-5} \\
-&= -H(q) - \mathbb{E}_{q(x_0)}\!\left[\text{ELBO}(x_0)\right] \label{eq:kl-elbo-proof-6}
+\mathrm{KL}\!\Big(q(x_{0:T}),\, p_\theta(x_{0:T})\Big) &= \mathbb{E}_{q(x_{0:T})}\!\left[\log \frac{q(x_{0:T})}{p_\theta(x_{0:T})}\right]  \label{eq:kl-elbo-proof-2} \\
+&\hspace{-8em}{}= \mathbb{E}_{q(x_0)}\!\left[\mathbb{E}_{q(x_{1:T}|x_0)}\!\left[\log \frac{q(x_0)\,q(x_{1:T}|x_0)}{p_\theta(x_{0:T})}\right]\right]  \label{eq:kl-elbo-proof-3} \\
+&\hspace{-8em}{}= \mathbb{E}_{q(x_0)}\!\left[\log q(x_0)\right] + \mathbb{E}_{q(x_0)}\!\left[\mathbb{E}_{q(x_{1:T}|x_0)}\!\left[\log q(x_{1:T}|x_0) - \log p_\theta(x_{0:T})\right]\right]  \label{eq:kl-elbo-proof-4} \\
+&\hspace{-8em}{}= -H(q) - \mathbb{E}_{q(x_0)}\!\left[\text{ELBO}(x_0)\right] \label{eq:kl-elbo-proof-6}
 \end{align}
 $$
 
@@ -1667,10 +1675,8 @@ We simplify by marginalizing over all intermediate variables. For the first term
 $$
 \begin{equation}
 \label{eq:elbo-continuous}
-\begin{aligned}
-    \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} &\left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right] \\
+    \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} &\left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right]
     = \mathbb{E}_{\substack{x_1 \sim q( \cdot | x_0)}} &\left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right]
-\end{aligned}
 \end{equation}
 $$
 
@@ -1743,7 +1749,7 @@ We start from (<span style="color: red"> cite thm </span>):
 $$
 \begin{align}
     \text{ELBO}(x_0) &= - \mathrm{KL}\left(q(x_1|x_0) , p_\theta(x_1)\right)  \label{eq:mdm-elbo-proof-1} \\
-    &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right] \label{eq:mdm-elbo-proof-2}
+    &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right] \notag
 \end{align}
 $$
 
@@ -1785,25 +1791,35 @@ When $x_t\neq m$, both $q(x_s| x_t,x_0)$ and $p_\theta(x_s| x_t)$ put all their 
 Hence only the case $x_t=m$ contributes. Therefore:
 $$
 \begin{align}
-    &\mathrm{KL}\!\left(q(x_s| x_t,x_0)\,\|\,p_\theta(x_s| x_t)\right)  \label{eq:bridge-kl-proof-1} \\
-    &= \mathbb{I}(x_t=m)\, \label{eq:bridge-kl-proof-2}
-    q(x_s| x_t,x_0)\, \label{eq:bridge-kl-proof-3}
-    \log\frac{q(x_s| x_t,x_0)}{p_\theta(x_s| x_t)}  \label{eq:bridge-kl-proof-4} \\
-    &= \mathbb{I}(x_t=m)\, \label{eq:bridge-kl-proof-5}
-    \left[ \frac{\alpha_s-\alpha_t}{1-\alpha_t}\mathbb{I}(x_s=x_0) \label{eq:bridge-kl-proof-6}
-    + \frac{1-\alpha_s}{1-\alpha_t}\mathbb{I}(x_s=m) \right]  \label{eq:bridge-kl-proof-7} \\
-    &\quad \log\frac{\left[ \frac{\alpha_s-\alpha_t}{1-\alpha_t}\mathbb{I}(x_s=x_0) \label{eq:bridge-kl-proof-8}
-    + \frac{1-\alpha_s}{1-\alpha_t}\mathbb{I}(x_s=m) \right]}{ \label{eq:bridge-kl-proof-9}
-    \left[ \frac{\alpha_s-\alpha_t}{1-\alpha_t}[D_{\theta,t}(x_t)]_{x_s}\mathbb{I}(x_s\neq m) \label{eq:bridge-kl-proof-10}
-    + \frac{1-\alpha_s}{1-\alpha_t}\mathbb{I}(x_s=m) \right]}  \label{eq:bridge-kl-proof-11} \\
-    &= \mathbb{I}(x_t=m)\Bigg[ \label{eq:bridge-kl-proof-12}
-    \frac{\alpha_s-\alpha_t}{1-\alpha_t}\log\frac{\frac{\alpha_s-\alpha_t}{1-\alpha_t}} \label{eq:bridge-kl-proof-13}
-    {\frac{\alpha_s-\alpha_t}{1-\alpha_t}[D_{\theta,t}(x_t)]_{x_0}} \label{eq:bridge-kl-proof-14}
-    +\frac{1-\alpha_s}{1-\alpha_t}\underbrace{\log\frac{\frac{1-\alpha_s}{1-\alpha_t}} \label{eq:bridge-kl-proof-15}
-    {\frac{1-\alpha_s}{1-\alpha_t}}}_{=0} \label{eq:bridge-kl-proof-16}
-    \Bigg]  \label{eq:bridge-kl-proof-17} \\
-    &= \mathbb{I}(x_t=m)\,\frac{\alpha_s-\alpha_t}{1-\alpha_t}\, \label{eq:bridge-kl-proof-18}
-    \big(-\log [D_{\theta,t}(x_t)]_{x_0}\big). \label{eq:bridge-kl-proof-19}
+    &\mathrm{KL}\!\left(q(\cdot| x_t,x_0)\,\|\,p_\theta(\cdot| x_t)\right) \label{eq:bridge-kl-proof-1} \\
+    &= \mathbb{I}(x_t=m)
+    \sum_{x_s \in \mathcal{V}\cup\{m\}}
+    q(x_s| x_t,x_0)\,
+    \log\frac{q(x_s| x_t,x_0)}{p_\theta(x_s| x_t)} \label{eq:bridge-kl-proof-2} \\
+    &= \mathbb{I}(x_t=m)
+    \sum_{x_s \in \mathcal{V}\cup\{m\}}
+    \left[
+        \frac{\alpha_s-\alpha_t}{1-\alpha_t}\mathbb{I}(x_s=x_0)
+        + \frac{1-\alpha_s}{1-\alpha_t}\mathbb{I}(x_s=m)
+    \right] \label{eq:bridge-kl-proof-3} \\
+    &\quad \log
+    \frac{
+        \frac{\alpha_s-\alpha_t}{1-\alpha_t}\mathbb{I}(x_s=x_0)
+        + \frac{1-\alpha_s}{1-\alpha_t}\mathbb{I}(x_s=m)
+    }{
+        \frac{\alpha_s-\alpha_t}{1-\alpha_t}[D_{\theta,t}(x_t)]_{x_s}\mathbb{I}(x_s\neq m)
+        + \frac{1-\alpha_s}{1-\alpha_t}\mathbb{I}(x_s=m)
+    }  \\
+    &= \mathbb{I}(x_t=m)\Bigg[
+    \frac{\alpha_s-\alpha_t}{1-\alpha_t}
+    \log\frac{\frac{\alpha_s-\alpha_t}{1-\alpha_t}}
+    {\frac{\alpha_s-\alpha_t}{1-\alpha_t}[D_{\theta,t}(x_t)]_{x_0}}
+    +\frac{1-\alpha_s}{1-\alpha_t}
+    \underbrace{\log\frac{\frac{1-\alpha_s}{1-\alpha_t}}
+    {\frac{1-\alpha_s}{1-\alpha_t}}}_{=0}
+    \Bigg] \label{eq:bridge-kl-proof-4} \\
+    &= \mathbb{I}(x_t=m)\,\frac{\alpha_s-\alpha_t}{1-\alpha_t}\,
+    \big(-\log [D_{\theta,t}(x_t)]_{x_0}\big). \label{eq:bridge-kl-proof-5}
 \end{align}
 $$
 
@@ -1935,7 +1951,7 @@ We start from the full ELBO derived in <span style="color: red">cite thm</span>:
 $$
 \begin{align}
     \text{ELBO}(x_0) &= - \mathrm{KL}\left(q(x_1 | x_0) , p_\theta(x_1)\right)  \label{eq:ct-elbo-proof-1} \\
-    &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right] \label{eq:ct-elbo-proof-2}
+    &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right] \notag
 \end{align}
 $$
 
@@ -1963,7 +1979,7 @@ Separating the sum into the case where the token changes ($y \neq x_t$) and stay
 $$
 \begin{align}
     & (\Delta t\, [\dot{R}_t(x_t | x_0)]_y + o(\Delta t)) \log \frac{\Delta t\, [\dot{R}_t(x_t | x_0)]_y + o(\Delta t)}{\Delta t\, [\dot{R}_{\theta,t}(x_t)]_y + o(\Delta t)}  \label{eq:ratio-kl-term-1} \\
-    & \quad = \Delta t\, [\dot{R}_t(x_t | x_0)]_y \log \frac{[\dot{R}_t(x_t | x_0)]_y}{[\dot{R}_{\theta,t}(x_t)]_y} + o(\Delta t) \label{eq:ratio-kl-term-2}
+    & \quad = \Delta t\, [\dot{R}_t(x_t | x_0)]_y \log \frac{[\dot{R}_t(x_t | x_0)]_y}{[\dot{R}_{\theta,t}(x_t)]_y} + o(\Delta t) \notag
 \end{align}
 $$
 
@@ -2073,13 +2089,11 @@ L_t(\theta) &= \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \
 \end{aligned}
 \end{equation}
 $$
-We love @eq:score-loss!
-
-Expanding the logarithm and grouping $\theta$-independent terms into $C$ gives:
+Expanding the logarithm and grouping $\theta$-independent terms into $C$ gives, up to this constant:
 $$
 \begin{equation}
 \label{eq:score-loss-final}
-L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \Bigg[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y \bigg( s_{\theta,t}(x_t)_y - \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \log s_{\theta,t}(x_t)_y \bigg) \Bigg] + C
+L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \Bigg[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y \bigg( s_{\theta,t}(x_t)_y - \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \log s_{\theta,t}(x_t)_y \bigg) \Bigg]
 \end{equation}
 $$
 
