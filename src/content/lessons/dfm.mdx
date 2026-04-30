@@ -1027,7 +1027,7 @@ $$
 
 ### Discrete Diffusion
 
-#### Forward and Reverse Diffusion Processes
+#### Forward and reverse diffusion processes
 
 We first consider the forward process: we start from a sequence, and we progressively replace each token by the mask token, transforming the sequence $\mathbf{x}$ into a sequence of masks over time.
 This forward process is applied independently to each token.
@@ -1200,7 +1200,7 @@ $$
 $$
 where $\sigma(t) = -\frac{\dot{\alpha}_t}{\alpha_t} > 0$ represents the instantaneous masking rate.
 
-To generate data, we define a reverse process that progressively unmasks tokens. The probability of reverting to the clean token $x_0$ yields a reverse matrix $R_{s|t}^{x_0}$:
+To generate data according to $p_0$, we define a reverse process that progressively unmasks tokens. The probability of reverting to the clean token $x_0$ yields a reverse matrix $R_{s|t}^{x_0}$:
 $$
 \begin{equation}
 R_{s|t}^{x_0} =
