@@ -1,4 +1,12 @@
-const katexBlockPattern = /^([ \t]*)\$\$\s*\n((?:(?!^\1\$\$).*\n)*)\1\$\$\s*<((?:eq|eq:|eq-)[A-Za-z0-9_:-]*)>\s*$/gm;
+const equationLabelSource = 'eq:[A-Za-z0-9_:-]*';
+const katexBlockPattern = new RegExp(
+  `^([ \\t]*)\\$\\$\\s*\\n((?:(?!^\\1\\$\\$).*\n)*)\\1\\$\\$\\s*$`,
+  'gm',
+);
+const labelCommandPattern = new RegExp(`\\\\label\\{(${equationLabelSource})\\}`, 'g');
+const displayEnvironmentPattern = /\\begin\{(?:equation\*?|align\*?|gather\*?|alignat\*?|aligned|alignedat|gathered|split)\}/;
+const manualTagPattern = /\\tag\*?\{/;
+const refPattern = new RegExp(`(^|[^\\w\`])@(${equationLabelSource})\\b`, 'g');
 
 function escapeHtml(value) {
   return value
@@ -8,6 +16,21 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
+function equationMarker(label) {
+  return `\\htmlData{equation-label=${label}}{\\htmlId{${label}}{}}`;
+}
+
+function wrapInEquation(body) {
+  return `\\begin{equation}
+${body.trimEnd()}
+\\end{equation}
+`;
+}
+
+function addLabel(labelRefs, label) {
+  labelRefs.set(label, label);
+}
+
 export default function katexMdxEquationRefs() {
   return {
     name: 'katex-mdx-equation-refs',
@@ -15,39 +38,36 @@ export default function katexMdxEquationRefs() {
     transform(code, id) {
       if (!id.split('?')[0].endsWith('.mdx')) return null;
 
-      const equationNumbers = new Map();
-      let nextEquationNumber = 1;
+      const labelRefs = new Map();
       let hasKatexBlocks = false;
 
-      const withEquations = code.replace(katexBlockPattern, (_match, _indent, body, label) => {
+      const withEquations = code.replace(katexBlockPattern, (_match, indent, body) => {
         hasKatexBlocks = true;
-        if (!equationNumbers.has(label)) {
-          equationNumbers.set(label, nextEquationNumber++);
+        let hasBodyLabels = false;
+
+        let nextBody = body.replace(labelCommandPattern, (_labelMatch, label) => {
+          addLabel(labelRefs, label);
+          hasBodyLabels = true;
+          return equationMarker(label);
+        });
+
+        if (hasBodyLabels && !displayEnvironmentPattern.test(nextBody) && !manualTagPattern.test(nextBody)) {
+          nextBody = wrapInEquation(nextBody);
         }
-        const number = equationNumbers.get(label);
-        const escapedLabel = escapeHtml(label);
 
-        return `<span id="${escapedLabel}" className="katex-equation-target" aria-hidden="true" style={{ display: 'block', height: 0, overflow: 'hidden', scrollMarginTop: '20vh' }}></span>
-<div className="katex-equation" aria-label="Equation ${number}" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', columnGap: '0.75rem' }}>
-
-$$
-${body.trimEnd()}
-$$
-
-<span className="katex-equation-label" style={{ whiteSpace: 'nowrap', fontSize: '0.9rem', color: 'currentColor' }}>(${number})</span>
-</div>`;
+        return `${indent}$$
+${nextBody.trimEnd()}
+${indent}$$`;
       });
 
-      if (!hasKatexBlocks) return null;
+      if (!hasKatexBlocks || labelRefs.size === 0) return null;
 
-      const withRefs = withEquations.replace(
-        /(^|[^\w`])@((?:eq|eq:|eq-)[A-Za-z0-9_:-]*)\b/g,
-        (match, prefix, label) => {
-          const number = equationNumbers.get(label);
-          if (!number) return match;
-          return `${prefix}<a className="equation-ref" href="#${label}">Eq. (${number})</a>`;
-        },
-      );
+      const withRefs = withEquations.replace(refPattern, (match, prefix, label) => {
+        const targetLabel = labelRefs.get(label);
+        if (!targetLabel) return match;
+        const escapedLabel = escapeHtml(targetLabel);
+        return `${prefix}<a className="equation-ref" href="#${escapedLabel}" data-equation-ref="${escapedLabel}">Eq. (?)</a>`;
+      });
 
       return {
         code: withRefs,

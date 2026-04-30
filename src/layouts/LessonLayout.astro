@@ -17,6 +17,93 @@ const beta = (tags ?? []).includes('beta');
 resetDefines();
 resetCounters();
 const onload = jsOnLoadSetupCounters('fig');
+const equationRefsOnload = `
+(() => {
+	const rowTop = (display, el) => {
+		for (let node = el; node && node !== display; node = node.parentElement) {
+			if (!(node instanceof HTMLElement)) continue;
+			const top = Number.parseFloat(node.style.top);
+			if (Number.isFinite(top)) return top;
+		}
+		return null;
+	};
+
+	const closestTag = (entries, top, fallbackIndex) => {
+		if (entries.length === 0) return null;
+		if (top === null) return entries[Math.min(fallbackIndex, entries.length - 1)];
+		return entries.reduce((best, entry) => (
+			Math.abs(entry.top - top) < Math.abs(best.top - top) ? entry : best
+		), entries[0]);
+	};
+
+	const resolveEquationRefs = () => {
+		const labels = new Map();
+		let equationNumber = 0;
+
+		document.querySelectorAll('.katex-display').forEach((display) => {
+			const tag = display.querySelector('.katex-html > .tag');
+			if (!tag) return;
+
+			const markers = Array.from(display.querySelectorAll('.katex-html [data-equation-label]'));
+			const tagRows = Array.from(tag.querySelectorAll('[style*="top"]'))
+				.filter((row) => row.querySelector('.eqn-num') || row.textContent.trim());
+
+			const entries = tagRows.map((row) => {
+				const autoNumber = row.querySelector('.eqn-num');
+				const text = autoNumber ? '(' + (++equationNumber) + ')' : row.textContent.trim();
+				if (autoNumber && autoNumber.textContent !== text) {
+					autoNumber.textContent = text;
+					autoNumber.setAttribute('data-equation-number-resolved', 'true');
+				}
+				return { top: rowTop(display, row), text };
+			}).filter((entry) => entry.text);
+
+			if (markers.length === 0) return;
+
+			markers.forEach((marker, index) => {
+				const label = marker.getAttribute('data-equation-label');
+				const entry = closestTag(entries, rowTop(display, marker), index);
+				if (label && entry) labels.set(label, entry.text);
+			});
+		});
+
+		document.querySelectorAll('a[data-equation-ref]').forEach((link) => {
+			const label = link.getAttribute('data-equation-ref');
+			const text = label ? labels.get(label) : null;
+			if (!text) return;
+			const refText = 'Eq. ' + text;
+			const ariaLabel = 'Equation ' + text;
+			if (link.textContent !== refText) link.textContent = refText;
+			if (link.getAttribute('aria-label') !== ariaLabel) {
+				link.setAttribute('aria-label', ariaLabel);
+			}
+		});
+
+		document.documentElement.classList.add('equation-refs-resolved');
+	};
+
+	const scheduleResolve = () => {
+		resolveEquationRefs();
+		setTimeout(resolveEquationRefs, 0);
+		setTimeout(resolveEquationRefs, 50);
+		setTimeout(resolveEquationRefs, 250);
+	};
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', scheduleResolve, { once: true });
+	} else {
+		scheduleResolve();
+	}
+
+	window.addEventListener('load', resolveEquationRefs, { once: true });
+	document.addEventListener('astro:page-load', scheduleResolve);
+
+	new MutationObserver(resolveEquationRefs).observe(document.body, {
+		childList: true,
+		subtree: true,
+	});
+})();
+`;
 ---
 
 <html lang="en">
@@ -67,6 +154,7 @@ const onload = jsOnLoadSetupCounters('fig');
 		<Header />
 		<main>
 			<script set:html={onload}></script>
+			<script set:html={equationRefsOnload}></script>
 			{
 				beta ? <div class="lesson-in-beta">
 						This lesson is currently in <em>beta</em>. It may contain inaccuracies or

@@ -385,3 +385,14 @@ figure {
 html, body {
 	scroll-padding-top: 20vh;
 }
+
+@media (min-width: 721px) {
+	.katex-display > .katex > .katex-html > .tag {
+		right: -6rem !important;
+	}
+}
+
+.equation-refs-resolved .katex .eqn-num::before {
+	counter-increment: none;
+	content: none;
+}

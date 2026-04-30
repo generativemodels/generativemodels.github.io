@@ -10,7 +10,6 @@ import { typst } from 'astro-typst';
 import rehypeToc from '@jsdevtools/rehype-toc';
 import rehypeSlug from 'rehype-slug';
 import katexMdxEquationRefs from './src/plugins/katexMdxEquationRefs.mjs';
-import typstMdxBlocks from './src/plugins/typstMdxBlocks.mjs';
 
 import react from '@astrojs/react';
 
@@ -53,7 +52,7 @@ export default defineConfig({
     ],
   },
   vite: {
-    plugins: [katexMdxEquationRefs(), typstMdxBlocks()],
+    plugins: [katexMdxEquationRefs()],
     ssr: { external: ["@myriaddreamin/typst-ts-node-compiler"] },
   },
 });
