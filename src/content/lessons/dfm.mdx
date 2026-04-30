@@ -1262,7 +1262,7 @@ $$
 <summary>Proof</summary>
 <div>
 
-Using Bayes' theorem:
+Using Bayes' theorem, for $y \neq x_t$:
 $$
 \begin{align}
 p(x_{t-\Delta t} = y | x_t) &= \frac{q(x_t | x_{t-\Delta t} = y) q(x_{t-\Delta t} = y)}{q(x_t)} \\
@@ -1271,7 +1271,8 @@ p(x_{t-\Delta t} = y | x_t) &= \frac{q(x_t | x_{t-\Delta t} = y) q(x_{t-\Delta t
 \end{align}
 $$
 
-By identifying this result with the definition of the reverse local transition $p(x_{t-\Delta t} = y | x_t) = \Delta t [\dot{R}_t(x_t)]_y + o(\Delta t)$ for $y \neq x_t$, we obtain the off-diagonal entries. The diagonal elements are then constrained by the requirement that the rows of a valid continuous-time transition rate matrix must sum to zero.
+By identifying this result with the definition of the reverse local transition $p(x_{t-\Delta t} = y | x_t) = \Delta t [\dot{R}_t(x_t)]_y + o(\Delta t)$, we conclude for $y \neq x_t$.
+For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a valid transition rate matrix must sum to zero, so $[\dot{R}_t(x_t)]_{x_t} = - \sum_{y' \neq x_t} [\dot{R}_t(x_t)]_{y'}$.
 
 </div>
 </details>
