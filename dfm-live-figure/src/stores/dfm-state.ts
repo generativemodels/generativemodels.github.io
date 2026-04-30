@@ -17,10 +17,11 @@ function mulberry32(seed: number) {
 
 // Sample from a categorical distribution given probabilities
 function sampleCategorical(probs: number[], rng: () => number): number {
+  if (probs.length === 0) return 0
   const r = rng()
   let cumSum = 0
   for (let i = 0; i < probs.length; i++) {
-    cumSum += probs[i]
+    cumSum += probs[i] ?? 0
     if (r < cumSum) return i
   }
   return probs.length - 1
@@ -34,7 +35,11 @@ export const useDFMStore = defineStore('dfm', () => {
   )
 
   const x1onehot = computed(() =>
-    x1.value.map((t) => masked.value ? [...vocabulary.value.map((v) => (t === v ? 1 : 0)), 0] : vocabulary.value.map((v) => (t === v ? 1 : 0))),
+    x1.value.map((t) =>
+      masked.value
+        ? [...vocabulary.value.map((v) => (t === v ? 1 : 0)), 0]
+        : vocabulary.value.map((v) => (t === v ? 1 : 0)),
+    ),
   )
   const masked = ref(true)
   const maskToken = '▮'
@@ -46,32 +51,37 @@ export const useDFMStore = defineStore('dfm', () => {
     ),
   )
 
-  const t = ref(0.)
+  const t = ref(0)
   const xtproba = computed(() =>
-    x0proba.value.map((proba, is) =>
-      proba.map((p, iv) => p * (1 - t.value) + t.value * x1onehot.value[is][iv]),
-    ),
+    x0proba.value.map((proba, is) => {
+      const targetProba = x1onehot.value[is] ?? []
+      return proba.map((p, iv) => p * (1 - t.value) + t.value * (targetProba[iv] ?? 0))
+    }),
   )
 
   const horizontalBins = ref(20)
   const sequencePositionOfInterest = ref(0)
   const xfocusprobat = computed(() => {
     const is = sequencePositionOfInterest.value
+    const startProba = x0proba.value[is] ?? x0proba.value[0] ?? []
+    const targetProba = x1onehot.value[is] ?? x1onehot.value[0] ?? []
     // create time bins, just consider first token in sequence
     return Array.from({ length: horizontalBins.value }, (_, i) => {
       const t = i / horizontalBins.value
-      return x0proba.value[is].map((p, iv) => p * (1 - t) + t * x1onehot.value[is][iv])
+      return startProba.map((p, iv) => p * (1 - t) + t * (targetProba[iv] ?? 0))
     })
   })
 
   // xfocusprobat for all positions (used when showing full cube)
   const xAllPositionsProbat = computed(() =>
-    Array.from({ length: x1.value.length }, (_, is) =>
-      Array.from({ length: horizontalBins.value }, (_, i) => {
+    Array.from({ length: x1.value.length }, (_, is) => {
+      const startProba = x0proba.value[is] ?? []
+      const targetProba = x1onehot.value[is] ?? []
+      return Array.from({ length: horizontalBins.value }, (_, i) => {
         const t = i / horizontalBins.value
-        return x0proba.value[is].map((p, iv) => p * (1 - t) + t * x1onehot.value[is][iv])
-      }),
-    ),
+        return startProba.map((p, iv) => p * (1 - t) + t * (targetProba[iv] ?? 0))
+      })
+    }),
   )
 
   const playing = ref(false)
@@ -92,7 +102,7 @@ export const useDFMStore = defineStore('dfm', () => {
       const rng = mulberry32(sampleIdx * 1000 + Math.round(t.value * 10000))
       return proba.map((posProba) => {
         const idx = sampleCategorical(posProba, rng)
-        return labels[idx]
+        return labels[idx] ?? maskToken
       })
     })
   })
@@ -102,7 +112,7 @@ export const useDFMStore = defineStore('dfm', () => {
 
   // x1 characters are in decreasing order
   const x1IsDecreasing = computed(() =>
-    x1.value.every((c, i) => i === 0 || x1.value[i - 1] >= c),
+    x1.value.every((c, i) => i === 0 || (x1.value[i - 1] ?? '') >= c),
   )
 
   // Auto-untick full cube when condition becomes invalid

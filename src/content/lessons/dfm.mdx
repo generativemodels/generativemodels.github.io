@@ -149,7 +149,7 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 - **$u_t(\mathbf{x})_{\mathbf{y}}$** probability velocity: the instantaneous rate at which the sequence transitions from $\mathbf{x}$ to $\mathbf{y}$ at time $t$
 - **$u_t^i(\mathbf{x})_v$** token-wise velocity at position $i$: the instantaneous rate at which the $i$-th token of $\mathbf{x}$ transitions to $v$ at time $t$
 - **$u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}}$** conditional velocity field given $\mathbf{z}$
-{/* it relates to the marginal velocity via expectation, formulated as $u_t(\mathbf{x})_{\mathbf{y}} = \mathbb{E}_{\substack{\mathbf{z}}}[u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}} \mid X_t = \mathbf{x}] $ */}
+{/* it relates to the marginal velocity via expectation, formulated as $u_t(\mathbf{x})_{\mathbf{y}} = \mathbb{E}_{\substack{\mathbf{z}}}[u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} | X_t = \mathbf{x}] $ */}
 {/* - **$u_t(x | x_0, x_1)$** source-target token-wise conditional velocity: $u_t(x | x_0, x_1)_v = \frac{\dot{\kappa}_t}{1 - \kappa_t} \left( \mathbb{I}(v = x_1) - \mathbb{I}(v = x) \right)$ */}
 - **$u_{\theta,t}^i(\mathbf{x})_v$** learned velocity field parameterized by $\theta$
 - **$P_{\theta,t}(X_1^i | \mathbf{x}_t)$** learned denoiser: at coordinate j, probability that the $i$-th token at time 1 is $\mathbf{e}_j$, given current sequence $\mathbf{x}_t$
@@ -224,10 +224,10 @@ In the discrete case, we say that $u$ *generates* the probability path $(p_t)_{t
 $$
 \mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{x} = \mathbf{y}) + h u_{t}(\mathbf{x})_{\mathbf{y}} + o(h)
 $$ <eq-prob-velocity>
-If we index the state space as $\mathcal{S} = \{\mathbf{y}_1, \dots, \mathbf{y}_{S}\}$ and choose $k$ such that $\mathbf{y}_k = \mathbf{x}$ (the current state), then the full transition-probability vector reads
+If we index the state space as $\mathcal{S} = \{\mathbf{y}_1, \dots, \mathbf{y}_{|\mathcal{S}|}\}$ and choose $k$ such that $\mathbf{y}_k = \mathbf{x}$ (the current state), then the full transition-probability vector reads
 $$
 \begin{equation}
-\underbrace{\mathbb{P}(X_{t+h} = \cdot \mid X_t=\mathbf{x})}_{\in \mathbb{R}^{S}}  =
+\underbrace{\mathbb{P}(X_{t+h} = \cdot | X_t=\mathbf{x})}_{\in \mathbb{R}^{|\mathcal{S}|}}  =
 \begin{bmatrix}
   h u_t(\mathbf{x})_{\mathbf{y}_1} \\
   \vdots \\
@@ -235,11 +235,13 @@ $$
   1 + h u_t(\mathbf{x})_{\mathbf{y}_k}  \\
   h u_t(\mathbf{x})_{\mathbf{y}_{k+1}} \\
   \vdots \\
-  h u_t(\mathbf{x})_{\mathbf{y}_{S}}
+  h u_t(\mathbf{x})_{\mathbf{y}_{|\mathcal{S}|}}
 \end{bmatrix}
 + o(h),
 \end{equation}
 $$
+
+where $\mathbf{e}_{\mathbf{x}}$ is the one-hot vector corresponding to the current state $\mathbf{x}$.
 
 Intuitively, $u_t(\mathbf{x})_{\mathbf{y}}$ is the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
 Much like the ODE TODO cite ODE can be discretized with Euler's method, the sampling process @eq-prob-velocity can be discretized as
@@ -249,13 +251,13 @@ $$
 \end{equation}
 $$
 
-As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
-We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**.
+As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
+We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**. This explains why we are allowed to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
 
 **Remark (Mass conservation for probability velocities).**
 The probability velocity $u$ must preserve probability mass: for TODO cite eq to define a valid probability, for every $t\in [0, 1]$ $u_t$ must satisfy:
 1. **Positivity:** $u_t(\mathbf{x})_{\mathbf{y}} \ge 0$ for all $\mathbf{y} \neq \mathbf{x}$.
-2. **Normalization:** $\sum_{\mathbf{y} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} = 0$ for all $\mathbf{x} \in \mathcal{S}$
+2. **Normalization:** $\sum_{\mathbf{y} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} = 0$ for all $\mathbf{x} \in \mathcal{S}$ (and so $u_t(\mathbf{x})_{\mathbf{x}} \le 0$).
 
 {/*
 Hence, for each state $\mathbf{x}$,
@@ -268,13 +270,13 @@ $u_t(\mathbf{x})_{\mathbf{x}} = -\sum_{\mathbf{y} \neq \mathbf{x}} u_t(\mathbf{x
 Positivity guarantees nonnegative off-diagonal transition probabilities:
 $$
 \begin{equation}
-\mathbb{P}(X_{t+h}=\mathbf{y}\mid X_t=\mathbf{x}) = h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h) \ge 0, \qquad \mathbf{y}\neq\mathbf{x}.
+\mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x}) = h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h) \ge 0, \qquad \mathbf{y}\neq\mathbf{x}.
 \end{equation}
 $$
 Normalization guarantees total mass conservation:
 $$
 \begin{equation}
-\sum_{\mathbf{y}\in\mathcal{S}} \mathbb{P}(X_{t+h}=\mathbf{y}\mid X_t=\mathbf{x})
+\sum_{\mathbf{y}\in\mathcal{S}} \mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x})
 = 1 + h\sum_{\mathbf{y}\in\mathcal{S}}u_t(\mathbf{x})_{\mathbf{y}} + o(h) = 1 + o(h).
 \end{equation}
 $$
@@ -346,11 +348,13 @@ As the next proposition shows, this has a fundamental consequence: the probabili
 Let $(X_t)$ be random variables of laws $p_t$; assume that the probability path $(p_t)$ is  generated by $u_t$.
 In addition, assume that the transition probabilities factorize over tokens, namely for $\mathbf{x}, \mathbf{y} \in \mathcal{S}$:
 $$
-\begin{aligned}
-\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) &= \mathbb{P}(X_{t+h}^1 = y_1, X_{t+h}^2 = y_2, \dots, X_{t+h}^S = y_S | X_t = \mathbf{x}) \\
+\begin{align}
+\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) &:= \mathbb{P}(X_{t+h}^1 = y_1, X_{t+h}^2 = y_2, \dots, X_{t+h}^S = y_S | X_t = \mathbf{x}) \\
 &= \prod_{i=1}^S \mathbb{P}(X_{t+h}^i = y^i | X_t = \mathbf{x})
-\end{aligned}
+\end{align}
 $$
+
+Suppose that there is a probabilility velocity $u_t$ generating $p_t$.
 Then, the probability velocity writes as a sum of $S$ *tokenwise* probability velocities $u_t^i$, taking values in $\mathcal{V}$:
 
 $$
@@ -365,28 +369,26 @@ $$
 <div>
 By definition, the transition probability for a single token at position $i$ is:
 $$
+\begin{equation}
 \mathbb{P}(X_{t+h}^i = y^i | X_t = \mathbf{x}) = \mathbb{I}(y^i = x^i) + h u_t^i(\mathbf{x})_{y^i} + o(h)
+\end{equation}
 $$
 
-Substituting this into our factorized joint probability gives:
+Substituting this into our factorized joint probability, we get:
 $$
-\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \prod_{i=1}^S \left[ \mathbb{I}(y^i = x^i) + h u_t^i(\mathbf{x})_{y^i} + o(h) \right]
+\begin{align}
+\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) &= \prod_{i=1}^S \left[ \mathbb{I}(y^i = x^i) + h u_t^i(\mathbf{x})_{y^i} + o(h) \right] \\
+&= \prod_{i=1}^S \mathbb{I}(y^i = x^i) + h \sum_{i=1}^S \left[ \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i} \right] + o(h) \\
+&= \mathbb{I}(\mathbf{y} = \mathbf{x}) + h \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i} + o(h)
+\end{align}
 $$
+where $\mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})$ equals 1 if $\mathbf{y}$ and $\mathbf{x}$ differ at most at position $i$, and we used $\prod_{i=1}^S \mathbb{I}(y^i = x^i) = \mathbb{I}(\mathbf{y} = \mathbf{x})$.
 
-Expanding this product and keeping only the first-order terms in $h$, we get:
+By comparing this result with the definition of the probability velocity <span style="color: red">cite eq</span> $\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{x} = \mathbf{y}) + h u_t(\mathbf{x})_{\mathbf{y}} + o(h)$, we directly identify:
 $$
-\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \prod_{i=1}^S \mathbb{I}(y^i = x^i) + h \sum_{i=1}^S \left[ \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i} \right] + o(h)
-$$
-where $\mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})$ equals 1 if $\mathbf{y}$ and $\mathbf{x}$ differ at most at position $i$.
-
-Recognizing that $\prod_{i=1}^S \mathbb{I}(y^i = x^i) = \mathbb{I}(\mathbf{y} = \mathbf{x})$, we can rewrite the expansion as:
-$$
-\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{y} = \mathbf{x}) + h \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i} + o(h)
-$$
-
-By comparing this result with the fundamental definition of the probability velocity $\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{x} = \mathbf{y}) + h u_t(\mathbf{x})_{\mathbf{y}} + o(h)$, we directly identify:
-$$
+\begin{equation}
 u_t(\mathbf{x})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i}
+\end{equation}
 $$
 </div>
 </details>
@@ -401,11 +403,13 @@ x_{\tau+h}^i \sim \text{Cat}\left(\mathbf{e}_{x_\tau^i} + h u_\tau^i(\mathbf{x}_
 \end{equation}
 $$
 
-{/* Maybe here add the simulation of my toy example (4 characters), 10 steps and we show u and the drawings at each steps*/}
+<figure>
+  <DFMSampling client:load />
+  <figcaption>
+    This animation shows the generation process of a sequence of lenghth 4 with a known probability velocity $u_t$. We can observe that at each step, all tokens are updated independently and that most of the times, the tokens stay at their masked state. The probability of drawing the mask token $m$ decreases at each step, while the probability of drawing other tokens increases. Once a token is unmasked, it cannot be remasked again until the end of the process. Different samples can be generated from the same initial sequence (change the seed!), because the sampling is stochastic at each step.
+  </figcaption>
+</figure>
 
-<DFMSampling client:load />
-
-<span style="color: red"> Discuss this animation: explain what it is showing and what it highlights specifically </span>
 
 Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of Discrete Flow Matching!
 
@@ -467,7 +471,7 @@ $$
 We verify that the conditional velocity field $u_t(\cdot | \mathbf{x}_1)$ generates the conditional probability path $p_t(\cdot | \mathbf{x_1})$ by ensuring that the pair satisfies the Kolmogorov equation. For a token at position $i$, we need to check:
 $$
 \begin{equation}
-\frac{d}{dt} q_t(y^{i} | x_1^{i}) = \sum_{v \in \mathcal{V} } u_{t}(v \mid x_1^{i})_{y^{i}} \, q_t(v \mid x_1^{i})
+\frac{d}{dt} q_t(y^{i} | x_1^{i}) = \sum_{v \in \mathcal{V} } u_{t}(v | x_1^{i})_{y^{i}} \, q_t(v | x_1^{i})
 \end{equation}
 $$
 
@@ -478,17 +482,17 @@ $$
 \end{equation}
 $$
 
-Now, let's examine the right-hand side using the analytic formulation of the velocity field $u_{t}(v \mid x_1^{i})_{y^{i}} = \frac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = v) \right) \mathbb{I}(v = m)$:
+Now, let's examine the right-hand side using the analytic formulation of the velocity field $u_{t}(v | x_1^{i})_{y^{i}} = \frac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = v) \right) \mathbb{I}(v = m)$:
 $$
 \begin{align}
 &\sum_{v \in \mathcal{V} } u_t(v | x_1^i)_{y^i} \, q_t(v | x_1^{i}) \\
 &= \sum_{v \in \mathcal{V} } \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = v) \right) \mathbb{I}(v = m) \, q_t(v | x_1^{i}) \\
-&= \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) q_t(m \mid x_1^{i}) \\
+&= \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) q_t(m | x_1^{i}) \\
 &= \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right)
 \end{align}
 $$
 
-since $q_t(m \mid x_1^{i}) = (1-t)$.
+since $q_t(m | x_1^{i}) = (1-t)$.
 Hence $(u_t(\cdot | x_1^i), q_t(\cdot | x_1^i))$ satisfies the Kolmogorov equation.
 
 
@@ -592,30 +596,30 @@ We verify the two boundary conditions separately:
 **At $t=0$**:
 Recall the conditional path with $\mathbf{z} = \mathbf{x}_1$ and mask source:
 $$
-q_0(x^i \mid x_1^i) = \mathbb{I}(x^i = m).
+q_0(x^i | x_1^i) = \mathbb{I}(x^i = m).
 $$
-The value of $x_1^i$ plays no role, so $p_0(\mathbf{x} \mid \mathbf{z})$ does not depend on $\mathbf{z}$:
+The value of $x_1^i$ plays no role, so $p_0(\mathbf{x} | \mathbf{z})$ does not depend on $\mathbf{z}$:
 $$
-p_0(\mathbf{x} \mid \mathbf{z}) = \prod_{j=1}^S \mathbb{I}(x^j = m) = p_{\mathrm{mask}}(\mathbf{x}) = p_0(\mathbf{x}).
+p_0(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S \mathbb{I}(x^j = m) = p_{\mathrm{mask}}(\mathbf{x}) = p_0(\mathbf{x}).
 $$
 Marginalizing over $\mathbf{z}$ then trivially gives:
 $$
-p_{t=0}(\mathbf{x}) = \sum_{\mathbf{z}} p_0(\mathbf{x} \mid \mathbf{z})\,\pi(\mathbf{z}) = p_0(\mathbf{x})\sum_{\mathbf{z}} \pi(\mathbf{z}) = p_0(\mathbf{x}).
+p_{t=0}(\mathbf{x}) = \sum_{\mathbf{z}} p_0(\mathbf{x} | \mathbf{z})\,\pi(\mathbf{z}) = p_0(\mathbf{x})\sum_{\mathbf{z}} \pi(\mathbf{z}) = p_0(\mathbf{x}).
 $$
 
 **At $t=1$**:
 We have:
 $$
 \begin{align}
-q_1(x^i \mid x_1^i) &= \mathbb{I}(x^i = x_1^i) \\
-p_1(\mathbf{x} \mid \mathbf{x}_1) &= \prod_{j=1}^S \mathbb{I}(x^j = x_1^j) = \delta_{\mathbf{x}_1}(\mathbf{x})
+q_1(x^i | x_1^i) &= \mathbb{I}(x^i = x_1^i) \\
+p_1(\mathbf{x} | \mathbf{x}_1) &= \prod_{j=1}^S \mathbb{I}(x^j = x_1^j) = \mathbb{I}(\mathbf{x} = \mathbf{x}_1)
 \end{align}
 $$
 Since $\pi(\mathbf{z}) = p_{\mathrm{data}}(\mathbf{x}_1)$,
-the delta collapses the sum directly:
+the indicator collapses the sum directly:
 $$
 p_{t=1}(\mathbf{x})
-= \sum_{\mathbf{x}_1} \delta_{\mathbf{x}_1}(\mathbf{x})\, p_{\mathrm{data}}(\mathbf{x}_1)
+= \sum_{\mathbf{x}_1} \mathbb{I}(\mathbf{x} = \mathbf{x}_1)\, p_{\mathrm{data}}(\mathbf{x}_1)
 = p_{\mathrm{data}}(\mathbf{x})
 = p_1(\mathbf{x}).
 $$
@@ -628,14 +632,13 @@ We now arrive to the heart of Discrete Flow Matching: building a velocity that t
 **Fundamental Theorem of Discrete FM.** The probability velocity obtained by taking the conditional expectation of the conditional velocities,
 $$
 \begin{equation}
-\begin{aligned}
+\begin{align}
 u_t(\mathbf{x})_{\mathbf{y}}
-&:= \mathbb{E}_{\substack{\mathbf{z}}}\!\left[u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}} \mid X_t = \mathbf{x}\right] \\
-&= \sum_{\mathbf{z}} u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(\mathbf{z} \mid X_t = \mathbf{x}) \, ,
-\end{aligned}
-\end{equation}
+&:= \mathbb{E}_{\substack{\mathbf{z}}}\!\left[u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} | X_t = \mathbf{x}\right] \\
+&= \sum_{\mathbf{z}} u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(\mathbf{z} | X_t = \mathbf{x}) \, ,
+\end{align}\end{equation}
 $$
-generates the probability path $p_t(\mathbf{x}) = \sum_{\mathbf{z}} p_t(\mathbf{x}\mid\mathbf{z})\,\pi(\mathbf{z})$.
+generates the probability path $p_t(\mathbf{x}) = \sum_{\mathbf{z}} p_t(\mathbf{x}|\mathbf{z})\,\pi(\mathbf{z})$.
 
 <details>
 <summary>Proof</summary>
@@ -643,29 +646,29 @@ generates the probability path $p_t(\mathbf{x}) = \sum_{\mathbf{z}} p_t(\mathbf{
 We want to show
 $$
 \begin{equation}
-\mathbb{P}(X_{t+h}=\mathbf{y}\mid X_t=\mathbf{x})
+\mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x})
 = \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h).
 \end{equation}
 $$
 Introducing $Z$ and using the law of total probability,
 $$
 \begin{align*}
-\mathbb{P}(&X_{t+h}=\mathbf{y}\mid X_t=\mathbf{x}) \\
-&= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}, Z=\mathbf{z}\mid X_t=\mathbf{x}) \\
-&= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}\mid X_t=\mathbf{x}, Z=\mathbf{z})\,\mathbb{P}(Z=\mathbf{z}\mid X_t=\mathbf{x}) \\
-&= \sum_{\mathbf{z}}\Big(\mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}} + o(h)\Big)\,\mathbb{P}(Z=\mathbf{z}\mid X_t=\mathbf{x}) \\
-&= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\sum_{\mathbf{z}}u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}\mid X_t=\mathbf{x}) + o(h) \\
+\mathbb{P}(&X_{t+h}=\mathbf{y}| X_t=\mathbf{x}) \\
+&= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}, Z=\mathbf{z}| X_t=\mathbf{x}) \\
+&= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x}, Z=\mathbf{z})\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) \\
+&= \sum_{\mathbf{z}}\Big(\mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} + o(h)\Big)\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) \\
+&= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\sum_{\mathbf{z}}u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) + o(h) \\
 &= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h).
 \end{align*}
-\begin{equation} \end{equation}
+
 $$
 Alternative proof: apply the Kolmogorov equation to each conditional process and average over $\mathbf{z}$:
 $$
 \begin{align}
 \frac{d}{dt}p_t(\mathbf{y})
-&= \sum_{\mathbf{z}} \pi(\mathbf{z})\,\frac{d}{dt}p_t(\mathbf{y}\mid\mathbf{z}) \\
-&= \sum_{\mathbf{z}}\pi(\mathbf{z})\sum_{\mathbf{x}}u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}}\,p_t(\mathbf{x}\mid\mathbf{z}) \\
-&= \sum_{\mathbf{x}}\left(\sum_{\mathbf{z}}u_t(\mathbf{x}\mid\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}\mid X_t=\mathbf{x})\right)p_t(\mathbf{x}) \\
+&= \sum_{\mathbf{z}} \pi(\mathbf{z})\,\frac{d}{dt}p_t(\mathbf{y}|\mathbf{z}) \\
+&= \sum_{\mathbf{z}}\pi(\mathbf{z})\sum_{\mathbf{x}}u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,p_t(\mathbf{x}|\mathbf{z}) \\
+&= \sum_{\mathbf{x}}\left(\sum_{\mathbf{z}}u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x})\right)p_t(\mathbf{x}) \\
 &= \sum_{\mathbf{x}} u_t(\mathbf{x})_{\mathbf{y}}\,p_t(\mathbf{x}).
 \end{align}
 $$
@@ -742,7 +745,7 @@ $$
 where $\mathbb{P}(X_1^i = v | X_t = \mathbf{x})$ can be interpreted as a denoiser: it gives the probability of the $i$-th token in the final sequence $\mathbf{x}_1$ being $v$, given the full noisy sequence $\mathbf{x}_t$.
 
 {/* As we saw in <span style="color: red">cite eq</span>, velocity fields follow very similar properties to probability distributions, and the KL divergence is a natural way to compare them.
-Since it is more intuitive to think in terms of probabilities rather than velocities, we can reparameterize the velocity field $u_t^i(\mathbf{x})$ in terms of a denoiser $D_{\theta,t}^i(\mathbf{x}) = P_{\theta,t}(X_1^i \mid X_t = \mathbf{x})$. It corresponds to the probability distribution over clean tokens at position $i$, given the current noisy sequence $\mathbf{x}_t$. <span style="color: red">Discuss this argument</span> */}
+Since it is more intuitive to think in terms of probabilities rather than velocities, we can reparameterize the velocity field $u_t^i(\mathbf{x})$ in terms of a denoiser $D_{\theta,t}^i(\mathbf{x}) = P_{\theta,t}(X_1^i | X_t = \mathbf{x})$. It corresponds to the probability distribution over clean tokens at position $i$, given the current noisy sequence $\mathbf{x}_t$. <span style="color: red">Discuss this argument</span> */}
 
 
 <details>
@@ -752,34 +755,34 @@ Since it is more intuitive to think in terms of probabilities rather than veloci
 Remember that the marginal velocity is the conditional expectation of the conditional velocity:
 $$
 \begin{equation}
-u_t^i(\mathbf{x})_v = \mathbb{E}_{x_1^i \sim \mathbb{P}(X_1^i \mid \mathbf{x})}\!\left[u_t^i(x^i \mid x_1^i)_v\right].
+u_t^i(\mathbf{x})_v = \mathbb{E}_{x_1^i \sim \mathbb{P}(X_1^i | \mathbf{x})}\!\left[u_t^i(x^i | x_1^i)_v\right].
 \end{equation}
 $$
 and for the case of a masked source, we have:
 $$
 \begin{equation}
-u_t^i(x^i \mid x_1^i)_v = \frac{1}{1-t}\,\mathbb{I}(x^i = m)\left(\mathbb{I}(v = x_1^i) - \mathbb{I}(v = m)\right).
+u_t^i(x^i | x_1^i)_v = \frac{1}{1-t}\,\mathbb{I}(x^i = m)\left(\mathbb{I}(v = x_1^i) - \mathbb{I}(v = m)\right).
 \end{equation}
 $$
 
 **Case 1: $x^i \neq m$ (token already unmasked).**
 
-The indicator $\mathbb{I}(x^i = m)=0$, so $u_t^i(x^i \mid x_1^i)_v = 0$ for all $x_1^i, v$
+The indicator $\mathbb{I}(x^i = m)=0$, so $u_t^i(x^i | x_1^i)_v = 0$ for all $x_1^i, v$
 and hence $u_t^i(x)_v = 0$.
 
 It remains to check that the target formula also gives zero. By Bayes' rule,
 $$
 \begin{equation}
-\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x})
+\mathbb{P}(X_1^i = v | X_t = \mathbf{x})
 =
-\frac{\mathbb{P}(X_t = \mathbf{x} \mid X_1^i = v)\,\mathbb{P}(X_1^i = v)}
+\frac{\mathbb{P}(X_t = \mathbf{x} | X_1^i = v)\,\mathbb{P}(X_1^i = v)}
 {\mathbb{P}(X_t = \mathbf{x})}.
 \end{equation}
 $$
 Under the conditional probability path,
 $$
 \begin{equation}
-q_t(x^i \mid x_1^i)
+q_t(x^i | x_1^i)
 =
 t\,\mathbb{I}(x^i = x_1^i) + (1-t)\,\mathbb{I}(x^i = m) = t\,\mathbb{I}(x^i = x_1^i)
 \end{equation}
@@ -790,7 +793,7 @@ $$
 \begin{align}
 \mathbb{P}(X_t = \mathbf{x} |X_1^i = v)
 &=
-q_t(x^i |x_1^i = v)\,\mathbb{P}(X_t^{\neq i} = \mathbf{x}^{\neq i} |X_1^i = v) \\
+q_t(x^i | v)\,\mathbb{P}(X_t^{\neq i} = \mathbf{x}^{\neq i} |X_1^i = v) \\
 &= 0.
 \end{align}
 $$
@@ -819,8 +822,8 @@ $$
 \begin{align}
 u_t^i(\mathbf{x})_v
 &= \mathbb{E}_{x_1^i}\!\left[\frac{1}{1-t}\left(\mathbb{I}(v = x_1^i) - \mathbb{I}(v = m)\right)\right] \\
-&= \frac{1}{1-t}\left(\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x}) - \mathbb{I}(v = m)\right) \\
-&= \frac{1}{1-t}\left(\mathbb{P}(X_1^i = v \mid X_t = \mathbf{x}) - \mathbb{I}(v = x^i)\right),
+&= \frac{1}{1-t}\left(\mathbb{P}(X_1^i = v | X_t = \mathbf{x}) - \mathbb{I}(v = m)\right) \\
+&= \frac{1}{1-t}\left(\mathbb{P}(X_1^i = v | X_t = \mathbf{x}) - \mathbb{I}(v = x^i)\right),
 \end{align}
 $$
 where the last equality uses $x^i = m$. Both cases match the claimed formula.
@@ -834,7 +837,7 @@ Consequently, we can train the denoiser directly. Using the KL divergence betwee
 
 $$
 \begin{equation}
-L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i \mid X_t = \mathbf{x}) \right]
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right]
 \end{equation}
 $$
 
@@ -843,11 +846,11 @@ $$
 
 <div>
 
-We want to learn the denoiser by minimizing the KL divergence between the true posterior $P_t(X_1^i \mid X_t = \mathbf{x})$ and the learned one:
+We want to learn the denoiser by minimizing the KL divergence between the true posterior $P_t(X_1^i | X_t = \mathbf{x})$ and the learned one:
 
 $$
 \begin{equation}
-L(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x} \sim p_t}}\left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i \mid X_t = \mathbf{x}),\, P_{\theta,t}(X_1^i \mid X_t = \mathbf{x})\right) \right]
+L(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x} \sim p_t}}\left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x}),\, P_{\theta,t}(X_1^i | X_t = \mathbf{x})\right) \right]
 \end{equation}
 $$
 
@@ -855,15 +858,15 @@ By the same argument as in <span style="color: red">cite thm</span>, this loss h
 
 $$
 \begin{equation}
-L(\theta) \equiv \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}}\left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i \mid X_t = \mathbf{x},\, \mathbf{x}_1),\, P_{\theta,t}(X_1^i \mid X_t = \mathbf{x})\right) \right]
+L(\theta) \equiv \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}}\left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x},\, \mathbf{x}_1),\, P_{\theta,t}(X_1^i | X_t = \mathbf{x})\right) \right]
 \end{equation}
 $$
 
-Given $\mathbf{x}_1$, the true conditional posterior is a one-hot: $P_t(X_1^i \mid X_t = \mathbf{x}, \mathbf{x}_1) = \mathbf{e}_{x_1^i}$. The KL between a one-hot and any distribution reduces to a single log term:
+Given $\mathbf{x}_1$, the true conditional posterior is a one-hot: $P_t(X_1^i | X_t = \mathbf{x}, \mathbf{x}_1) = \mathbf{e}_{x_1^i}$. The KL between a one-hot and any distribution reduces to a single log term:
 
 $$
 \begin{equation}
-\mathrm{KL}\left(\mathbf{e}_{x_1^i},\, P_{\theta,t}(X_1^i \mid \mathbf{x})\right) = -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x})
+\mathrm{KL}\left(\mathbf{e}_{x_1^i},\, P_{\theta,t}(X_1^i | \mathbf{x})\right) = -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x})
 \end{equation}
 $$
 
@@ -871,7 +874,7 @@ which gives directly:
 
 $$
 \begin{equation}
-L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i \mid X_t = \mathbf{x}) \right]
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right]
 \end{equation}
 $$
 
@@ -882,7 +885,7 @@ $$
 In the specific context of masked diffusion, we usually restrict the learning process to predict only the tokens that are currently masked. Consequently, the loss is evaluated exclusively on these masked positions and scaled by the appropriate transition rate, becoming:
 $$
 \begin{equation}
-L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i : x_t^i = m} \frac{1}{1-t} \log P_{\theta,t}(X_1^i = x_1^i \mid X_t = \mathbf{x}) \right]
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i : x_t^i = m} \frac{1}{1-t} \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right]
 \end{equation}
 $$
 */}
@@ -919,7 +922,7 @@ $$
     {/* ASPECT 2 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>2. Define a simple conditional distribution $p_t(\mathbf{x} \mid \mathbf{z})$</strong>
+        <strong>2. Define a simple conditional distribution $p_t(\mathbf{x} | \mathbf{z})$</strong>
       </td>
     </tr>
     <tr>
@@ -927,22 +930,22 @@ $$
         $\mathcal{N}((1 - t) x_0 + t x_1, \sigma^2 \text{Id})$ <br /> $= \prod_{i=1}^S \mathcal{N}((1-t)x_0^i + t x_1^i, \sigma^2)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $p_t(\mathbf{x} \mid \mathbf{z}) = \prod_{j=1}^S q_t(x^j \mid x_0^j, x_1^j)$ <br /> where $q_t \sim \text{Cat}((1 - t) \mathbf{e}_{x_0^j} + t \mathbf{e}_{x_1^j} )$
+        $p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | x_0^j, x_1^j)$ <br /> where $q_t \sim \text{Cat}((1 - t) \mathbf{e}_{x_0^j} + t \mathbf{e}_{x_1^j} )$
       </td>
     </tr>
 
     {/* ASPECT 3 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>3. Compute an associated conditional velocity field $u_t(\mathbf{x} \mid \mathbf{z})$</strong>
+        <strong>3. Compute an associated conditional velocity field $u_t(\mathbf{x} | \mathbf{z})$</strong>
       </td>
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $u_t(\mathbf{x} \mid \mathbf{z}) = x_1 - x_0 = \sum_{i=1}^S u_t(x^i \mid z^i)\, \mathbf{e}_i$ <br /> $u_t(x^i \mid z^i) = x_1^i - x_0^i$
+        $u_t(\mathbf{x} | \mathbf{z}) = x_1 - x_0 = \sum_{i=1}^S u_t(x^i | z^i)\, \mathbf{e}_i$ <br /> $u_t(x^i | z^i) = x_1^i - x_0^i$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $u_t(\mathbf{x} \mid \mathbf{z})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})\, u_t(x^i \mid z^i)_{y^i}$ <br /> $u_t(x^i \mid z^i) = \frac{1}{1-t}\mathbb{I}(x^i = x_0^i)\left(\mathbf{e}_{x_1^i} - \mathbf{e}_{x_0^i}\right)$
+        $u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})\, u_t(x^i | z^i)_{y^i}$ <br /> $u_t(x^i | z^i) = \frac{1}{1-t}\mathbb{I}(x^i = x_0^i)\left(\mathbf{e}_{x_1^i} - \mathbf{e}_{x_0^i}\right)$
       </td>
     </tr>
 
@@ -957,29 +960,29 @@ $$
         $D_{L^2}(x_1 - x_0, u_{\theta,t}(\mathbf{x}_t))$ <br /> $= \sum_{i=1}^S \left(u_{\theta,t}^i(\mathbf{x}_t) - (x_1^i - x_0^i)\right)^2$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $\sum_{i=1}^S \mathrm{KL}(u(x_t^i \mid (x_1, x_0)), u_{\theta,t}^i(\mathbf{x}_t))$ <br /> $= \sum_{i=1}^S \Big[\sum_{v \neq x_t^i} u_{\theta,t}^i(\mathbf{x}_t)_v$ <br /> $\quad - \mathbb{I}(x_t^i = x_0^i) \frac{1}{1 - t} \log u_{\theta,t}^i(\mathbf{x}_t)_{x_1^i}\Big]$
+        $\sum_{i=1}^S \mathrm{KL}(u(x_t^i | (x_1, x_0)), u_{\theta,t}^i(\mathbf{x}_t))$ <br /> $= \sum_{i=1}^S \Big[\sum_{v \neq x_t^i} u_{\theta,t}^i(\mathbf{x}_t)_v$ <br /> $\quad - \mathbb{I}(x_t^i = x_0^i) \frac{1}{1 - t} \log u_{\theta,t}^i(\mathbf{x}_t)_{x_1^i}\Big]$
       </td>
     </tr>
 
     {/* ASPECT 5 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>5. Variational family $q_{\theta,t}(x_1 \mid \mathbf{x}_t)$ </strong> <br /> $L = - \mathbb{E}_{x_1} \log q_{\theta,t}(x_1 \mid \mathbf{x}_t) = - \mathbb{E}_{x_1} \sum_{i=1}^S \log q_{\theta,t}^i(x_1^i \mid \mathbf{x}_t)$
+        <strong>5. Variational family $q_{\theta,t}(x_1 | \mathbf{x}_t)$ </strong> <br /> $L = - \mathbb{E}_{x_1} \log q_{\theta,t}(x_1 | \mathbf{x}_t) = - \mathbb{E}_{x_1} \sum_{i=1}^S \log q_{\theta,t}^i(x_1^i | \mathbf{x}_t)$
       </td>
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q_{\theta,t}(x_1^i \mid \mathbf{x}_t) = \mathcal{N}(\mathbb{E}_\theta[x_1^i \mid \mathbf{x}_t], \sigma^2)$ <br /> $L = D_{L^2}(x_1, \mathbb{E}_\theta[X_1 \mid X_t = \mathbf{x}_t])$ <br /> $= \sum_{i=1}^S \left(x_1^i - \mathbb{E}_\theta[X_1^i \mid X_t = \mathbf{x}_t]\right)^2$
+        $q_{\theta,t}(x_1^i | \mathbf{x}_t) = \mathcal{N}(\mathbb{E}_\theta[x_1^i | \mathbf{x}_t], \sigma^2)$ <br /> $L = D_{L^2}(x_1, \mathbb{E}_\theta[X_1 | X_t = \mathbf{x}_t])$ <br /> $= \sum_{i=1}^S \left(x_1^i - \mathbb{E}_\theta[X_1^i | X_t = \mathbf{x}_t]\right)^2$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q_{\theta,t}(x_1^i \mid \mathbf{x}_t) = \text{Cat}(P_{\theta,t}(X_1^i \mid \mathbf{x}_t))$ <br /> $L = \sum_{i=1}^S \mathrm{KL}^i(\mathbf{e}_{x_1^i}, P_{\theta,t}(X_1^i \mid X_t = \mathbf{x}_t))$ <br /> $= -\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)$
+        $q_{\theta,t}(x_1^i | \mathbf{x}_t) = \text{Cat}(P_{\theta,t}(X_1^i | \mathbf{x}_t))$ <br /> $L = \sum_{i=1}^S \mathrm{KL}^i(\mathbf{e}_{x_1^i}, P_{\theta,t}(X_1^i | X_t = \mathbf{x}_t))$ <br /> $= -\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)$
       </td>
     </tr>
 
     {/* ASPECT 6 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>6. Training in practice</strong> <br /> <em>Sample $t \sim \mathcal{U}_{[0,1]}, \mathbf{z} \sim p_z, \mathbf{x}_t \sim p(\mathbf{x} \mid t, \mathbf{z})$</em>
+        <strong>6. Training in practice</strong> <br /> <em>Sample $t \sim \mathcal{U}_{[0,1]}, \mathbf{z} \sim p_z, \mathbf{x}_t \sim p(\mathbf{x} | t, \mathbf{z})$</em>
       </td>
     </tr>
     <tr>
@@ -987,7 +990,7 @@ $$
         $\Vert u_{\theta, t}(\mathbf{x}_t) - (x_1 - x_0) \Vert^2$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)$
+        $-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)$
       </td>
     </tr>
 
@@ -999,10 +1002,10 @@ $$
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        Numerical Integration (Euler ODE): <br /> $\mathbf{x}_{k+1} = \mathbf{x}_k + \frac{1}{N} u_{\theta,t}(\mathbf{x}_k)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}(\mathbf{x}) = \frac{1}{1-t}\!\left(\mathbb{E}_\theta[X_1 \mid X_t = \mathbf{x}] - \mathbf{x}\right)$
+        Numerical Integration (Euler ODE): <br /> $\mathbf{x}_{k+1} = \mathbf{x}_k + \frac{1}{N} u_{\theta,t}(\mathbf{x}_k)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}(\mathbf{x}) = \frac{1}{1-t}\!\left(\mathbb{E}_\theta[X_1 | X_t = \mathbf{x}] - \mathbf{x}\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        Continuous Time Markov Chain: <br /> $x_{k+1}^i \sim \text{Cat}\!\left(\mathbf{e}_{x_k^i} + \frac{1}{N} u_{\theta,t}^i(\mathbf{x}_k)\right)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}^i(\mathbf{x}) = \frac{1}{1-t}\!\left(P_{\theta,t}(X_1^i \mid \mathbf{x}) - (\mathbf{e}_{x^i})\right)$
+        Continuous Time Markov Chain: <br /> $x_{k+1}^i \sim \text{Cat}\!\left(\mathbf{e}_{x_k^i} + \frac{1}{N} u_{\theta,t}^i(\mathbf{x}_k)\right)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}^i(\mathbf{x}) = \frac{1}{1-t}\!\left(P_{\theta,t}(X_1^i | \mathbf{x}) - (\mathbf{e}_{x^i})\right)$
       </td>
     </tr>
 
@@ -1027,12 +1030,109 @@ $$
 
 ### Discrete Diffusion
 
-#### Forward and reverse diffusion processes
+Continuous diffusion models learn to generate data like images by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise. In the discrete setting, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
+Therefore, as in continuous diffusion, we follow the same three steps:
+1. Define a forward process modeled as a Markov chain, where each step independently replaces tokens with a mask token until the sequence is fully corrupted.
+2. Show that the reverse process is also a Markov chain, and derive its associated dynamics.
+3. Learn the reverse process by training a neural network to align the trajectories of the forward and reverse processes.
 
-We first consider the forward process: we start from a sequence, and we progressively replace each token by the mask token, transforming the sequence $\mathbf{x}$ into a sequence of masks over time.
-This forward process is applied independently to each token.
-Thus, for $s < t$, we can compute the transition probability from time $s$ to $t$ and define the conditional transition matrix $\bar{Q}_{t|s}$ satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$.
-In matrix form, this is explicitly:
+<span style="color: red"> if we chose not to talk about concrete score, we can concatenate in 2 steps: define a forward, then learn a reverse that align trajectories. </span>
+
+#### Forward Process
+
+We first consider the forward process: we start from a clean sequence $\mathbf{x_0}$, and we progressively replace each token by the mask token, transforming the sequence into $\mathbf{x_1} = mm...m$. Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token in the following.
+
+In continuous Denoising Diffusion Probabilistic Models (DDPM), we start by defining a local noising process over $T$ steps, where each step slightly corrupts the signal by adding Gaussian noise:
+
+$$
+\begin{equation}
+x_{j/T} = \sqrt{1 - \beta_j}\, x_{(j-1)/T} + \sqrt{\beta_j}\,\varepsilon, \qquad \varepsilon \sim \mathcal{N}(0, I)
+\end{equation}
+$$
+
+where $\beta_j \in [0,1]$ controls the amount of noise injected at step $j$. In the discrete setting, the corruption takes a simpler binary form: at each step, a token either survives unchanged with probability $1 - \beta_j$, or is irreversibly replaced by the mask token $m$ with probability $\beta_j$:
+
+$$
+\begin{equation}
+x_{j/T} = \begin{cases}
+x_{(j-1)/T}, & \text{with probability } 1 - \beta_j \\
+m, & \text{with probability } \beta_j
+\end{cases}
+\end{equation}
+$$
+
+We now consider the continuous-time limit $T \to \infty$, to avoid tying the model to a fixed number of noise steps.
+In continuous diffusion, applying $tT$ steps gives the cumulative schedule $\bar{\alpha}_t = \prod_{i=1}^{tT}(1 - \beta_i)$, which appears in the forward marginal $q(x_t | x_0) = \mathcal{N}(x_t;\ \sqrt{\bar{\alpha}_t}\, x_0,\ (1 - \bar{\alpha}_t) I)$ and controls the signal amplitude, i.e how much of $x_0$ remains in $x_t$. In the discrete setting, the same product gives the survival probability of a token:
+
+$$
+\begin{align}
+q(x_t = x_0 | x_0) &= \prod_{i=1}^{tT}(1 - \beta_i) \\
+&= \exp\!\left(\sum_{i=1}^{tT} \log(1 - \beta_i)\right) \\
+&\approx \exp\!\left(-\sum_{i=1}^{tT} \beta_i\right) \\
+&\xrightarrow[T \to \infty]{} \exp\!\left(-\int_0^t \beta(s)\, ds\right)
+\end{align}
+$$
+
+We define the noise schedule $\alpha_t$ that gives the probability of a token remaining unmasked at time $t$:
+
+$$
+\begin{equation}
+\alpha_t = \exp\!\left(-\int_0^t \beta(s)\, ds\right)
+\end{equation}
+$$
+
+**Properties on $\alpha_t$**:
+- $\alpha_0 = 1$: at time $t=0$, all tokens are unmasked.
+- $\alpha_1 = 0$: at time $t=1$, all tokens are masked.
+- $\alpha_t$ is decreasing in $t$: as time increases, the probability of a token being unmasked decreases.
+
+Using the Markov property of the process, we can compute the transition probabilities between any two time steps $s < t$:
+$$
+\begin{equation}
+x_t = \begin{cases}
+x_s, & \text{with probability } \frac{\alpha_t}{\alpha_s} \\
+m, & \text{with probability } 1 - \frac{\alpha_t}{\alpha_s}
+\end{cases}
+\end{equation}
+$$
+
+<details>
+<summary>Proof</summary>
+<div>
+
+By the Markov property, the marginal $q(x_t | x_0)$ factorizes through any intermediate time $s$:
+
+$$
+\begin{equation}
+q(x_t | x_0) = \sum_{x_s} q(x_t | x_s)\, q(x_s | x_0)
+\end{equation}
+$$
+
+Using $q(x_s | x_0) = \alpha_s\, \mathbb{I}(x_s = x_0) + (1 - \alpha_s)\, \mathbb{I}(x_s = m)$, the sum simplifies to:
+
+$$
+\begin{equation}
+q(x_t | x_0) = \alpha_s\, q(x_t | x_s = x_0) + (1 - \alpha_s)\, q(x_t | x_s = m)
+\end{equation}
+$$
+
+Since masking is irreversible, $q(x_t | x_s = m) = \mathbb{I}(x_t = m)$.
+Writing $q(x_t | x_s = x_0) = a\, \mathbb{I}(x_t = x_0) + (1 - a)\, \mathbb{I}(x_t = m)$, for $x_t = x_0$, CITE EQ becomes:  $\alpha_t = \alpha_s \cdot a$, so $a = \dfrac{\alpha_t}{\alpha_s}$
+
+Therefore, for an unmasked token $x_s \neq m$:
+
+$$
+\begin{equation}
+q(x_t | x_s) = \frac{\alpha_t}{\alpha_s}\, \mathbb{I}(x_t = x_s) + \left(1 - \frac{\alpha_t}{\alpha_s}\right) \mathbb{I}(x_t = m)
+\end{equation}
+$$
+
+</div>
+</details>
+
+<span style="color: red"> START FACULATIVE IF NOT CONCRETE SCORE. BUT NEEDED TO ESTABLISH EQUIVALENCE WITH FLOW MATCHING, so I would keep it. (What's next: local transition "equations" for forward and reverse processes)  </span>
+
+**Matrix view**: we can represent these transition probabilities in a Matrix $\bar{Q}_{t|s} \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$, satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$.
 $$
 \begin{align}
 \bar{Q}_{t|s}
@@ -1047,144 +1147,19 @@ $$
 &= \frac{\alpha_t}{\alpha_s} I + \left(1 - \frac{\alpha_t}{\alpha_s}\right)\mathbf{1}\mathbf{e}_m^\top
 \end{align}
 $$
-where $\alpha_t$ is the probability of a token remaining unmasked at time $t$.
-Interpretation: if the token at time $s$ is $x_s$, then for $t > s$.:
+
+Now, the goal is to find an analog to the continuous time ODE of the forward process in continuous diffusion:
 $$
 \begin{equation}
-x_t = \begin{cases}
-x_s, & \text{with probability } \frac{\alpha_t}{\alpha_s} \\
-m, & \text{with probability } 1 - \frac{\alpha_t}{\alpha_s}
-\end{cases}
+dx_t = f_t(x_t)\,dt + g_t\,dW_t
 \end{equation}
 $$
 
-<details>
-<summary>Construction of $\bar{Q}_{t|s}$</summary>
-<div>
+To do so, we take the first-order Taylor expansion for a small time step $\Delta t$ of the transition matrix $\bar{Q}_{t+\Delta t | t}$.
 
-Let $j \in \{1, 2, \dots, T\}$ be an integer, and let $t \in \{0, \frac{1}{T}, \frac{2}{T}, \dots, 1\}$ denote the discrete time steps of the diffusion process.
+**Proposition** (Forward rate matrix):
+The transition matrix $\bar{Q}_{t|s}$ induces a continuous-time Markov chain characterized by a forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$:
 
-We can define the single-step transition matrix $Q_{t}$ (where $t=j/T$) acting on the state space. Since the transition logic is identical for all non-mask tokens, the matrix has a specific structure. Let $\beta_j \in [0, 1]$ be the probability of transitioning to the mask token at time step $j/T$. The transition $x_{(j-1)/T} \to x_{j/T}$ is defined by:
-$$
-\begin{align}
-x_{j/T} &= \begin{cases}
-x_{(j-1)/T} & \text{with probability } 1 - \beta_j \\
-m & \text{with probability } \beta_j
-\end{cases}
-\end{align}
-$$
-
-We can represent this transition distribution using a Categorical distribution parameterized by a transition matrix $Q_j \in \mathbb{R}^{K \times K}$:
-$$
-\begin{equation}
-q(x_{j/T} | x_{(j-1)/T}) = \text{Cat}(x_{j/T}; \ Q_j^\top x_{(j-1)/T})
-\end{equation}
-$$
-where $x$ vectors are treated as column vectors. The matrix $Q_j$ is given by:
-$$
-\begin{equation}
-Q_j =
-\begin{pmatrix}
-1-\beta_j & 0 & \dots & 0 & \beta_j \\
-0 & 1-\beta_j & \dots & 0 & \beta_j \\
-\vdots & \vdots & \ddots & \vdots & \vdots \\
-0 & 0 & \dots & 1-\beta_j & \beta_j \\
-0 & 0 & \dots & 0 & 1
-\end{pmatrix} \in \mathbb{R}^{K \times K}
-\end{equation}
-$$
-Here, the last row corresponds to the mask token $m$, which is an absorbing state (it stays $m$ with probability 1). The first $|\mathcal{V}|$ rows correspond to valid tokens.
-
-We consider the continuous-time limit of this process, where the time steps become infinitesimally small and the transition probabilities are defined by a rate function $\beta(t)$, in order to avoid having a model that only learns to noise and denoise at specific discrete time steps.
-
-The probability that a token remains equal to its initial value $x_0$ at time $t$ can be computed as:
-$$
-\begin{align}
-\mathbb{P}(x_t = x_0) &= \mathbb{P}\left(x_t = x_0 | x_{t-\frac{1}{T}} = x_0\right) \dots \mathbb{P}\left(x_{\frac{1}{T}} = x_0 | x_0 = x_0\right) \\
-&= \prod_{i=1}^{tT} (1 - \beta_i) \\
-&= \exp\left(\sum_{i=1}^{tT} \log(1 - \beta_i)\right) \\
-&\approx \exp\left(-\sum_{i=1}^{tT} \beta_i\right) \quad \text{(for small $\beta_i$)} \\
-&\xrightarrow[T \to \infty]{} \exp\left(-\int_0^t \beta(s) \, ds\right)
-\end{align}
-$$
-We note $\alpha_t = \exp\left(-\int_0^t \beta(s) \, ds\right)$ as the probability of a token remaining unmasked at time $t$.
-
-We can define the cumulative transition matrix (or forward marginal) $\bar{Q}_t$ such that:
-$$
-\begin{equation}
-q(x_t | x_0) = \text{Cat}(x_t; \ \bar{Q}_t^\top x_0)
-\end{equation}
-$$
-Since the mask state is absorbing, this matrix essentially summarizes the cumulative probability of not being masked yet. We can write it compactly using the product of the all-ones vector $\mathbf{1}$ and the one-hot mask vector $\mathbf{e}_m$:
-$$
-\begin{equation}
-\bar{Q}_t = \alpha_t I + (1-\alpha_t)\mathbf{1}\mathbf{e}_m^\top \in \mathbb{R}^{K \times K}
-\end{equation}
-$$
-where $I$ is the identity matrix and $\mathbf{1}\mathbf{e}_m^\top$ is a matrix with ones in the $m$-th column and zeros elsewhere.
-
-Now, we want to calculate the transition probability from an intermediate time $s$ to a later time $t$ (where $s < t$). We rely on the Markov property of the diffusion process. This property dictates that the forward marginal transition matrix $\bar{Q}_t$ can be decomposed as the product of the transitions from $0$ to $s$ and from $s$ to $t$:
-$$
-\begin{equation}
-\bar{Q}_t = \bar{Q}_s \bar{Q}_{t|s}
-\end{equation}
-$$
-
-We want to find the conditional transition matrix $\bar{Q}_{t|s}$ that satisfies this equation. We hypothesize that $\bar{Q}_{t|s}$ has the same structural form as the marginals, parameterized by some survival probability $\gamma \in [0, 1]$:
-$$
-\begin{equation}
-\bar{Q}_{t|s} = \gamma I + (1 - \gamma)\mathbf{1}\mathbf{e}_m^\top
-\end{equation}
-$$
-
-Substituting the known forms of $\bar{Q}_t$ and $\bar{Q}_s$ into the Markov equation gives:
-$$
-\begin{equation}
-\alpha_t I + (1-\alpha_t)\mathbf{1}\mathbf{e}_m^\top = \left(\alpha_s I + (1-\alpha_s)\mathbf{1}\mathbf{e}_m^\top\right) \left(\gamma I + (1-\gamma)\mathbf{1}\mathbf{e}_m^\top\right)
-\end{equation}
-$$
-
-Expanding the right side and using $\mathbf{e}_m^\top \mathbf{1} = 1$, we obtain:
-$$
-\begin{aligned}
-& \quad \bar{Q}_s \bar{Q}_{t|s} \\
-&= \alpha_s \gamma I + \alpha_s (1-\gamma)\mathbf{1}\mathbf{e}_m^\top + \gamma (1-\alpha_s)\mathbf{1}\mathbf{e}_m^\top + (1-\alpha_s)(1-\gamma)\mathbf{1}(\mathbf{e}_m^\top \mathbf{1})\mathbf{e}_m^\top \\
-&= \alpha_s \gamma I + \left[ \alpha_s(1-\gamma) + \gamma(1-\alpha_s) + (1-\alpha_s)(1-\gamma) \right]\mathbf{1}\mathbf{e}_m^\top \\
-&= \alpha_s \gamma I + (1 - \alpha_s \gamma)\mathbf{1}\mathbf{e}_m^\top
-\end{aligned}
-$$
-
-By matching the coefficients with our target $\bar{Q}_t = \alpha_t I + (1-\alpha_t)\mathbf{1}\mathbf{e}_m^\top$, we find the required value for $\gamma$:
-$$
-\begin{equation}
-\alpha_s \gamma = \alpha_t \implies \gamma = \frac{\alpha_t}{\alpha_s}
-\end{equation}
-$$
-
-This derivation mathematically proves that the probability of a token surviving unmasked from time $s$ to $t$, given that it was unmasked at time $s$, is exactly $\frac{\alpha_t}{\alpha_s}$. Plugging $\gamma$ back into our matrix formulation yields:
-$$
-\begin{equation}
-\bar{Q}_{t|s} = \frac{\alpha_t}{\alpha_s} I + \left(1 - \frac{\alpha_t}{\alpha_s}\right)\mathbf{1}\mathbf{e}_m^\top
-\end{equation}
-$$
-
-Explicitly, the matrix is written as:
-$$
-\begin{equation}
-\bar{Q}_{t|s} =
-\begin{pmatrix}
-\frac{\alpha_t}{\alpha_s} & 0 & \dots & 0 & 1 - \frac{\alpha_t}{\alpha_s} \\
-0 & \frac{\alpha_t}{\alpha_s} & \dots & 0 & 1 - \frac{\alpha_t}{\alpha_s} \\
-\vdots & \vdots & \ddots & \vdots & \vdots \\
-0 & 0 & \dots & \frac{\alpha_t}{\alpha_s} & 1 - \frac{\alpha_t}{\alpha_s} \\
-0 & 0 & \dots & 0 & 1
-\end{pmatrix}
-\end{equation}
-$$
-</div>
-</details>
-
-By taking the first-order Taylor expansion for a small time step $\Delta t$, we define the forward rate matrix $\dot{Q}_t$:
 $$
 \begin{equation}
 \dot{Q}_t = \sigma(t)
@@ -1198,137 +1173,116 @@ $$
 = \sigma(t) (\mathbf{1}\mathbf{e}_m^\top - I)
 \end{equation}
 $$
-where $\sigma(t) = -\frac{\dot{\alpha}_t}{\alpha_t} > 0$ represents the instantaneous masking rate.
 
-To generate data according to $p_0$, we define a reverse process that progressively unmasks tokens. The probability of reverting to the clean token $x_0$ yields a reverse matrix $R_{s|t}^{x_0}$:
+where $\sigma(t) = -\dot{\alpha}_t / \alpha_t > 0$ is the instantaneous masking rate. The forward process is then characterized by:
+
 $$
 \begin{equation}
-R_{s|t}^{x_0} =
-\begin{pmatrix}
- & & & 0 \\
- & I_{|\mathcal{V}|} & & \vdots \\
- & & & 0 \\
-0 & \dots \, \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \, \dots & 0 & \frac{1 - \alpha_s}{1 - \alpha_t}
-\end{pmatrix}
-= I + \frac{\alpha_s - \alpha_t}{1 - \alpha_t} m (x_0 - m)^\top
+q(x_{t+\Delta t} = y \mid x_t) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{Q}_t(x_t)]_y + o(\Delta t)
 \end{equation}
 $$
-where the term $\frac{\alpha_s - \alpha_t}{1 - \alpha_t}$ in the last row appears at the column index corresponding to the clean token $x_0$.
-It represents the probability that a masked token $x_t=m$ at time $t$ will jump to the clean token $x_0$ between $t$ and $s$.
 
-Interpretation: if the token at time $t$ is $m$, and $s < t$, then:
-$$
-\begin{equation}
-x_s = \begin{cases}
-x_0, & \text{with probability } \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \\
-m, & \text{with probability } 1 - \frac{\alpha_s - \alpha_t}{1 - \alpha_t}
-\end{cases}
-\end{equation}
-$$
+where $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$, i.e. the instantaneous rate of transitioning from state $x_t$ to state $y$.
 
 <details>
-<summary>Construction of $R_{s|t}^{x_0}$</summary>
+<summary>Proof</summary>
 <div>
 
-We want to estimate the probability that a token at time $s < t$ remains unmasked, given that we know the original token $x_0$ and that at time $t$ the token is masked.
+Consider a small time step $\Delta t$. Using the first-order Taylor expansion $\alpha_{t+\Delta t} \approx \alpha_t + \dot{\alpha}_t \Delta t$, the ratio of survival probabilities becomes:
 
-Using Bayes' theorem:
-$$
-\begin{align}
-\mathbb{P}(x_s = x_0 | x_0, x_t = m) &= \frac{\mathbb{P}(x_t = m | x_s = x_0)  \mathbb{P}(x_s = x_0 | x_0)}{\mathbb{P}(x_t = m | x_0)} \\
-&= \frac{\left(1 - \frac{\alpha_t}{\alpha_s}\right)  \alpha_s}{1 - \alpha_t} \\
-&= \frac{\alpha_s - \alpha_t}{1 - \alpha_t}
-\end{align}
-$$
-
-We can define the reverse transition distribution $q(x_s | x_t, x_0)$ via a reverse matrix $R_{s|t}^{x_0}$ conditioned on the clean token $x_0$:
 $$
 \begin{equation}
-q(x_s | x_t, x_0) = \text{Cat}(x_s; \ (R_{s|t}^{x_0})^\top x_t)
+\frac{\alpha_{t+\Delta t}}{\alpha_t} \approx 1 + \frac{\dot{\alpha}_t}{\alpha_t} \Delta t
 \end{equation}
 $$
 
-Thus, the matrix $R_{s|t}^{x_0}$ is defined as follows.
+Substituting into the compact expression for $\bar{Q}_{t+\Delta t|t}$:
+
 $$
 \begin{align}
-R_{s|t}^{x_0} =
-\left(
-\begin{array}{ccc|c}
- & & & 0 \\
- & I_{|\mathcal{V}|} & & \vdots \\
- & & & 0 \\
-\hline
-0 & \dots \quad \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \quad \dots & 0 & \frac{1 - \alpha_s}{1 - \alpha_t}
-\end{array}
-\right) \in \mathbb{R}^{K \times K}
+\bar{Q}_{t+\Delta t|t} &\approx \left(1 + \frac{\dot{\alpha}_t}{\alpha_t}\Delta t\right) I + \left(1 - \left(1 + \frac{\dot{\alpha}_t}{\alpha_t}\Delta t\right)\right)\mathbf{1}\mathbf{e}_m^\top \\
+&= I + \Delta t\, \frac{\dot{\alpha}_t}{\alpha_t} \left(I - \mathbf{1}\mathbf{e}_m^\top\right)
 \end{align}
 $$
-where the term $\frac{\alpha_s - \alpha_t}{1 - \alpha_t}$ in the last row appears at the column index corresponding to the clean token $x_0$.
+
+We now calculate $q(x_{t+\Delta t} \mid x_t) = \text{Cat}(x_{t+\Delta t};\ \bar{Q}_{t+\Delta t|t}^\top x_t)$. For a fixed state $x_t = e_k$, the probability of transitioning to state $y$ is the $y$-th entry of $\bar{Q}_{t+\Delta t|t}^\top e_k$:
+
+$$
+\begin{align}
+q(x_{t+\Delta t} = y \mid x_t) &= \left[\bar{Q}_{t+\Delta t|t}^\top e_k\right]_y \\
+&= \mathbb{I}(y = x_t) + \Delta t\, \frac{\dot{\alpha}_t}{\alpha_t}\left[\left(I - \mathbf{1}\mathbf{e}_m^\top\right)^\top\right]_{ky} + o(\Delta t)
+\end{align}
+$$
+
+Identifying the coefficient of $\Delta t$ with $[\dot{Q}_t(x_t)]_y$ yields:
+
+$$
+\begin{equation}
+\dot{Q}_t = \frac{\dot{\alpha}_t}{\alpha_t}\left(I - \mathbf{1}\mathbf{e}_m^\top\right) = \sigma(t)\left(\mathbf{1}\mathbf{e}_m^\top - I\right)
+\end{equation}
+$$
+
+where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, $\dot{\alpha}_t < 0$, so $\sigma(t)$ is indeed positive.
 
 </div>
 </details>
 
-By taking the first-order Taylor expansion for a small time step $\Delta t$, we define the conditional reverse rate matrix $\dot{R}_t^{x_0}$:
-$$
-\begin{equation}
-\dot{R}_t^{x_0} =
-\begin{pmatrix}
- & & & 0 \\
- & \mathbf{0}_{|\mathcal{V}|} & & \vdots \\
- & & & 0 \\
-0 & \dots \, r_t \, \dots & 0 & -r_t
-\end{pmatrix}
-= r_t \, m (x_0 - m)^\top
-\end{equation}
-$$
-where $r_t = -\frac{\dot{\alpha}_t}{1 - \alpha_t}$ is the instantaneous unmasking rate. While $\dot{R}_t^{x_0}$ represents the conditional reverse rate assuming the clean target $x_0$ is explicitly known, the true marginal reverse rate $\dot{R}_t(x_t)$ is obtained by taking $\dot{R}_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)} [\dot{R}_t(x_t | x_0)]$.
 
-In a general setting when the forward noising process is not necessarily restricted to mask tokens, the forward and reverse transitions can be defined locally using these instantaneous rates:
+#### Reverse Process
+
+To generate data, we define a reverse process that progressively unmasks tokens.
+
+Similarly to continuous diffusion where the reverse process can be derived reversing the forward SDE:
 $$
 \begin{equation}
-q(x_{t+\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{Q}_t(x_t)]_y + o(\Delta t)
+dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt
 \end{equation}
 $$
+we can reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
+
+**Proposition**: the reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
 $$
 \begin{equation}
 p(x_{t-\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t)]_y + o(\Delta t)
 \end{equation}
 $$
 
-We can show that the instantaneous reverse rate matrix $\dot{R}_t$ is defined as:
+Moreover, the matrix $\dot{R}_t$ is defined as:
 $$
 \begin{equation}
 [\dot{R}_t(x_t)]_y =
 \begin{cases}
-[\dot{Q}_t(y)]_{x_t} \frac{q(x_t = y)}{q(x_t)} & \text{if } y \neq x_t \\
+[\dot{Q}_t(y)]_{x_t} \frac{q(X_t = y)}{q(X_t = x_t)} & \text{if } y \neq x_t \\
 - \sum_{y' \neq x_t} [\dot{R}_t(x_t)]_{y'} & \text{if } y = x_t
 \end{cases}
 \end{equation}
 $$
 
 <details>
-<summary>Derivation of $\dot{R}_t$</summary>
+<summary>Proof</summary>
 <div>
 
-We want to find the reverse instantaneous transition rate $[\dot{R}_t(x_t)]_y$ for transitioning to state $y \neq x_t$ backwards over an infinitesimal time step $\Delta t$, given the forward rate matrix $\dot{Q}_t$.
-
-Using Bayes' theorem and the local forward transition $q(x_t | x_{t-\Delta t} = y)$:
+Using Bayes' theorem, for $y \neq x_t$:
 $$
 \begin{align}
 p(x_{t-\Delta t} = y | x_t) &= \frac{q(x_t | x_{t-\Delta t} = y) q(x_{t-\Delta t} = y)}{q(x_t)} \\
-&= \frac{\big(\Delta t [\dot{Q}_t(y)]_{x_t} + o(\Delta t)\big) \big(q(x_t = y) + O(\Delta t)\big)}{q(x_t)} \\
-&= \Delta t \left( [\dot{Q}_t(y)]_{x_t} \frac{q(x_t = y)}{q(x_t)} \right) + o(\Delta t)
+&= \frac{\big(\Delta t [\dot{Q}_t(y)]_{x_t} + o(\Delta t)\big) \big(q(X_t = y) + O(\Delta t)\big)}{q(X_t = x_t)} \\
+&= \Delta t \left( [\dot{Q}_t(y)]_{x_t} \frac{q(X_t = y)}{q(X_t = x_t)} \right) + o(\Delta t)
 \end{align}
 $$
 
-By identifying this result with the definition of the reverse local transition $p(x_{t-\Delta t} = y | x_t) = \Delta t [\dot{R}_t(x_t)]_y + o(\Delta t)$ for $y \neq x_t$, we obtain the off-diagonal entries. The diagonal elements are then constrained by the requirement that the rows of a valid continuous-time transition rate matrix must sum to zero.
+By identifying this result with the definition of the reverse local transition $p(x_{t-\Delta t} = y | x_t) = \Delta t [\dot{R}_t(x_t)]_y + o(\Delta t)$, we conclude for $y \neq x_t$.
+For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a valid transition rate matrix must sum to zero, so $[\dot{R}_t(x_t)]_{x_t} = - \sum_{y' \neq x_t} [\dot{R}_t(x_t)]_{y'}$.
 
 </div>
 </details>
 
+<span style="color: red"> END FACULATIVE IF NOT CONCRETE SCORE </span>
+
 #### Training
 
-For a discrete-time masked diffusion process, we define a path-wise generative model by approximately reversing the forward transitions step by step along the entire noising trajectory. The training objective has a single clean interpretation: we want to minimize the KL divergence between the distribution induced by the forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
+<span style="color: red"> if we remove the section on backwrad process, add a sentence </span>
+Our objective is to minimize the KL divergence between the distribution induced by the forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
 
 $$
 \begin{equation}
@@ -1336,7 +1290,7 @@ $$
 \end{equation}
 $$
 
-Since the entropy of the data distribution $H(q)$ is constant w.r.t. $\theta$, we can show that:
+We can show that:
 
 $$
 \begin{equation}
@@ -1378,6 +1332,7 @@ the KL is exactly equivalent to maximizing $\mathbb{E}_{q(x_0)}[\text{ELBO}(x_0)
 </div>
 </details>
 
+{/*
 <details>
 <summary>Why ELBO lower-bounds $\log p_\theta(x_0)$</summary>
 <div>
@@ -1406,191 +1361,130 @@ immediately, with equality iff the reverse trajectories perfectly recover the fo
 
 </div>
 </details>
+*/}
 
-The ELBO for a general discrete diffusion process is given by:
+**Theorem**(ELBO of discrete diffusion) The ELBO for a discrete diffusion process is given by:
 
 $$
-\begin{aligned}
-\text{ELBO}(x_0) = - \mathrm{KL}(q( \cdot | x_0) , p_{\text{source}}) - \int_0^1 \mathbb{E}_{x_t \sim q( \cdot | x_0)} \left[ \mathrm{KL}(\dot{R}_t(x_t | x_0) , \dot{R}_{\theta,t}(x_t)) \right] dt
-\end{aligned}
-\begin{equation}\end{equation}
+\begin{align}
+\text{ELBO}(x_0) = - \mathrm{KL}(q(x_1 | x_0) , p_{\text{source}}) - \sum_{j=1}^{T} \mathbb{E}_{x_{j/T} \sim q( \cdot | x_0)} \left[ \mathrm{KL}\!\left(q\!\left(x_{(j-1)/T} \mid x_{j/T}, x_0\right),\, p_\theta\!\left(x_{(j-1)/T} \mid x_{j/T}\right)\right) \right]
+\end{align}
 $$
 
 <details>
 <summary>Training Loss Proof</summary>
 <div>
 
-We start with the known inequality for variational inference:
-$$
-\begin{equation}
-    \log p_\theta(x_0) \geq \text{ELBO}(x_0),
-\end{equation}
-$$
-where the evidence lower bound is defined as:
-$$
-\begin{equation}
-    \text{ELBO}(x_0) = \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log p_\theta(x_{0:T}) - \log q(x_{1:T}|x_0) \right],
-\end{equation}
-$$
-and $x_{j:T} = (x_{j/T}, x_{(j+1)/T}, \dots, x_1)$ denotes the sequence of states from time $j/T$ to $t=1$.
-
 The forward process follows a Markovian structure:
-$$
-\begin{aligned}
-    q(x_{1:T}|x_0) = \prod_{j=1}^{T} q(x_{j/T} | x_{(j-1)/T}, x_{(j-2)/T}, \dots, x_0) = \prod_{j=1}^{T} q(x_{j/T} | x_{(j-1)/T}, x_0)
-\end{aligned}
-\begin{equation} \end{equation}
-$$
-where the last equality holds because the forward process is memoryless given the previous states.
 
-Similarly, the reverse model decomposes as:
+$$
+\begin{align}
+    q(x_{1:T}|x_0) &= \prod_{j=1}^{T} q(x_{j/T} | x_{(j-1)/T}, x_{(j-2)/T}, \dots, x_0) \\
+    &= \prod_{j=1}^{T} q(x_{j/T} | x_{(j-1)/T}, x_0)
+\end{align}
+$$
+
+where the last equality holds because the forward process is memoryless given the previous states. Similarly, the reverse model decomposes as:
+
 $$
 \begin{equation}
     p_\theta(x_{0:T}) = p_\theta(x_1) \prod_{j=1}^{T} p_\theta(x_{(j-1)/T} | x_{j/T}).
 \end{equation}
 $$
 
-Substituting the Markovian decompositions into the ELBO:
+Substituting into the ELBO:
+
 $$
-\begin{aligned}
+\begin{align}
     \text{ELBO}(x_0) &= \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log p_\theta(x_1) \right] \\
     &\quad + \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log p_\theta(x_{(j-1)/T} | x_{j/T}) - \log q(x_{j/T} | x_{(j-1)/T}, x_0) \right]
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 
 Using Bayes' theorem, we can rewrite the forward process conditional:
+
 $$
-\begin{aligned}
+\begin{align}
     \log q(x_{j/T} | x_{(j-1)/T}, x_0) = \log q(x_{(j-1)/T} | x_{j/T}, x_0) + \log q(x_{j/T} | x_0) - \log q(x_{(j-1)/T} | x_0).
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 
-Substituting Bayes' rule into the ELBO and observing that consecutive terms telescope:
+Substituting into the ELBO and observing that consecutive terms telescope:
+
 $$
-\begin{aligned}
+\begin{align}
     \text{ELBO}(x_0) &= \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log q(x_0 | x_0) \right] \\
     &\quad + \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log p_\theta(x_1) \right] + \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log p_\theta(x_{(j-1)/T} | x_{j/T}) - \log q(x_{(j-1)/T} | x_{j/T}, x_0) \right]
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 
-Note that $\log q(x_0 | x_0) = \log(1) = 0$, so:
+Since $\log q(x_0 | x_0) = \log(1) = 0$:
+
 $$
-\begin{aligned}
+\begin{align}
     \text{ELBO}(x_0) &= - \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right] \\
     &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_{(j-1)/T} | x_{j/T}, x_0) - \log p_\theta(x_{(j-1)/T} | x_{j/T}) \right]
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 
-We can simplify the expectations over the joint distribution $q(x_{1:T}|x_0)$ by marginalizing:
+We simplify by marginalizing over all intermediate variables. For the first term:
 
-For the first term:
 $$
-\begin{aligned}
+\begin{align}
     \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right] = \mathbb{E}_{\substack{x_1 \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right]
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 
-For the sum, we marginalize over all intermediate variables:
+For each term in the sum:
+
 $$
-\begin{aligned}
+\begin{align}
     &\mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_{(j-1)/T} | x_{j/T}, x_0) - \log p_\theta(x_{(j-1)/T} | x_{j/T}) \right] \\
     &= \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathbb{E}_{\substack{x_{(j-1)/T} \sim q( \cdot | x_{j/T}, x_0)}} \left[ \log q(x_{(j-1)/T} | x_{j/T}, x_0) - \log p_\theta(x_{(j-1)/T} | x_{j/T}) \right] \right]
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 
-Therefore, the ELBO becomes:
-$$
-\begin{aligned}
-    \text{ELBO}(x_0) &= - \mathrm{KL}\left(q(x_1|x_0) , p_\theta(x_1)\right) \\
-    &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right]
-\end{aligned}
-\begin{equation} \end{equation}
-$$
+Therefore:
 
-**Conclusion**
-
-For a general discrete diffusion process acting on tokens, we start from the full ELBO derived earlier:
 $$
 \begin{align}
-    \text{ELBO}(x_0) &= - \mathrm{KL}\left(q(x_1 | x_0) , p_\theta(x_1)\right) \\
+    \text{ELBO}(x_0) &= - \mathrm{KL}\left(q(x_1|x_0) , p_{\text{source}}\right) \\
     &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right]
 \end{align}
 $$
 
-Let $\Delta t = 1/T$, $t = j/T$, and $s = (j-1)/T$. For a small time step $\Delta t$, the probability of transitioning to a token $y \in \mathcal{V} \cup \{m\}$ is approximated by (according to <span style="color: red"> cite eq </span> and <span style="color: red"> cite eq </span>):
-$$
-\begin{align}
-    q(y | x_t, x_0) &\approx \mathbb{I}(y = x_t) + \Delta t [\dot{R}_t(x_t | x_0)]_y \\
-    p_\theta(y | x_t) &\approx \mathbb{I}(y = x_t) + \Delta t [\dot{R}_{\theta,t}(x_t)]_y
-\end{align}
-$$
-
-We expand the KL divergence term inside the sum by summing over the vocabulary:
-$$
-\begin{aligned}
-\mathrm{KL}\left(q( \cdot | x_t, x_0) , p_\theta( \cdot | x_t)\right) = \sum_{y \in \mathcal{V} \cup \{m\}} q(y | x_t, x_0) \log \frac{q(y | x_t, x_0)}{p_\theta(y | x_t)}
-\end{aligned}
-\begin{equation} \end{equation}
-$$
-
-Separating the sum into the case where the token changes ($y \neq x_t$) and stays the same ($y = x_t$):
-
-1. For $y \neq x_t$:
-$$
-\begin{aligned}
-    \Delta t [\dot{R}_t(x_t | x_0)]_y \log \frac{\Delta t [\dot{R}_t(x_t | x_0)]_y}{\Delta t [\dot{R}_{\theta,t}(x_t)]_y} = \Delta t [\dot{R}_t(x_t | x_0)]_y \log \frac{[\dot{R}_t(x_t | x_0)]_y}{[\dot{R}_{\theta,t}(x_t)]_y}
-\end{aligned}
-\begin{equation} \end{equation}
-$$
-
-2. For $y = x_t$:
-Using the approximation $\log \frac{1+a}{1+b} \approx a-b$:
-$$
-\begin{aligned}
-    (1 + \Delta t [\dot{R}_t(x_t | x_0)]_{x_t}) \log \frac{1 + \Delta t [\dot{R}_t(x_t | x_0)]_{x_t}}{1 + \Delta t [\dot{R}_{\theta,t}(x_t)]_{x_t}}
-    &\approx 1 \cdot (\Delta t [\dot{R}_t(x_t | x_0)]_{x_t} - \Delta t [\dot{R}_{\theta,t}(x_t)]_{x_t}) \\
-    &= \Delta t \left( - \sum_{y \neq x_t} [\dot{R}_t(x_t | x_0)]_y + \sum_{y \neq x_t} [\dot{R}_{\theta,t}(x_t)]_y \right)
-\end{aligned}
-\begin{equation} \end{equation}
-$$
-
-Combining these terms, the KL divergence becomes:
-$$
-\begin{aligned}
-    \mathrm{KL} \approx \Delta t \sum_{y \neq x_t} \left( [\dot{R}_t(x_t | x_0)]_y \log \frac{[\dot{R}_t(x_t | x_0)]_y}{[\dot{R}_{\theta,t}(x_t)]_y} - [\dot{R}_t(x_t | x_0)]_y + [\dot{R}_{\theta,t}(x_t)]_y \right)
-\end{aligned}
-\begin{equation} \end{equation}
-$$
-This expression corresponds to $\Delta t \cdot \mathrm{KL}(\dot{R}_t(x_t | x_0) , \dot{R}_{\theta,t}(x_t))$, the generalized KL divergence between the instantaneous transition rate vectors for the token $x_t$.
-
-Substituting this back into the ELBO, the sum over $j$ becomes a Riemann sum. Taking the limit as $T \to \infty$:
-$$
-\begin{aligned}
-    \text{ELBO}(x_0) = - \mathrm{KL}\left(q(x_1 | x_0) , p_\theta(x_1)\right) - \int_0^1 \mathbb{E}_{\substack{x_t \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(\dot{R}_t(x_t | x_0) , \dot{R}_{\theta,t}(x_t)\right) \right] dt
-\end{aligned}
-\begin{equation} \end{equation}
-$$
-Note that $p_\theta(x_1)$ corresponds to the known base distribution $p_{\text{source}}$ (typically the fully masked state or uniform distribution).
+where the first KL term is a constant independent of $\theta$, since $p_\theta(x_1) = p_{\text{source}}$ is a fixed base distribution.
 
 </div>
 </details>
 
-Ignoring constants independent of $\theta$, the general KL objective can be written explicitly as:
+The sum of KL terms corresponds to a forward trajectory where $x_0, x_{1/T}, \ldots, x_1$ is sampled from the noising process, and at each step the learned reverse transition $p_\theta(x_{(j-1)/T} | x_{j/T})$ is trained to match the true posterior reverse transition $q(x_{(j-1)/T} | x_{j/T}, x_0)$. Now that we want to specialize this loss to the case of masked diffusion, we first need to calculate $q(x_{(j-1)/T} | x_{j/T}, x_0)$.
 
+**Lemma**: for masked diffusion, $x_t = m$ and $s<t$, we have:
 $$
-\begin{aligned}
-L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_{\text{data}} \\ x_t \sim q( \cdot |x_0)}} \left[ \sum_{y \neq x_t} \left( [\dot{R}_{\theta,t}(x_t)]_y - [\dot{R}_t(x_t | x_0)]_y \log [\dot{R}_{\theta,t}(x_t)]_y \right) \right]
-\end{aligned}
-\begin{equation} \end{equation}
+\begin{equation}
+q(x_s | x_t, x_0) = \left[ \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \mathbb{I}(x_s = x_0) + \frac{1 - \alpha_s}{1 - \alpha_t} \mathbb{I}(x_s = m) \right]
+\end{equation}
 $$
 
-In the specific case of masked diffusion, we can express the loss in terms of the denoiser output $D_{\theta,t}(x_t)$:
+<details>
+<summary>Proof</summary>
+<div>
+
+We start using Bayes' theorem to compute the probability that a masked token at time $t$ reverts to the clean token $x_0$ by time $s < t$:
+$$
+\begin{align}
+\mathbb{P}(x_s = x_0 | x_0, x_t = m) &= \frac{\mathbb{P}(x_t = m | x_s = x_0)\, \mathbb{P}(x_s = x_0 | x_0)}{\mathbb{P}(x_t = m | x_0)} \\
+&= \frac{\left(1 - \dfrac{\alpha_t}{\alpha_s}\right) \alpha_s}{1 - \alpha_t} \\
+&= \frac{\alpha_s - \alpha_t}{1 - \alpha_t}
+\end{align}
+$$
+We conclude using that $x_s$ is either at stae $x_0$ or at state $m$ with probabilities that sum to 1.
+
+</div>
+</details>
+
+**Proposition** (Training Loss Proof for Masked Diffusion): In the specific case of masked diffusion, we can express the loss in terms of the denoiser output $D_{\theta,t}(x_t)$:
 
 $$
 \begin{align}
@@ -1599,47 +1493,43 @@ L(\theta) = \mathbb{E}_{\substack{\mathbf{x}_0 \sim p_{\text{data}} \\ x_t^i \si
 $$
 
 <details>
-<summary>Training Loss Proof for Masked Diffusion</summary>
+<summary>Proof</summary>
 <div>
 
-We start from (cf. previous proof, <span style="color: red"> cite eq </span> ):
+We start from (<span style="color: red"> cite thm </span>):
 
 $$
-\begin{aligned}
+\begin{align}
     \text{ELBO}(x_0) &= - \mathrm{KL}\left(q(x_1|x_0) , p_\theta(x_1)\right) \\
     &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right]
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 
 Since $x_1 = m$ (fully masked at $t=1$), we have $\mathrm{KL}(q(x_1|x_0) , p_\theta(x_1)) = 0$. Therefore:
 $$
-\begin{aligned}
+\begin{align}
 \text{ELBO}(x_0) = - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right]
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 
-The KL divergence can be expanded as a sum over all possible values of $x_{(j-1)/T} \in \mathcal{V} \cup \{m\}$:
-$$
-\begin{aligned}
-\mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) = \sum_{x_{(j-1)/T} \in \mathcal{V} \cup \{m\}} q(x_{(j-1)/T} | x_{j/T}, x_0) \log \frac{q(x_{(j-1)/T} | x_{j/T}, x_0)}{p_\theta(x_{(j-1)/T} | x_{j/T})}
-\end{aligned}
-\begin{equation} \end{equation}
-$$
-
-From previous definitions <span style="color: red"> cite eq </span>, we recall, for $x_t = m$:
-$$
-\begin{aligned}
-q(x_s | x_t, x_0) = \left[ \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \mathbb{I}(x_s = x_0) + \frac{1 - \alpha_s}{1 - \alpha_t} \mathbb{I}(x_s = m) \right]
-\end{aligned}
-\begin{equation} \end{equation}
-$$
-
-We now specialize to the discrete times $s=(j-1)/T$ and $t=j/T$. The reverse model is $p_\theta(x_s| x_t)=q(x_s| x_t,D_\theta(x_t,t))$, so when $x_t=m$ we have:
+The KL divergence can be expanded as a sum over all possible values of $x_{(j-1)/T} \in \mathcal{V}$:
 $$
 \begin{align}
-    p_\theta(x_s=v| x_t=m) &= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,D_\theta(v| x_t,t)\quad (v\in\mathcal{V}), \\
+\mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) = \sum_{x_{(j-1)/T} \in \mathcal{V}} q(x_{(j-1)/T} | x_{j/T}, x_0) \log \frac{q(x_{(j-1)/T} | x_{j/T}, x_0)}{p_\theta(x_{(j-1)/T} | x_{j/T})}
+\end{align}
+$$
+
+From <span style="color: red"> cite lemma </span>, we recall, for $x_t = m$:
+$$
+\begin{align}
+q(x_s | x_t, x_0) = \left[ \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \mathbb{I}(x_s = x_0) + \frac{1 - \alpha_s}{1 - \alpha_t} \mathbb{I}(x_s = m) \right]
+\end{align}
+$$
+
+We parametrize the reverse model as $p_\theta(x_s| x_t)=q(x_s| x_t,D_{\theta,t}(x_t))$, so when $x_t=m$ we have:
+$$
+\begin{align}
+    p_\theta(x_s=v| x_t=m) &= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,[D_{\theta,t}(x_t)]_v\quad (v\in\mathcal{V}), \\
     p_\theta(x_s=m| x_t=m) &= \frac{1-\alpha_s}{1-\alpha_t}.
 \end{align}
 $$
@@ -1648,7 +1538,7 @@ When $x_t\neq m$, both $q(x_s| x_t,x_0)$ and $p_\theta(x_s| x_t)$ put all their 
 
 Hence only the case $x_t=m$ contributes. Therefore:
 $$
-\begin{aligned}
+\begin{align}
     \mathrm{KL}\!\left(q(x_s| x_t,x_0)\,\|\,p_\theta(x_s| x_t)\right)
     &= \mathbb{I}(x_t=m)\,
     q(x_s| x_t,x_0)\,
@@ -1658,87 +1548,251 @@ $$
     + \frac{1-\alpha_s}{1-\alpha_t}\mathbb{I}(x_s=m) \right] \\
     &\quad \log\frac{\left[ \frac{\alpha_s-\alpha_t}{1-\alpha_t}\mathbb{I}(x_s=x_0)
     + \frac{1-\alpha_s}{1-\alpha_t}\mathbb{I}(x_s=m) \right]}{
-    \left[ \frac{\alpha_s-\alpha_t}{1-\alpha_t}D_\theta(x_s| x_t,t)\mathbb{I}(x_s\neq m)
+    \left[ \frac{\alpha_s-\alpha_t}{1-\alpha_t}[D_{\theta,t}(x_t)]_{x_s}\mathbb{I}(x_s\neq m)
     + \frac{1-\alpha_s}{1-\alpha_t}\mathbb{I}(x_s=m) \right]} \\
     &= \mathbb{I}(x_t=m)\Bigg[
     \frac{\alpha_s-\alpha_t}{1-\alpha_t}\log\frac{\frac{\alpha_s-\alpha_t}{1-\alpha_t}}
-    {\frac{\alpha_s-\alpha_t}{1-\alpha_t}D_\theta(x_0| x_t,t)}
-    +\frac{1-\alpha_s}{1-\alpha_t}\log\frac{\frac{1-\alpha_s}{1-\alpha_t}}
-    {\frac{1-\alpha_s}{1-\alpha_t}}
+    {\frac{\alpha_s-\alpha_t}{1-\alpha_t}[D_{\theta,t}(x_t)]_{x_0}}
+    +\frac{1-\alpha_s}{1-\alpha_t}\underbrace{\log\frac{\frac{1-\alpha_s}{1-\alpha_t}}
+    {\frac{1-\alpha_s}{1-\alpha_t}}}_{=0}
     \Bigg] \\
     &= \mathbb{I}(x_t=m)\,\frac{\alpha_s-\alpha_t}{1-\alpha_t}\,
-    \big(-\log D_\theta(x_0| x_t,t)\big).
-\end{aligned}
-\begin{equation} \end{equation}
+    \big(-\log [D_{\theta,t}(x_t)]_{x_0}\big).
+\end{align}
 $$
 
 Plugging this into the ELBO yields:
 $$
-\begin{aligned}
+\begin{align}
     \text{ELBO}(x_0)
     = \sum_{j=1}^T \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}}
     \left[ \mathbb{I}(x_{j/T}=m)\,\frac{\alpha_{(j-1)/T}-\alpha_{j/T}}{1-\alpha_{j/T}}
-    \,x_0^\top \log D_\theta(x_{j/T}, j/T)\right].
-\end{aligned}
-\begin{equation} \end{equation}
+    \,x_0^\top \log D_{\theta, j/T}(x_{j/T})\right].
+\end{align}
 $$
 
 Passing to the continuous-time limit $T \to \infty$ with $t=j/T$, $s=(j-1)/T$, and $\alpha_s-\alpha_t \approx -\dot{\alpha}_t\,\frac{1}{T}$, the sum is a Riemann sum:
 $$
-\begin{aligned}
+\begin{align}
     \text{ELBO}(x_0)
     = \int_0^1 \mathbb{E}_{\substack{x_t \sim q( \cdot | x_0)}}\left[
-    \mathbb{I}(x_t=m)\,\frac{-\dot{\alpha}_t}{1-\alpha_t}\,x_0^\top\logD_\theta(x_t,t)
+    \mathbb{I}(x_t=m)\,\frac{-\dot{\alpha}_t}{1-\alpha_t}\,x_0^\top\log D_{\theta,t}(x_t)
     \right]dt,
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 which matches the sequence-level training loss defined previously.
 
 </div>
 </details>
 
+<span style="color: red"> UNTIL THE END, FACULATIVE IF NOT CONCRETE SCORE </span>
+
+Our goal is now to derive a loss that can be generalized for other noising processes. In the continuous-time limit $T \to \infty$, each discrete transition $q(x_s | x_t)$ is replaced by an instantaneous rate $\dot{R}_t(x_t)$. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
+
+$$
+\begin{equation}
+q(y \mid x_t, x_0) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{R}_t(x_t | x_0)]_y + o(\Delta t), \quad y \in \mathcal{V}
+\end{equation}
+$$
+
+For masked diffusion, this conditional reverse rate takes the explicit form:
+
+$$
+\begin{equation}
+\dot{R}_t(x_t | x_0) =
+\begin{pmatrix}
+ & & & 0 \\
+ & \mathbf{0}_{|\mathcal{V}|} & & \vdots \\
+ & & & 0 \\
+0 & \dots \, r_t \, \dots & 0 & -r_t
+\end{pmatrix}
+= r_t\, m (x_0 - m)^\top
+\end{equation}
+$$
+
+where $r_t = -\dot{\alpha}_t / (1 - \alpha_t)$ is the instantaneous unmasking rate, and the entry $r_t$ in the last row appears at the column index corresponding to $x_0$. Intuitively, this rate captures the instantaneous tendency of a masked token to revert to the clean token $x_0$.
+
+<details>
+<summary>Construction of $\dot{R}_t(x_t | x_0)$</summary>
+<div>
+
+To derive $\dot{R}_t(x_t | x_0)$, we write the reverse transition probabilities $q(x_s | x_t, x_0)$ for arbitrary $s < t$ using a matrix $R_{s|t}^{x_0}$, and then write the first-order Taylor expansion as $\Delta t = t - s \to 0$ of this matrix (analogous method that we did to find $\dot{R}_t$).
+
+Using the <span style="color: red">cite lemma</span>, the reverse transition $q(x_s | x_t, x_0)$ can be written as a categorical distribution governed by a reverse matrix $R_{s|t}^{x_0}$:
+$$
+\begin{equation}
+q(x_s | x_t, x_0) = \mathrm{Cat}\!\left(x_s;\ (R_{s|t}^{x_0})^\top x_t\right)
+\end{equation}
+$$
+and:
+$$
+\begin{align}
+R_{s|t}^{x_0} =
+\left(
+\begin{array}{ccc|c}
+ & & & 0 \\
+ & I_{|\mathcal{V}|} & & \vdots \\
+ & & & 0 \\
+\hline
+0 & \dots \quad \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \quad \dots & 0 & \frac{1 - \alpha_s}{1 - \alpha_t}
+\end{array}
+\right) \in \mathbb{R}^{K \times K}
+\end{align}
+$$
+
+where the entry $\frac{\alpha_s - \alpha_t}{1 - \alpha_t}$ in the last row appears at the column corresponding to $x_0$, and can be compactly written as $R_{s|t}^{x_0} = I + \frac{\alpha_s - \alpha_t}{1 - \alpha_t} m(x_0 - m)^\top$.
+
+Taking the first-order Taylor expansion (noting that $\alpha_{t - \Delta t} - \alpha_t \approx -\dot{\alpha}_t \Delta t$):
+
+$$
+\begin{align}
+R_{t - \Delta t \mid t}^{x_0} &= I + \frac{-\dot{\alpha}_t \Delta t}{1 - \alpha_t} m(x_0 - m)^\top + o(\Delta t) \\
+&= I + \Delta t\, \dot{R}_t(x_t | x_0) + o(\Delta t)
+\end{align}
+$$
+
+which identifies the conditional reverse rate as $\dot{R}_t(x_t | x_0) = r_t\, m(x_0 - m)^\top$ with $r_t = -\dot{\alpha}_t / (1 - \alpha_t)$.
+
+</div>
+</details>
+
+Note that $\dot{R}_t(x_t)$ can be obtained by averaging over the posterior $q(x_0 | x_t)$:
+
+$$
+\begin{equation}
+\dot{R}_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}\!\left[\dot{R}_t(x_t | x_0)\right]
+\end{equation}
+$$
+
+**Proposition** (Continuous-time ELBO): In the continuous-time limit, the ELBO becomes:
+
+$$
+\begin{align}
+\text{ELBO}(x_0) = - \mathrm{KL}(q(x_1 | x_0) , p_{\text{source}}) - \int_0^1 \mathbb{E}_{x_t \sim q( \cdot | x_0)} \left[ \mathrm{KL}\!\left(\dot{R}_t(x_t | x_0),\, \dot{R}_{\theta,t}(x_t)\right) \right] dt
+\end{align}
+$$
+
+<details>
+<summary>Continuous-time limit proof</summary>
+<div>
+
+We start from the full ELBO derived in <span style="color: red">cite thm</span>:
+
+$$
+\begin{align}
+    \text{ELBO}(x_0) &= - \mathrm{KL}\left(q(x_1 | x_0) , p_\theta(x_1)\right) \\
+    &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right]
+\end{align}
+$$
+
+Let $\Delta t = 1/T$, $t = j/T$, and $s = (j-1)/T$. The probability of transitioning to a token $y \in \mathcal{V}$ is given by the first-order Taylor expansion (<span style="color: red">cite eq</span> and <span style="color: red">cite eq</span>):
+
+$$
+\begin{align}
+    q(y | x_t, x_0) &= \mathbb{I}(y = x_t) + \Delta t\, [\dot{R}_t(x_t | x_0)]_y + o(\Delta t) \\
+    p_\theta(y | x_t) &= \mathbb{I}(y = x_t) + \Delta t\, [\dot{R}_{\theta,t}(x_t)]_y + o(\Delta t)
+\end{align}
+$$
+
+We expand the KL divergence term summing over the vocabulary:
+
+$$
+\begin{align}
+\mathrm{KL}\left(q( \cdot | x_t, x_0) , p_\theta( \cdot | x_t)\right) = \sum_{y \in \mathcal{V}} q(y | x_t, x_0) \log \frac{q(y | x_t, x_0)}{p_\theta(y | x_t)}
+\end{align}
+$$
+
+Separating the sum into the case where the token changes ($y \neq x_t$) and stays the same ($y = x_t$):
+
+1. For $y \neq x_t$:
+
+$$
+\begin{align}
+    (\Delta t\, [\dot{R}_t(x_t | x_0)]_y + o(\Delta t)) \log \frac{\Delta t\, [\dot{R}_t(x_t | x_0)]_y + o(\Delta t)}{\Delta t\, [\dot{R}_{\theta,t}(x_t)]_y + o(\Delta t)} = \Delta t\, [\dot{R}_t(x_t | x_0)]_y \log \frac{[\dot{R}_t(x_t | x_0)]_y}{[\dot{R}_{\theta,t}(x_t)]_y} + o(\Delta t)
+\end{align}
+$$
+
+2. For $y = x_t$, using the expansion $\log \frac{1+a}{1+b} = a - b + o(|a|+|b|)$:
+
+$$
+\begin{align}
+    (1 + \Delta t\, [\dot{R}_t(x_t | x_0)]_{x_t} + o(\Delta t)) \log \frac{1 + \Delta t\, [\dot{R}_t(x_t | x_0)]_{x_t} + o(\Delta t)}{1 + \Delta t\, [\dot{R}_{\theta,t}(x_t)]_{x_t} + o(\Delta t)}
+    &= \Delta t\, [\dot{R}_t(x_t | x_0)]_{x_t} - \Delta t\, [\dot{R}_{\theta,t}(x_t)]_{x_t} + o(\Delta t) \\
+    &= \Delta t \left( - \sum_{y \neq x_t} [\dot{R}_t(x_t | x_0)]_y + \sum_{y \neq x_t} [\dot{R}_{\theta,t}(x_t)]_y \right) + o(\Delta t)
+\end{align}
+$$
+
+Combining these terms, the KL divergence becomes:
+
+$$
+\begin{align}
+    \mathrm{KL} = \Delta t \sum_{y \neq x_t} \left( [\dot{R}_t(x_t | x_0)]_y \log \frac{[\dot{R}_t(x_t | x_0)]_y}{[\dot{R}_{\theta,t}(x_t)]_y} - [\dot{R}_t(x_t | x_0)]_y + [\dot{R}_{\theta,t}(x_t)]_y \right) + o(\Delta t)
+\end{align}
+$$
+
+This corresponds to $\Delta t \cdot \mathrm{KL}(\dot{R}_t(x_t | x_0) , \dot{R}_{\theta,t}(x_t))$, the generalized KL divergence between the instantaneous transition rate vectors for the token $x_t$. Substituting back into the ELBO, the sum over $j$ becomes a Riemann sum, and taking the limit $T \to \infty$ yields:
+
+$$
+\begin{align}
+    \text{ELBO}(x_0) = - \mathrm{KL}\left(q(x_1 | x_0) , p_{\text{source}}\right) - \int_0^1 \mathbb{E}_{\substack{x_t \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(\dot{R}_t(x_t | x_0) , \dot{R}_{\theta,t}(x_t)\right) \right] dt
+\end{align}
+$$
+
+</div>
+</details>
+
+Ignoring constants independent of $\theta$, the discrete diffusion loss can be written explicitly as:
+
+$$
+\begin{align}
+L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_{\text{data}} \\ x_t \sim q( \cdot |x_0)}} \left[ \sum_{y \neq x_t} \left( [\dot{R}_{\theta,t}(x_t)]_y - [\dot{R}_t(x_t | x_0)]_y \log [\dot{R}_{\theta,t}(x_t)]_y \right) \right]
+\end{align}
+$$
+
 #### Concrete Score
 
 In continuous diffusion, the score function $\nabla \log p_t(x)$ dictates the deterministic reverse ODE:
 $$
 \begin{equation}
-dx = \left[h(x, t) - \tfrac{1}{2}g(t)^2 \,\nabla \log p_t(x)\right]dt
+dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt
 \end{equation}
 $$
-which has the same marginal densities as the time-reversed stochastic process. In a discrete state space, there is no notion of a continuous gradient. However, one can write the sampling equation for the reverse process. Indeed, remembering from <span style="color: red"> cite eq </span> that:
+Thus, to sample samples from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
+
+In a discrete state space, there is no notion of a continuous gradient. However, one can write the sampling equation for the reverse process.
+Define $s_t(x_t)_y = \frac{q(X_t = y)}{q(X_t = x_t)}$.
+Then, remembering from <span style="color: red"> cite eq </span> that:
 $$
 \begin{equation}
-s_t(x)_y = \frac{[\dot{R}_t(x)]_y}{[\dot{Q}_t(x)]_y}
+s_t(x_t)_y = \frac{[\dot{R}_t(x_t)]_y}{[\dot{Q}_t(x_t)]_y}
 \end{equation}
 $$
 we can directly write the sampling used with a learned concrete score:
 $$
 \begin{equation}
-\mathbb{P}\!\left(X_{t-h} = y | X_t = x\right) = \mathbb{I}(x=y) + h\,[\dot{Q}_t(x)]_y\,s_{\theta,t}(x)_y + o(h)
+\mathbb{P}\!\left(X_{t-h} = y | X_t = x_t\right) = \mathbb{I}(x_t=y) + h\,[\dot{Q}_t(x_t)]_y\,s_{\theta,t}(x_t)_y + o(h)
 \end{equation}
 $$
 
-Then, we can express the loss <span style="color: red"> cite eq </span> in terms of concrete score:
+**Proposition**(concrete score matching): We can express the loss <span style="color: red"> cite eq </span> in terms of concrete score:
 $$
-\begin{aligned}
+\begin{align}
 L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \left[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y \left( s_{\theta,t}(x_t)_y - \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \log s_{\theta,t}(x_t)_y \right) \right] + C
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
+where $C$ is a constant independent of $\theta$.
 
 <details>
 <summary>Concrete Score Derivation</summary>
 <div>
 Consider the KL-derived loss: <span style="color: red"> cite eq </span>
 $$
-\begin{aligned}
+\begin{align}
 L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \left[ \sum_{y \neq x_t} \left( [\dot{R}_{\theta,t}(x_t)]_y - [\dot{R}_t(x_t | x_0)]_y \log [\dot{R}_{\theta,t}(x_t)]_y \right) \right]
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 
-To express the true denoiser reverse rate, we apply Bayes' theorem to $x_t \to x_s$ conditioned on $x_0$, a similar argument as in the proof of <span style="color: red"> cite eq </span>. We have:
+To express the true denoiser reverse rate, we apply Bayes' theorem to $x_t \to x_s$ conditioned on $x_0$. We get:
 $$
 \begin{equation}
 \dot{R}_t(x_t | x_0)_y = [\dot{Q}_t(x_t)]_y \frac{p_t(y|x_0)}{p_t(x_t|x_0)}
@@ -1755,10 +1809,9 @@ $$
 
 Expanding the logarithm and grouping $\theta$-independent terms into $C$ gives:
 $$
-\begin{aligned}
+\begin{align}
 L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \left[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y \left( s_{\theta,t}(x_t)_y - \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \log s_{\theta,t}(x_t)_y \right) \right] + C
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 
 which is exactly the statement in the proposition above.
@@ -1803,10 +1856,10 @@ which is exactly the statement in the proposition above.
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_{t+\delta t} \mid x_t) = \mathcal{N}\!\left(\sqrt{1-\beta_t}\,x_t,\; \beta_t I\right)$
+        $q(x_{t+\delta t} | x_t) = \mathcal{N}\!\left(\sqrt{1-\beta_t}\,x_t,\; \beta_t I\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_{t+\delta t} \mid x_t) = \mathrm{Cat}\!\left(x_{t+\delta t};\, (1-\beta_t)e_{x_t} + \beta_t e_m\right)$
+        $q(x_{t+\delta t} | x_t) = \mathrm{Cat}\!\left(x_{t+\delta t};\, (1-\beta_t)e_{x_t} + \beta_t e_m\right)$
       </td>
     </tr>
 
@@ -1820,10 +1873,10 @@ which is exactly the statement in the proposition above.
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_t \mid x_0) = \mathcal{N}\!\left(\sqrt{\alpha_t}\,x_0,\; (1-\alpha_t)I\right)$
+        $q(x_t | x_0) = \mathcal{N}\!\left(\sqrt{\alpha_t}\,x_0,\; (1-\alpha_t)I\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_t \mid x_0) = \mathrm{Cat}\!\left(x_t;\, \alpha_t e_{x_0} + (1-\alpha_t)e_m\right)$
+        $q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\, \alpha_t e_{x_0} + (1-\alpha_t)e_m\right)$
       </td>
     </tr>
 
@@ -1851,12 +1904,12 @@ which is exactly the statement in the proposition above.
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_t \mid x_0) = \mathcal{N}\!\left(m_t\, x_0,\; \sigma_t^2 I\right)$ <br />
+        $q(x_t | x_0) = \mathcal{N}\!\left(m_t\, x_0,\; \sigma_t^2 I\right)$ <br />
         $m_t = \exp\!\left(\int_0^t f_s\,ds\right), \quad \sigma_t^2 = \int_0^t g_s^2\,\exp\!\left(2\int_s^t f_r\,dr\right)ds$ <br />
         DDPM: $m_t = \sqrt{\alpha_t},\quad \sigma_t^2 = 1 - \alpha_t$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_t \mid x_0) = \mathrm{Cat}\!\left(x_t;\, Q_t\, e_{x_0}\right)$ <br />
+        $q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\, Q_t\, e_{x_0}\right)$ <br />
         $Q_t = \mathcal{T}\!\exp\!\left(\int_0^t \dot{Q}_s\,ds\right)$ <br />
         Masked diffusion: $Q_t = \alpha_t I + (1-\alpha_t)\, e_m \mathbf{1}^\top$
       </td>
@@ -1870,10 +1923,10 @@ which is exactly the statement in the proposition above.
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_{t-\delta t} \mid x_t, x_0) = \mathcal{N}\!\left(\tilde{\mu}(x_0,t,x_t),\; \tilde{\beta}_t I\right)$
+        $q(x_{t-\delta t} | x_t, x_0) = \mathcal{N}\!\left(\tilde{\mu}(x_0,t,x_t),\; \tilde{\beta}_t I\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_{t-\delta t} \mid x_t, x_0) = \mathrm{Cat}\!\left(x_{t-\delta t};\; \dfrac{\alpha_{t-\delta t} - \alpha_t}{1 - \alpha_t}\, e_{x_0} + \dfrac{1 - \alpha_{t-\delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
+        $q(x_{t-\delta t} | x_t, x_0) = \mathrm{Cat}\!\left(x_{t-\delta t};\; \dfrac{\alpha_{t-\delta t} - \alpha_t}{1 - \alpha_t}\, e_{x_0} + \dfrac{1 - \alpha_{t-\delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
       </td>
     </tr>
 
@@ -1887,11 +1940,11 @@ which is exactly the statement in the proposition above.
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
         $x_1 \sim \mathcal{N}(0, I)$ <br />
-        $p_{\theta,t}(x_{t-\delta t} \mid x_t) = \mathcal{N}\!\left(\mu_{\theta,t}(x_t),\; \sigma_t^2 I\right)$
+        $p_{\theta,t}(x_{t-\delta t} | x_t) = \mathcal{N}\!\left(\mu_{\theta,t}(x_t),\; \sigma_t^2 I\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
         $x_1 \sim p_{\mathrm{mask}}$ <br />
-        $p_{\theta,t}(x_{t-\delta t} \mid x_t) = \mathrm{Cat}\!\left(x_{t-\delta t};\; \dfrac{\alpha_{t-\delta t} - \alpha_t}{1 - \alpha_t}\, D_{\theta,t}(x_t) + \dfrac{1 - \alpha_{t-\delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
+        $p_{\theta,t}(x_{t-\delta t} | x_t) = \mathrm{Cat}\!\left(x_{t-\delta t};\; \dfrac{\alpha_{t-\delta t} - \alpha_t}{1 - \alpha_t}\, D_{\theta,t}(x_t) + \dfrac{1 - \alpha_{t-\delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
       </td>
     </tr>
 
@@ -1977,10 +2030,9 @@ The following proposition shows that the MDM training objective is equivalent to
 
 **Proposition (MDM and AO-ARM Equivalence):** Let $\mathcal{L}_{\text{MDM}}(\theta)$ denote the masked diffusion training loss with linear schedule $\alpha_t = 1 - t$ and uniform time sampling $t \sim \mathcal{U}(0,1)$:
 $$
-\begin{aligned}
+\begin{align}
 \mathcal{L}_{\text{MDM}}(\theta) = -\mathbb{E}_{t \sim \mathcal{U}(0,1),\, \mathbf{x}_0 \sim p_{\text{data}},\, \mathbf{x}_t \sim q(\cdot | \mathbf{x}_0)} \left[ \frac{1}{t} \sum_{i=1}^{S} \mathbb{I}(x_t^i = m) \log p_\theta(x_0^i | \mathbf{x}_t) \right]
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 Then $\mathcal{L}_{\text{MDM}}(\theta) = \mathcal{L}_{\text{AO-ARM}}(\theta)$.
 
@@ -1995,10 +2047,9 @@ This equivalence has a practical consequence: since the MDM is implicitly traine
 
 Under the linear schedule $\alpha_t = 1 - t$, the forward process masks each token independently with probability $t$. The MDM loss can be written as:
 $$
-\begin{aligned}
+\begin{align}
 \mathcal{L}_{\text{MDM}}(\theta) = -\mathbb{E}_{\mathbf{x}_0} \left[ \int_0^1 \frac{1}{t} \mathbb{E}_{\mathbf{x}_t \sim q(\cdot | \mathbf{x}_0)} \left[ \sum_{i=1}^{S} \mathbb{I}(x_t^i = m) \log p_\theta(x_0^i | \mathbf{x}_t) \right] dt \right]
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 We now condition on the number of masked tokens. The forward process $q(\cdot | \mathbf{x}_0)$ masks each token independently: $x_t^i = m$ with probability $t$ and $x_t^i = x_0^i$ with probability $1-t$. Equivalently, drawing $\mathbf{x}_t \sim q(\cdot | \mathbf{x}_0)$ amounts to drawing $\xi^i \sim \text{Bernoulli}(t)$ independently for $i = 1, \ldots, S$ and setting:
 $$
@@ -2008,25 +2059,23 @@ x_t^i = \begin{cases} m & \text{if } \xi^i = 1 \\ x_0^i & \text{if } \xi^i = 0 \
 $$
 Let $\mathcal{M} = \{i : \xi^i = 1\}$ denote the set of masked positions. For fixed $\mathbf{x}_0$, $\mathbf{x}_t$ and $\mathcal{M}$ are in bijection ($\mathcal{M} = \{i : x_t^i = m\}$), so we may write $\mathbf{x}_{\mathcal{M}} := \mathbf{x}_t$ and $p_\theta(x_0^i | \mathbf{x}_t) = p_\theta(x_0^i | \mathbf{x}_{\mathcal{M}})$. The inner sum becomes $\sum_{i \in \mathcal{M}} \log p_\theta(x_0^i | \mathbf{x}_{\mathcal{M}})$. For any function $g$:
 $$
-\begin{aligned}
+\begin{align}
 \mathbb{E}_{\mathbf{x}_t \sim q(\cdot | \mathbf{x}_0)}[g(\mathbf{x}_t)] = \mathbb{E}_{(\xi^1, \ldots, \xi^S) \overset{\text{i.i.d.}}{\sim} \text{Bernoulli}(t)}[g(\mathbf{x}_t)] = \mathbb{E}_{\mathcal{M}}[g(\mathbf{x}_{\mathcal{M}})]
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 Applying the law of total expectation by conditioning on $|\mathcal{M}|$:
 $$
 \begin{equation}
-\mathbb{E}_{\mathcal{M}}[g(\mathbf{x}_{\mathcal{M}})] = \sum_{k=0}^{S} \mathbb{P}(|\mathcal{M}| = k) \;\mathbb{E}[g(\mathbf{x}_{\mathcal{M}}) \mid |\mathcal{M}| = k]
+\mathbb{E}_{\mathcal{M}}[g(\mathbf{x}_{\mathcal{M}})] = \sum_{k=0}^{S} \mathbb{P}(|\mathcal{M}| = k) \;\mathbb{E}[g(\mathbf{x}_{\mathcal{M}}) | |\mathcal{M}| = k]
 \end{equation}
 $$
 It remains to identify the conditional distribution of $\mathcal{M}$ given $|\mathcal{M}| = k$. For any subset $A \subseteq [S]$ with $|A| = k$:
 $$
-\begin{aligned}
-\mathbb{P}(\mathcal{M} = A \mid |\mathcal{M}| = k) = \frac{\mathbb{P}(\mathcal{M} = A)}{\mathbb{P}(|\mathcal{M}| = k)} = \frac{t^k(1-t)^{S-k}}{\binom{S}{k}\, t^k(1-t)^{S-k}} = \frac{1}{\binom{S}{k}}
-\end{aligned}
-\begin{equation} \end{equation}
+\begin{align}
+\mathbb{P}(\mathcal{M} = A | |\mathcal{M}| = k) = \frac{\mathbb{P}(\mathcal{M} = A)}{\mathbb{P}(|\mathcal{M}| = k)} = \frac{t^k(1-t)^{S-k}}{\binom{S}{k}\, t^k(1-t)^{S-k}} = \frac{1}{\binom{S}{k}}
+\end{align}
 $$
-so $\mathcal{M} \mid |\mathcal{M}| = k$ is uniformly distributed over all size-$k$ subsets of $[S]$, i.e., $\mathbb{E}[\,\cdot \mid |\mathcal{M}| = k] = \mathbb{E}_{\mathcal{M} \sim \text{Unif}(\binom{[S]}{k})}[\,\cdot\,]$.
+so $\mathcal{M} | |\mathcal{M}| = k$ is uniformly distributed over all size-$k$ subsets of $[S]$, i.e., $\mathbb{E}[\,\cdot | |\mathcal{M}| = k] = \mathbb{E}_{\mathcal{M} \sim \text{Unif}(\binom{[S]}{k})}[\,\cdot\,]$.
 Define:
 $$
 \begin{equation}
@@ -2035,10 +2084,9 @@ f(k, \mathbf{x}_0) := \mathbb{E}_{\mathcal{M} \sim \text{Unif}(\binom{[S]}{k})} 
 $$
 Combining these results:
 $$
-\begin{aligned}
+\begin{align}
 \mathbb{E}_{\mathbf{x}_t \sim q(\cdot | \mathbf{x}_0)}\left[ \frac{1}{t} \sum_{i=1}^{S} \mathbb{I}(x_t^i = m) \log p_\theta(x_0^i | \mathbf{x}_t) \right] = \frac{1}{t} \sum_{k=0}^{S} \underbrace{\binom{S}{k} t^k (1-t)^{S-k}}_{\mathbb{P}(|\mathcal{M}| = k)} \; f(k, \mathbf{x}_0)
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 The $k = 0$ term vanishes (no masked tokens), so substituting back into $\mathcal{L}_{\text{MDM}}$:
 $$
@@ -2048,10 +2096,9 @@ $$
 $$
 Exchanging the sum and integral:
 $$
-\begin{aligned}
+\begin{align}
 \mathcal{L}_{\text{MDM}}(\theta) = -\mathbb{E}_{\mathbf{x}_0} \left[ \sum_{k=1}^{S} \binom{S}{k} \left( \int_0^1 t^{k-1} (1-t)^{S-k}\, dt \right) f(k, \mathbf{x}_0) \right]
-\end{aligned}
-\begin{equation} \end{equation}
+\end{align}
 $$
 The integral is a Beta function:
 $$
@@ -2080,7 +2127,7 @@ $$
 \mathbb{P}(\mathcal{M}_i = A,\; \pi(i) = j) = \frac{(S-k)!\,(k-1)!}{S!} = \frac{1}{\binom{S}{k} \cdot k}
 \end{equation}
 $$
-Summing over $j \in A$ gives $\mathbb{P}(\mathcal{M}_i = A) = 1/\binom{S}{k}$, and conditionally $\mathbb{P}(\pi(i) = j \mid \mathcal{M}_i = A) = 1/k$. We can now replace the expectation over $\pi$ with expectations over $\mathcal{M}$ and $j$. For any function $h$:
+Summing over $j \in A$ gives $\mathbb{P}(\mathcal{M}_i = A) = 1/\binom{S}{k}$, and conditionally $\mathbb{P}(\pi(i) = j | \mathcal{M}_i = A) = 1/k$. We can now replace the expectation over $\pi$ with expectations over $\mathcal{M}$ and $j$. For any function $h$:
 $$
 \begin{align}
 \mathbb{E}_{\pi \sim \mathcal{U}_\pi}\left[h(\mathcal{M}_i, \pi(i))\right] &= \frac{1}{S!}\sum_{\pi} h(\mathcal{M}_i, \pi(i)) \\
@@ -2129,7 +2176,7 @@ We start from the infinitesimal reverse-time transition of the discrete diffusio
 
 $$
 \begin{equation}
-p(x_{t-\Delta t} = y \mid x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t)]_y + o(\Delta t)
+p(x_{t-\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t)]_y + o(\Delta t)
 \end{equation}
 $$
 
@@ -2137,7 +2184,7 @@ $$
 
 $$
 \begin{equation}
-p(x_{1-t'-\Delta t} = y \mid x_{1-t'}) = \mathbb{I}(y = x_{1-t'}) + \Delta t \, [\dot{R}_{1-t'}(x_{1-t'})]_y + o(\Delta t)
+p(x_{1-t'-\Delta t} = y | x_{1-t'}) = \mathbb{I}(y = x_{1-t'}) + \Delta t \, [\dot{R}_{1-t'}(x_{1-t'})]_y + o(\Delta t)
 \end{equation}
 $$
 
@@ -2147,7 +2194,7 @@ Substituting directly into the equation above:
 
 $$
 \begin{equation}
-p(x^{\text{FM}}_{t' + \Delta t} = y \mid x^{\text{FM}}_{t'}) = \mathbb{I}(y = x^{\text{FM}}_{t'}) + \Delta t \, [\dot{R}_{1-t'}(x^{\text{FM}}_{t'})]_y + o(\Delta t)
+p(x^{\text{FM}}_{t' + \Delta t} = y | x^{\text{FM}}_{t'}) = \mathbb{I}(y = x^{\text{FM}}_{t'}) + \Delta t \, [\dot{R}_{1-t'}(x^{\text{FM}}_{t'})]_y + o(\Delta t)
 \end{equation}
 $$
 
@@ -2155,7 +2202,7 @@ Recall the definition of a probability velocity <span style="color: red">(**cite
 
 $$
 \begin{equation}
-p(x^{\text{FM}}_{t' + \Delta t} = y \mid x^{\text{FM}}_{t'} = x) = \mathbb{I}(y = x^{\text{FM}}_{t'}) + \Delta t \, [u_{t'}(x^{\text{FM}}_{t'})]_y + o(\Delta t)
+p(x^{\text{FM}}_{t' + \Delta t} = y | x^{\text{FM}}_{t'} = x) = \mathbb{I}(y = x^{\text{FM}}_{t'}) + \Delta t \, [u_{t'}(x^{\text{FM}}_{t'})]_y + o(\Delta t)
 \end{equation}
 $$
 
@@ -2219,25 +2266,25 @@ Here, $w^i$ represents the normalized weight of position $i$ assigned by the pla
 
 #### Training Losses
 
-The **conditional flow matching (CFM) loss** is a KL divergence between rate vectors, specifically between the target conditional velocity $u_t(\cdot \mid x_t^i, x_1^i)$ and the learned velocity $u_{\theta,t}^i(\mathbf{x}_t)$:
+The **conditional flow matching (CFM) loss** is a KL divergence between rate vectors, specifically between the target conditional velocity $u_t(\cdot | x_t^i, x_1^i)$ and the learned velocity $u_{\theta,t}^i(\mathbf{x}_t)$:
 
 $$
 \begin{equation}
-L_{\text{CFM}} = \mathbb{E}_{t,\,\mathbf{x}_t,\,x_1}\!\left[\sum_{i=1}^S \mathrm{KL}^i\!\left(u_t(\cdot \mid x_t^i, x_1^i),\, u_{\theta,t}^i(\mathbf{x}_t)\right)\right]
+L_{\text{CFM}} = \mathbb{E}_{t,\,\mathbf{x}_t,\,x_1}\!\left[\sum_{i=1}^S \mathrm{KL}^i\!\left(u_t(\cdot | x_t^i, x_1^i),\, u_{\theta,t}^i(\mathbf{x}_t)\right)\right]
 \end{equation}
 $$
 
-A complementary approach treats the model as a variational family over the clean token $x_1^i$, minimizing the KL between the true posterior $\mathbf{e}_{x_1^i}$ and the learned categorical distribution $P_{\theta,t}(X_1^i \mid \mathbf{x}_t)$, which reduces to a cross-entropy:
+A complementary approach treats the model as a variational family over the clean token $x_1^i$, minimizing the KL between the true posterior $\mathbf{e}_{x_1^i}$ and the learned categorical distribution $P_{\theta,t}(X_1^i | \mathbf{x}_t)$, which reduces to a cross-entropy:
 
 $$
 \begin{equation}
-L_{\text{CM}} = \mathbb{E}_{t,\,\mathbf{x}_t,\,x_1}\!\left[-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)\right]
+L_{\text{CM}} = \mathbb{E}_{t,\,\mathbf{x}_t,\,x_1}\!\left[-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right]
 \end{equation}
 $$
 
 **These two losses are not equivalent in general.** $L_{\text{CFM}}$ is a divergence between rate vectors, nonnegative objects that are not normalized to sum to one, while $L_{\text{CM}}$ is a divergence between probability distributions. Comparing them directly is not well-defined outside of a specific parameterization.
 
-**For the mask source**, the velocity field and the denoiser are linked by a simple rescaling (<span style="color:red">ref eq</span>), $u_{\theta,t}^i(\mathbf{x})_v = \frac{1}{1-t}\,P_{\theta,t}(X_1^i = v \mid \mathbf{x})$ for $v \neq m$, which makes the two losses directly comparable:
+**For the mask source**, the velocity field and the denoiser are linked by a simple rescaling (<span style="color:red">ref eq</span>), $u_{\theta,t}^i(\mathbf{x})_v = \frac{1}{1-t}\,P_{\theta,t}(X_1^i = v | \mathbf{x})$ for $v \neq m$, which makes the two losses directly comparable:
 
 $$
 \begin{equation}
@@ -2253,40 +2300,40 @@ The CFM loss for the mask source can be written as a weighted cross-entropy <spa
 
 $$
 \begin{equation}
-L_{\text{CFM}}(t) = \mathbb{E}\!\left[\,\sum_{i=1}^S \mathbf{1}(x_t^i = m) \cdot \frac{1}{1-t} \cdot \left(-\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)\right)\right]
+L_{\text{CFM}}(t) = \mathbb{E}\!\left[\,\sum_{i=1}^S \mathbf{1}(x_t^i = m) \cdot \frac{1}{1-t} \cdot \left(-\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right)\right]
 \end{equation}
 $$
 
 Since $P(x_t^i = m) = 1-t$, applying the law of total expectation causes the masking probability to cancel the weight:
 
 $$
-\begin{aligned}
+\begin{align}
 L_{\text{CFM}}(t)
   &= (1-t) \cdot \frac{1}{1-t} \cdot \mathbb{E}\!\left[
-      -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
-      \mid x_t^i = m
+      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)
+      | x_t^i = m
     \right] \\
   &= \mathbb{E}\!\left[
-      -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
-      \mid x_t^i = m
+      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)
+      | x_t^i = m
     \right]
-\end{aligned}
+\end{align}
 $$
 
 We decompose $L_{\text{CM}}$ using the same law of total expectation, splitting over masked and unmasked positions:
 
 $$
-\begin{aligned}
+\begin{align}
 L_{\text{CM}}(t)
   &= (1-t) \cdot \mathbb{E}\!\left[
-      -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
-      \mid x_t^i = m
+      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)
+      | x_t^i = m
     \right] \\
   &\quad + t \cdot \mathbb{E}\!\left[
-      -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
-      \mid x_t^i \neq m
+      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)
+      | x_t^i \neq m
     \right]
-\end{aligned}
+\end{align}
 $$
 
 Since a well-trained denoiser trivially reconstructs unmasked positions by copying the input, the second term vanishes, giving:
@@ -2294,8 +2341,8 @@ Since a well-trained denoiser trivially reconstructs unmasked positions by copyi
 $$
 \begin{equation}
 L_{\text{CM}}(t) \approx (1-t) \cdot \mathbb{E}\!\left[
-  -\log P_{\theta,t}(X_1^i = x_1^i \mid \mathbf{x}_t)
-  \mid x_t^i = m
+  -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)
+  | x_t^i = m
 \right]
 \end{equation}
 $$
