@@ -358,7 +358,7 @@ As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x
 We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**. This explains why we are allowed to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
 
 **Remark (Mass conservation for probability velocities).**
-The probability velocity $u$ must preserve probability mass: for TODO cite eq to define a valid probability, for every $t\in [0, 1]$ $u_t$ must satisfy:
+The probability velocity $u$ must preserve probability mass: for @eq:prob-velocity to define a valid probability, for every $t\in [0, 1]$ $u_t$ must satisfy:
 1. **Positivity:** $u_t(\mathbf{x})_{\mathbf{y}} \ge 0$ for all $\mathbf{y} \neq \mathbf{x}$.
 2. **Normalization:** $\sum_{\mathbf{y} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} = 0$ for all $\mathbf{x} \in \mathcal{S}$ (and so $u_t(\mathbf{x})_{\mathbf{x}} \le 0$).
 
@@ -933,7 +933,7 @@ u_t^i(\mathbf{x})_v = \frac{1}{1 - t} \left( \mathbb{P}(X_1^i = v | X_t = \mathb
 $$
 where $\mathbb{P}(X_1^i = v | X_t = \mathbf{x})$ can be interpreted as a denoiser: it gives the probability of the $i$-th token in the final sequence $\mathbf{x}_1$ being $v$, given the full noisy sequence $\mathbf{x}_t$.
 
-{/* As we saw in <span style="color: red">cite eq</span>, velocity fields follow very similar properties to probability distributions, and the KL divergence is a natural way to compare them.
+{/* As we saw in @eq:velocity-positivity and @eq:velocity-normalization, velocity fields follow very similar properties to probability distributions, and the KL divergence is a natural way to compare them.
 Since it is more intuitive to think in terms of probabilities rather than velocities, we can reparameterize the velocity field $u_t^i(\mathbf{x})$ in terms of a denoiser $D_{\theta,t}^i(\mathbf{x}) = P_{\theta,t}(X_1^i | X_t = \mathbf{x})$. It corresponds to the probability distribution over clean tokens at position $i$, given the current noisy sequence $\mathbf{x}_t$. <span style="color: red">Discuss this argument</span> */}
 
 
@@ -1364,7 +1364,7 @@ q(x_t | x_0) = \alpha_s\, q(x_t | x_s = x_0) + (1 - \alpha_s)\, q(x_t | x_s = m)
 $$
 
 Since masking is irreversible, $q(x_t | x_s = m) = \mathbb{I}(x_t = m)$.
-Writing $q(x_t | x_s = x_0) = a\, \mathbb{I}(x_t = x_0) + (1 - a)\, \mathbb{I}(x_t = m)$, for $x_t = x_0$, CITE EQ becomes:  $\alpha_t = \alpha_s \cdot a$, so $a = \dfrac{\alpha_t}{\alpha_s}$
+Writing $q(x_t | x_s = x_0) = a\, \mathbb{I}(x_t = x_0) + (1 - a)\, \mathbb{I}(x_t = m)$, for $x_t = x_0$, @eq:marginal-split becomes:  $\alpha_t = \alpha_s \cdot a$, so $a = \dfrac{\alpha_t}{\alpha_s}$
 
 Therefore, for an unmasked token $x_s \neq m$ (since the probabilities sum to 1):
 
@@ -1383,16 +1383,16 @@ $$
 **Matrix view**: we can represent these transition probabilities in a Matrix $\bar{Q}_{t|s} \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$, satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$.
 $$
 \begin{align}
-\bar{Q}_{t|s} \label{eq:transition-matrix-1}
-&= \label{eq:transition-matrix-2}
-\begin{pmatrix} \label{eq:transition-matrix-3}
-\frac{\alpha_t}{\alpha_s} & 0 & \dots & 0 & 1 - \frac{\alpha_t}{\alpha_s}  \label{eq:transition-matrix-4} \\
-0 & \frac{\alpha_t}{\alpha_s} & \dots & 0 & 1 - \frac{\alpha_t}{\alpha_s}  \label{eq:transition-matrix-5} \\
-\vdots & \vdots & \ddots & \vdots & \vdots  \label{eq:transition-matrix-6} \\
-0 & 0 & \dots & \frac{\alpha_t}{\alpha_s} & 1 - \frac{\alpha_t}{\alpha_s}  \label{eq:transition-matrix-7} \\
-0 & 0 & \dots & 0 & 1 \label{eq:transition-matrix-8}
-\end{pmatrix}  \label{eq:transition-matrix-9} \\
-&= \frac{\alpha_t}{\alpha_s} I + \left(1 - \frac{\alpha_t}{\alpha_s}\right)\mathbf{1}\mathbf{e}_m^\top \label{eq:transition-matrix-10}
+\bar{Q}_{t|s}
+&=
+\begin{pmatrix}
+\frac{\alpha_t}{\alpha_s} & 0 & \dots & 0 & 1 - \frac{\alpha_t}{\alpha_s}  \\
+0 & \frac{\alpha_t}{\alpha_s} & \dots & 0 & 1 - \frac{\alpha_t}{\alpha_s}  \\
+\vdots & \vdots & \ddots & \vdots & \vdots  \\
+0 & 0 & \dots & \frac{\alpha_t}{\alpha_s} & 1 - \frac{\alpha_t}{\alpha_s}  \\
+0 & 0 & \dots & 0 & 1
+\end{pmatrix}  \\
+&= \frac{\alpha_t}{\alpha_s} I + \left(1 - \frac{\alpha_t}{\alpha_s}\right)\mathbf{1}\mathbf{e}_m^\top \label{eq:transition-matrix}
 \end{align}
 $$
 
@@ -1442,7 +1442,7 @@ $$
 \end{equation}
 $$
 
-Substituting into the compact expression for $\bar{Q}_{t+\Delta t|t}$:
+Substituting into the compact expression @eq:transition-matrix for $\bar{Q}_{t+\Delta t|t}$:
 
 $$
 \begin{align}
@@ -2036,13 +2036,6 @@ where $C$ is a constant independent of $\theta$
 <details>
 <summary>Concrete Score Derivation</summary>
 <div>
-Consider the KL-derived loss @eq:ratio-loss:
-$$
-\begin{equation}
-\label{eq:score-loss-rates}
-L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \Bigg[ \sum_{y \neq x_t} \bigg( [\dot{R}_{\theta,t}(x_t)]_y - [\dot{R}_t(x_t | x_0)]_y \log [\dot{R}_{\theta,t}(x_t)]_y \bigg) \Bigg]
-\end{equation}
-$$
 
 To express the true denoiser reverse rate, we apply Bayes' theorem to $x_t \to x_s$ conditioned on $x_0$. We get:
 $$
@@ -2052,7 +2045,7 @@ $$
 \end{equation}
 $$
 
-Substitute $[\dot{R}_{\theta,t}(x_t)]_y = [\dot{Q}_t(x_t)]_y s_{\theta,t}(x_t)_y$ and the expression above:
+Substitute $[\dot{R}_{\theta,t}(x_t)]_y = [\dot{Q}_t(x_t)]_y s_{\theta,t}(x_t)_y$ and the expression above in @eq:ratio-loss, we get:
 $$
 \begin{equation}
 \label{eq:score-loss}
