@@ -2478,50 +2478,106 @@ and therefore $u_{t'}^{\text{FM}} = \dot{R}_{1-t'}$.
 ### Appendix to go further
 
 
-#### Planner aware path learning
+#### Planner aware path learning in masked diffusion
 
-Vanilla sampling in masked discrete diffusion and flow matching is computationally expensive. It requires $(1/h) \times S$ sequential steps, where $h$ is the time step size and $S$ is the length of the sequence. At every single micro-step, we must compute and draw from probability vectors of size $|\mathcal{V}|$ for all tokens. For example, with a step size of $h = 0.01$ and a sequence length of $S = 3000$, we would need an impractical $300,000$ steps to generate a single sample.
+In this section, we introduce planners as a way to make sampling more efficient in masked diffusion, and explain why using a planner also requires adapting the training loss. For the complete theoretical treatment, see [<a class="cite-ref" href="#ref-7">7</a>].
+
+Vanilla sampling in masked diffusion is computationally expensive. It requires $(1/h) \times S$ sequential steps, where $h$ is the time step size and $S$ is the length of the sequence. At every single micro-step, we must compute and draw from probability vectors of size $|\mathcal{V}|$ for all tokens. For example, with a step size of $h = 0.01$ and a sequence length of $S = 3000$, we would need $300,000$ steps to generate a single sample.
+We can parallelize the sampling of all tokens at each step, so the number of forward passes through the model is $1/h = 100$ steps rather than $S/h$, but it requires more memory.
 
 To make generation tractable, the standard approach used in the industry for large masked diffusion models is **planner-guided sampling**. Instead of relying on infinitesimal continuous-time steps, we fix a manageable number of total generation steps, denoted as $N$. At each step, the algorithm aggressively decodes and fixes exactly $S/N$ tokens.
 
 **Algorithm: Planner-Guided Sampling**
 
 **Input:** Planner strategy, trained denoiser $D_\theta$, total number of steps $N$
-1. **Initialize:** $\mathbf{x}_0 \leftarrow (m, \dots, m)$ (a sequence of $S$ mask tokens)
+1. **Initialize:** $\mathbf{x}_0 \leftarrow (m, \dots, m)$ (a sequence of $S$ mask tokens), schedule $f$ mapping step index to number of tokens to reveal at that step, e.g., $f(k) = S/N$ for all $k$.
 2. **For** $k = 0, 1, \dots, N - 1$:
-    * **Plan:** Sample candidate tokens $\mathbf{z} \sim D_\theta(\mathbf{x}_k)$
-    * **Select:** A "planner" evaluates these candidate predictions based on a specific criterion. It chooses a set of positions $\mathcal{I}$ where $|\mathcal{I}| = S/N$ to reveal.
+    * **Plan:** Sample candidate tokens $\mathbf{z} \sim D_{\theta,k}(\mathbf{x}_k)$
+    * **Select:** A "planner" evaluates these candidate predictions based on a specific criterion. It chooses a set of positions $\mathcal{I}$ where $|\mathcal{I}| = f(k)$ to reveal.
     * **Denoise:** Create $\mathbf{x}_{k+1}$ by setting $x_{k+1}^i = z^i$ for all $i \in \mathcal{I}$, keeping the rest as masks
 3. **Return** fully generated sequence $\mathbf{x}_N$
 
-To make this concrete, let's look at how we actually choose these tokens and why that choice forces us to rethink how we train the model. A simple and widely used strategy is the soft greedy planner. Instead of unmasking tokens at random, it selects the positions where the denoiser is most confident in its predictions. To prevent the generation process from becoming rigidly deterministic, we relax this strict selection into a soft probability distribution using a softmax function with a temperature parameter $\tau$:
+**Proposition** (Sampling-Scheme equivalence): Suppose that the denoiser does not need to know the current time in its predictions, i.e. for any step $k$ and any given sequence $\mathbf{x}$, $D_{\theta,k}(\mathbf{x}) = D_{\theta}(\mathbf{x})$. If we choose the uniform random planner that selects positions uniformly at random among the masked tokens, i.e., $G_\phi(\mathbf{z}, \mathbf{x}_t) = \text{Unif}(\{i : x_t^i = m\})$, then planner-guided sampling with $N = S$ steps and $f(k) = 1$ token per step is exactly equivalent to the sampling procedure given @eq:reverse-rate as $\Delta t \to 0$.
+
+However, in practice, we rarely decide to unmask tokens by picking a random position at each step. A simple and widely used strategy is the soft greedy planner. Instead of unmasking tokens at random, it selects the positions where the denoiser is most confident in its predictions. We then relax this strict selection into a soft probability distribution using a softmax function with a temperature parameter $\tau$:
 $$
 \begin{equation}
 \label{eq:planner}
 G_\phi^\tau(\mathbf{z}, \mathbf{x}_t)_j \propto \exp\left(\frac{1}{\tau} \log D_\theta^j(\mathbf{x}_t)_{z^j}\right)
 \end{equation}
 $$
-This formulation assigns higher selection probabilities to the tokens the model is sure about. As $\tau \to \infty$, this reduces to uniform random sampling. As $\tau \to 0$, it converges to a strict, hard selection of only the most confident token.
+This formulation assigns higher selection probabilities to the tokens the model is sure about. As $\tau \to \infty$, this reduces to uniform random sampling. As $\tau \to 0$, it converges to a strict, hard selection of only the most confident token in the sampled sequence $\mathbf{z}$.
 
-For a concrete example, suppose we have two masked positions where the denoiser predicts the target tokens with confidences of $0.8$ and $0.2$. Setting the temperature to $\tau = 1/2$, the planner mathematically scales these probabilities by a power of $1/\tau = 2$ and normalizes them:
+To illustrate one sampling step, take the vocabulary $\mathcal{V}=\{A,B,m\}$ and sequences of length $S=3$.
+Suppose that after one planner step ($k=1$), the current sequence is
 $$
-\begin{aligned}
-D_\theta(\mathbf{x}_t)_{\mathbf{z}} = \begin{pmatrix} 0.8 \\ 0.2 \end{pmatrix} \quad & \implies \quad G_\phi^{1/2}(\mathbf{z}, \mathbf{x}_t) \\
-& = \frac{1}{0.8^2 + 0.2^2} \begin{pmatrix} 0.8^2 \\ 0.2^2 \end{pmatrix} \approx \begin{pmatrix} 0.941 \\ 0.059 \end{pmatrix}
-\end{aligned}
+\begin{equation}
+\label{eq:planner-example-current}
+\mathbf{x}_1 = (A,m,m),
+\end{equation}
 $$
-The initial confidence gap is heavily amplified, strongly favoring to denoise next the more certain prediction while still preserving a small element of stochasticity.
+so positions $2$ and $3$ are still masked.
+The denoiser proposes a full candidate sequence by sampling token-wise:
+$$
+\begin{equation}
+\label{eq:planner-example-candidate}
+\mathbf{z} \sim D_\theta(\mathbf{x}_1), \qquad \text{for example } \mathbf{z}=(A,A,B).
+\end{equation}
+$$
+For this sampled candidate, the planner only looks at the denoiser confidence assigned to the proposed token at each still-masked position.
+$$
+\begin{align}
+D_\theta(\mathbf{x}_1)_{\mathbf{z}} \label{eq:planner-example-confidence-1}
+&=
+\begin{pmatrix}
+D_\theta^2(\mathbf{x}_1)_{z^2 = A} \\
+D_\theta^3(\mathbf{x}_1)_{z^3 = B}
+\end{pmatrix} \label{eq:planner-example-confidence-2} \\
+&=
+\begin{pmatrix}
+0.6 \\
+0.7
+\end{pmatrix}. \label{eq:planner-example-confidence-3}
+\end{align}
+$$
+Setting the temperature to $\tau = 1/3$, the planner scales these probabilities by a power of $1/\tau = 3$ and normalizes them:
+$$
+\begin{align}
+G_\phi^{1/3}(\mathbf{z}, \mathbf{x}_1) \label{eq:planner-example-prob-1}
+&=
+\frac{1}{0.6^3 + 0.7^3}
+\begin{pmatrix}
+0.6^3 \\
+0.7^3
+\end{pmatrix} \label{eq:planner-example-prob-2} \\
+&\approx
+\begin{pmatrix}
+0.386 \\
+0.614
+\end{pmatrix}. \label{eq:planner-example-prob-3}
+\end{align}
+$$
+This means that the planner is more likely to reveal position $3$, because the sampled token $z^3=B$ received higher denoiser confidence than $z^2=A$.
+If the planner samples position $3$, then the next sequence is obtained by copying only that proposed token:
+$$
+\begin{equation}
+\label{eq:planner-example-next}
+\mathbf{x}_2 = (A,m,B).
+\end{equation}
+$$
 
-However, introducing a planner-aware sampling process creates a mismatch between training and inference. During training, the standard objective masks tokens uniformly at random across all positions and orderings, so the denoiser learns to predict any token from any arbitrary subset of revealed context. At inference, however, the planner selectively reveals tokens along an optimized path, meaning the denoiser operates on structured, informative contexts it was never explicitly trained on. Paradoxically, this makes training strictly harder than inference: the model must learn to denoise under the worst-case random maskings, whereas the planner later guides it through the most favorable ones.
+However, introducing a planner-aware sampling process creates a mismatch between training and inference. During training, the standard objective masks tokens uniformly at random across all positions and orderings. During inference, the planner reveals tokens along a specific, confidence-guided trajectory.
 
-To fix this discrepancy, we need a loss function that makes the model aware of the planner during the training phase. By safely detaching gradients through the planner to maintain numerical stability, we can achieve this by simply reweighting our standard objective. We assign higher loss weights to the positions the planner is most likely to select. The resulting Planner-Aware Path Learning (PAPL) loss is the standard continuous masked diffusion cross-entropy, mathematically augmented with these planner-derived weights:
+This difference matters because uniform masking can put training weight on mask patterns that the planner would almost never visit in practice. For example, in a structured sequence where the last token is only predictable after the first two have been revealed, uniform masking may still train the model to predict that last token from $(m,m,m)$ or from $(m,m,B)$, even though a confidence-based planner would first reveal easier positions and avoid asking for that token with so little context. These hard, off-trajectory denoising tasks can inject extra error into the learned denoiser, and those errors can then be amplified during sampling when early wrong predictions become part of the context.
+
+A simple fix is to reweight the training loss toward the positions the planner would select. This gives the Planner-Aware Path Learning (PAPL) objective:
 $$
 \begin{equation}
 \label{eq:papl-loss}
-\mathcal{L}_{\text{PAPL}}(\theta) = - \mathbb{E}_{t, \mathbf{x}_0, \mathbf{x}_t} \left[ \sum_{ix_t^i = m} \frac{1}{t}(1 + \alpha w^i) \log D_\theta^i(\mathbf{x}_t)_{x_0^i} \right]
+\mathcal{L}_{\text{PAPL}}(\theta) = - \mathbb{E}_{t, \mathbf{x}_0, \mathbf{x}_t} \left[ \sum_{i: x_t^i = m} \frac{1}{t}(1 + \alpha w^i) \log D_\theta^i(\mathbf{x}_t)_{x_0^i} \right]
 \end{equation}
 $$
-Here, $w^i$ represents the normalized weight of position $i$ assigned by the planner, and $\alpha$ is a hyperparameter that controls the strength of this planner guidance.
+Here, $w^i$ represents the normalized weight of position $i$ assigned by the planner, and $\alpha$ is a hyperparameter that controls the strength of this planner guidance. To maintain numerical stability, the planner weights are detached: they reweight the loss, but gradients are not propagated through the planner itself.
 
 <DFMSampling denoiser planner client:load />
 
@@ -2674,6 +2730,14 @@ $$
   <div class="ref-main">
     6. <strong>Discrete Flow Matching</strong> <strong><a href="https://arxiv.org/pdf/2407.15595">[PDF]</a></strong><br />
     Itai Gat, Tal Remez, Neta Shaul, Felix Kreuk, Ricky T. Q. Chen, Gabriel Synnaeve, Yossi Adi, Yaron Lipman. NeurIPS 2024.
+  </div>
+</div>
+
+<div class="ref-entry">
+  <span id="ref-7"></span>
+  <div class="ref-main">
+    7. <strong>Planner Aware Path Learning in Diffusion Language Models Training</strong> <strong><a href="https://arxiv.org/pdf/2509.23405">[PDF]</a></strong><br />
+    Fred Zhangzhi Peng, Zachary Bezemek, Jarrid Rector-Brooks, Shuibai Zhang, Anru R. Zhang, Michael Bronstein, Avishek Joey Bose, Alexander Tong. ICLR 2026.
   </div>
 </div>
 
