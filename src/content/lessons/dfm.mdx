@@ -271,16 +271,12 @@ Discrete diffusion models were first introduced independently by two simultaneou
 
 ### Generating discrete data
 
-
 Like their continuous analogs, discrete flow matching and diffusion aim at mapping a simple source distribution to a complex target distribution (the actual data we want to generate).
 To do so, they create a sequence of intermediate distributions $(p_t)_{t}$ that progressively evolve from source to target distribution.
-
-
 
 In this blog post, we deal with discrete data: the space on which the probability distributions are defined is $\mathcal{S} := \mathcal{V}^S$, namely the space of sequences of length $S \in \mathbb{N}$ over a given vocabulary $\mathcal{V}$.
 A sequence $x$ in $\mathcal{S}$ is denoted as $\mathbf{x} = x^1 \dots x^S$, the $x^i$'s being called *tokens*.
 In the vocabulary, we add a special token: the mask token, denoted as $m$.
-
 
 The source distribution acts as our starting point for generation and is typically chosen to be either:
 - The **mask distribution ($p_{\text{mask}} := \delta_{m\ldots m}$):** All sequences start entirely filled with the mask token $m$.
@@ -294,6 +290,7 @@ The model then iteratively fills this grid, step-by-step, finally reaching a sam
 
 
 <SudokuFlowMatching client:load />
+
 
 We first introduce Discrete Flow Matching; the reader already familiar with this technique can jump directly to [Discrete Diffusion](#discrete-diffusion).
 
@@ -396,7 +393,7 @@ In Continuous Flow Matching, we have the guarantee that a velocity field $u_t$ g
 In Discrete Flow Matching, we also have such a tool: the Kolmogorov Equation.
 
 **Proposition (Kolmogorov Equation)**:
-The probability velocity $u_t$ generates $(p_t)$  <span style="color: red">(in the sense of Definition probability velocity)</span> if and only if the pair $(u_t, p_t)$ satisfies the Kolmogorov equation:
+The probability velocity $u_t$ generates $(p_t)$ in the sense of @eq:prob-velocity if and only if the pair $(u_t, p_t)$ satisfies the Kolmogorov equation:
 $$
 \begin{equation}
 \label{eq:kolmogorov-equation}
@@ -446,9 +443,9 @@ By hypothesis, the given probability path $p_t$ also satisfies this exact same l
 </details>
 
 Now that we are equipped with adequate definitions of probability paths and velocities for the discrete case, together with a way to check that one is associated to the other, we can state the approach of Discrete Flow Matching, which is the same as Continuous Flow Matching:
-1. Build an explicit probability path $(p_t)$ going from $p_0$ to $p_1$ <span style="color: red"> cite eq </span> using a conditioning variable, conditional probability paths and conditional velocities.
-2. Build an probability velocity $u_t$ generating $(p_t)$ XXX <span style="color: red"> cite eq </span>
-3. Provide an explicit loss to learn $u_t$ as a neural network <span style="color: red"> cite eq </span>
+1. Build an explicit probability path $(p_t)$ going from $p_0$ to $p_1$ @eq:marginal-path using a conditioning variable, conditional probability paths and conditional velocities.
+2. Build an probability velocity $u_t$ generating $(p_t)$ @eq:marginal-velocity-def-2
+3. Provide an explicit loss to learn $u_t$ as a neural network @eq:cdfm-2
 
 However, Learning probability velocities taking values in the full sequence space $\mathcal{S}=\mathcal{V}^S$ is cumbersome, as the cardinality of the latter is $|\mathcal{V}|^S$.
 To make computations tractable, Discrete Flow Matching makes a **factorization assumption**: the probability path it builds updates each position independently.
@@ -496,7 +493,7 @@ $$
 $$
 where $\mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})$ equals 1 if $\mathbf{y}$ and $\mathbf{x}$ differ at most at position $i$, and we used $\prod_{i=1}^S \mathbb{I}(y^i = x^i) = \mathbb{I}(\mathbf{y} = \mathbf{x})$.
 
-By comparing this result with the definition of the probability velocity <span style="color: red">cite eq</span> $\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{x} = \mathbf{y}) + h u_t(\mathbf{x})_{\mathbf{y}} + o(h)$, we directly identify:
+By comparing this result with the definition of the probability velocity @eq:prob-velocity, we directly identify:
 $$
 \begin{equation}
 \label{eq:factorized-velocity-2}
@@ -605,7 +602,7 @@ The conditioning variable $\mathbf{z} \in \mathcal{Z}^S$ that we use to build co
 
 For illustration, we will use $\mathbf{z} = \mathbf{x}_1$.
 Having chosen $\mathbf{z}$, we chose a conditional probability path.
-In order to have factorized velocities (simpler to learn) as per <span style="color:red"> cite Factorization proposition</span>, we pick the conditional path to be factorized:
+In order to have factorized velocities (simpler to learn) as per @eq:factorized-velocity, we pick the conditional path to be factorized:
 $$
 \begin{align}
 & p_t(\mathbf{x} | \mathbf{x_1}) = \prod_{i=1}^S  \big( \underbrace{ t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = m) } _{:= q_t(x^j | x_1^j)} \big)  \label{eq:mask-path-1} \\
@@ -615,10 +612,9 @@ This means that at time $t$, the $i$-th token $x^i_t$ equals the target token $x
 $p_0(\cdot | \mathbf{x}_1)$ is a Dirac at the all-masked sequence, while $p_1(\cdot | \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_1$.
 The interest of this conditional probability path is that we can derive the associated probability velocity.
 
-
 <span style='color: red'> clarification needed here, the velocity is scalar, it generates $q_t$ not $p_t$ </span>
 **Proposition (Conditional velocity)**:
-The conditional velocity generating $p_t(\cdot | \mathbf{x}_1)$ <span style="color:red"> XXX eqref </span> is:
+The conditional velocity generating the path @eq:mask-path-1 is:
 $$
 \begin{equation}
 \label{eq:mask-velocity}
@@ -790,7 +786,7 @@ The value of $x_1^i$ plays no role, so $p_0(\mathbf{x} | \mathbf{z})$ does not d
 $$
 p_0(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S \mathbb{I}(x^j = m) = p_{\mathrm{mask}}(\mathbf{x}) = p_0(\mathbf{x}).
 $$
-Marginalizing over $\mathbf{z}$ then trivially gives:
+Marginalizing over $\mathbf{z}$ then gives:
 $$
 p_{t=0}(\mathbf{x}) = \sum_{\mathbf{z}} p_0(\mathbf{x} | \mathbf{z})\,\pi(\mathbf{z}) = p_0(\mathbf{x})\sum_{\mathbf{z}} \pi(\mathbf{z}) = p_0(\mathbf{x}).
 $$
@@ -840,16 +836,16 @@ $$
 $$
 Introducing $Z$ and using the law of total probability,
 $$
-\begin{align*}
-\mathbb{P}(&X_{t+h}=\mathbf{y}| X_t=\mathbf{x}) \\
-&= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}, Z=\mathbf{z}| X_t=\mathbf{x}) \\
-&= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x}, Z=\mathbf{z})\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) \\
-&= \sum_{\mathbf{z}}\Big(\mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} + o(h)\Big)\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) \\
-&= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\sum_{\mathbf{z}}u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) + o(h) \\
-&= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h).
-\end{align*}
-
+\begin{align}
+\mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-1}
+&= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}, Z=\mathbf{z}| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-2} \\
+&\hspace{-8em}{}= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x}, Z=\mathbf{z})\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-3} \\
+&\hspace{-8em}{}= \sum_{\mathbf{z}}\Big(\mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} + o(h)\Big)\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-4} \\
+&\hspace{-8em}{}= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\sum_{\mathbf{z}}u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) + o(h) \label{eq:marginal-velocity-proof-5} \\
+&\hspace{-8em}{}= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h). \label{eq:marginal-velocity-proof-6}
+\end{align}
 $$
+
 Alternative proof: apply the Kolmogorov equation to each conditional process and average over $\mathbf{z}$:
 $$
 \begin{align}
@@ -945,14 +941,8 @@ Since it is more intuitive to think in terms of probabilities rather than veloci
 <summary>Proof of velocity-denoiser equivalence</summary>
 <div>
 
-Remember that the marginal velocity is the conditional expectation of the conditional velocity:
-$$
-\begin{equation}
-\label{eq:velocity-cond-exp}
-u_t^i(\mathbf{x})_v = \mathbb{E}_{x_1^i \sim \mathbb{P}(X_1^i | \mathbf{x})}\!\left[u_t^i(x^i | x_1^i)_v\right].
-\end{equation}
-$$
-and for the case of a masked source, we have:
+We write the proof for the masked source and start from @eq:mask-velocity.
+In a compact form, it can be rewritten as:
 $$
 \begin{equation}
 \label{eq:mask-velocity-token}
@@ -1376,7 +1366,7 @@ $$
 Since masking is irreversible, $q(x_t | x_s = m) = \mathbb{I}(x_t = m)$.
 Writing $q(x_t | x_s = x_0) = a\, \mathbb{I}(x_t = x_0) + (1 - a)\, \mathbb{I}(x_t = m)$, for $x_t = x_0$, CITE EQ becomes:  $\alpha_t = \alpha_s \cdot a$, so $a = \dfrac{\alpha_t}{\alpha_s}$
 
-Therefore, for an unmasked token $x_s \neq m$:
+Therefore, for an unmasked token $x_s \neq m$ (since the probabilities sum to 1):
 
 $$
 \begin{equation}
@@ -1406,13 +1396,7 @@ $$
 \end{align}
 $$
 
-Now, the goal is to find an analog to the continuous time ODE of the forward process in continuous diffusion:
-$$
-\begin{equation}
-\label{eq:reverse-sde}
-dx_t = f_t(x_t)\,dt + g_t\,dW_t
-\end{equation}
-$$
+Now, the goal is to find an analog to the continuous time ODE of the forward process in continuous diffusion $ dx_t = f_t(x_t)\,dt + g_t\,dW_t $.
 
 To do so, we take the first-order Taylor expansion for a small time step $\Delta t$ of the transition matrix $\bar{Q}_{t+\Delta t | t}$.
 
@@ -1495,14 +1479,7 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 
 To generate data, we define a reverse process that progressively unmasks tokens.
 
-Similarly to continuous diffusion where the reverse process can be derived reversing the forward SDE:
-$$
-\begin{equation}
-\label{eq:prob-flow-ode}
-dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt
-\end{equation}
-$$
-we can reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
+In continuous diffusion, the reverse process can be derived reversing the forward SDE $ dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt $. In the discrete setting, we can also reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
 
 **Proposition**: the reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
 $$
@@ -1709,11 +1686,10 @@ $$
 We simplify by marginalizing over all intermediate variables. For the first term:
 
 $$
-\begin{equation}
-\label{eq:elbo-continuous}
-    \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} &\left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right]
-    = \mathbb{E}_{\substack{x_1 \sim q( \cdot | x_0)}} &\left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right]
-\end{equation}
+\begin{align}
+    &\mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right] \notag \\
+    &= \mathbb{E}_{\substack{x_1 \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right] \label{eq:elbo-continuous}
+\end{align}
 $$
 
 For each term in the sum:
@@ -1722,7 +1698,7 @@ $$
 \begin{align}
     &\mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_{(j-1)/T} | x_{j/T}, x_0) - \log p_\theta(x_{(j-1)/T} | x_{j/T}) \right]  \label{eq:posterior-exp-1} \\
     &= \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \bigg[ \mathbb{E}_{\substack{x_{(j-1)/T} \sim q( \cdot | x_{j/T}, x_0)}}  \label{eq:posterior-exp-2} \\
-    &\qquad \left[ \log q(x_{(j-1)/T} | x_{j/T}, x_0) - \log p_\theta(x_{(j-1)/T} | x_{j/T}) \right] \bigg] \label{eq:posterior-exp-3}
+    &\qquad \left[ \log q(x_{(j-1)/T} | x_{j/T}, x_0) - \log p_\theta(x_{(j-1)/T} | x_{j/T}) \right] \bigg] \notag
 \end{align}
 $$
 
@@ -1780,16 +1756,7 @@ $$
 <summary>Proof</summary>
 <div>
 
-We start from (<span style="color: red"> cite thm </span>):
-
-$$
-\begin{align}
-    \text{ELBO}(x_0) &= - \mathrm{KL}\left(q(x_1|x_0) , p_\theta(x_1)\right)  \label{eq:mdm-elbo-proof-1} \\
-    &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right] \notag
-\end{align}
-$$
-
-Since $x_1 = m$ (fully masked at $t=1$), we have $\mathrm{KL}(q(x_1|x_0) , p_\theta(x_1)) = 0$. Therefore:
+We start from @eq:discrete-elbo-1. Since $x_1 = m$ (fully masked at $t=1$), we have $\mathrm{KL}(q(x_1|x_0) , p_\theta(x_1)) = 0$. Therefore:
 $$
 \begin{align}
 \text{ELBO}(x_0) = - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right] \label{eq:mdm-elbo-no-source}
@@ -1807,13 +1774,6 @@ $$
 \end{equation}
 $$
 
-From <span style="color: red"> cite lemma </span>, we recall, for $x_t = m$:
-$$
-\begin{align}
-q(x_s | x_t, x_0) = \left[ \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \mathbb{I}(x_s = x_0) + \frac{1 - \alpha_s}{1 - \alpha_t} \mathbb{I}(x_s = m) \right] \label{eq:bridge-mask-1}
-\end{align}
-$$
-
 We parametrize the reverse model as $p_\theta(x_s| x_t)=q(x_s| x_t,D_{\theta,t}(x_t))$, so when $x_t=m$ we have:
 $$
 \begin{align}
@@ -1821,6 +1781,7 @@ $$
     p_\theta(x_s=m| x_t=m) &= \frac{1-\alpha_s}{1-\alpha_t}. \label{eq:bridge-model-2}
 \end{align}
 $$
+using @eq:bridge-mask and replacing $\mathbb{I}(x_s = x_0)$ with $[D_{\theta,t}(x_t)]_v$.
 
 When $x_t\neq m$, both $q(x_s| x_t,x_0)$ and $p_\theta(x_s| x_t)$ put all their mass on $x_s=x_t=x_0$, so the KL term is zero.
 
@@ -1918,7 +1879,7 @@ where $r_t = -\dot{\alpha}_t / (1 - \alpha_t)$ is the instantaneous unmasking ra
 
 To derive $\dot{R}_t(x_t | x_0)$, we write the reverse transition probabilities $q(x_s | x_t, x_0)$ for arbitrary $s < t$ using a matrix $R_{s|t}^{x_0}$, and then write the first-order Taylor expansion as $\Delta t = t - s \to 0$ of this matrix (analogous method that we did to find $\dot{R}_t$).
 
-Using the <span style="color: red">cite lemma</span>, the reverse transition $q(x_s | x_t, x_0)$ can be written as a categorical distribution governed by a reverse matrix $R_{s|t}^{x_0}$:
+Using @eq:bridge-mask, the reverse transition $q(x_s | x_t, x_0)$ can be written as a categorical distribution governed by a reverse matrix $R_{s|t}^{x_0}$:
 $$
 \begin{equation}
 \label{eq:bridge-cat}
@@ -1928,16 +1889,16 @@ $$
 and:
 $$
 \begin{align}
-R_{s|t}^{x_0} = \label{eq:bridge-matrix-1}
-\left( \label{eq:bridge-matrix-2}
-\begin{array}{ccc|c} \label{eq:bridge-matrix-3}
- & & & 0  \label{eq:bridge-matrix-4} \\
- & I_{|\mathcal{V}|} & & \vdots  \label{eq:bridge-matrix-5} \\
- & & & 0  \label{eq:bridge-matrix-6} \\
-\hline \label{eq:bridge-matrix-7}
-0 & \dots \quad \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \quad \dots & 0 & \frac{1 - \alpha_s}{1 - \alpha_t} \label{eq:bridge-matrix-8}
-\end{array} \label{eq:bridge-matrix-9}
-\right) \in \mathbb{R}^{K \times K} \label{eq:bridge-matrix-10}
+R_{s|t}^{x_0} =
+\left(
+\begin{array}{ccc|c}
+ & & & 0   \\
+ & I_{|\mathcal{V}|} & & \vdots  \\
+ & & & 0  \\
+\hline
+0 & \dots \quad \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \quad \dots & 0 & \frac{1 - \alpha_s}{1 - \alpha_t}
+\end{array}
+\right) \in \mathbb{R}^{K \times K} \label{eq:bridge-matrix}
 \end{align}
 $$
 
@@ -1982,25 +1943,7 @@ $$
 <summary>Continuous-time limit proof</summary>
 <div>
 
-We start from the full ELBO derived in <span style="color: red">cite thm</span>:
-
-$$
-\begin{align}
-    \text{ELBO}(x_0) &= - \mathrm{KL}\left(q(x_1 | x_0) , p_\theta(x_1)\right)  \label{eq:ct-elbo-proof-1} \\
-    &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right] \notag
-\end{align}
-$$
-
-Let $\Delta t = 1/T$, $t = j/T$, and $s = (j-1)/T$. The probability of transitioning to a token $y \in \mathcal{V}$ is given by the first-order Taylor expansion (<span style="color: red">cite eq</span> and <span style="color: red">cite eq</span>):
-
-$$
-\begin{align}
-    q(y | x_t, x_0) &= \mathbb{I}(y = x_t) + \Delta t\, [\dot{R}_t(x_t | x_0)]_y + o(\Delta t)  \label{eq:ratio-kernel-1} \\
-    p_\theta(y | x_t) &= \mathbb{I}(y = x_t) + \Delta t\, [\dot{R}_{\theta,t}(x_t)]_y + o(\Delta t) \label{eq:ratio-kernel-2}
-\end{align}
-$$
-
-We expand the KL divergence term summing over the vocabulary:
+We start from the full ELBO derived in @eq:discrete-elbo-1. Let $\Delta t = 1/T$, $t = j/T$, and $s = (j-1)/T$. Using @eq:reverse-kernel and @eq:reverse-rate and expanding the KL divergence term summing over the vocabulary:
 
 $$
 \begin{align}
@@ -2061,18 +2004,12 @@ $$
 
 #### Concrete Score
 
-In continuous diffusion, the score function $\nabla \log p_t(x)$ dictates the deterministic reverse ODE:
-$$
-\begin{equation}
-\label{eq:score-ode}
-dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt
-\end{equation}
-$$
+In continuous diffusion, the score function $\nabla \log p_t(x)$ dictates the deterministic reverse ODE:$ dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt $.
 Thus, to sample samples from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
 
 In a discrete state space, there is no notion of a continuous gradient. However, one can write the sampling equation for the reverse process.
 Define $s_t(x_t)_y = \frac{q(X_t = y)}{q(X_t = x_t)}$.
-Then, remembering from <span style="color: red"> cite eq </span> that:
+Then, remembering from @eq:reverse-rate-mask that:
 $$
 \begin{equation}
 \label{eq:concrete-score}
@@ -2087,7 +2024,7 @@ $$
 \end{equation}
 $$
 
-**Proposition**(concrete score matching): We can express the loss <span style="color: red"> cite eq </span> in terms of concrete score:
+**Proposition**(concrete score matching): We can express the loss @eq:ratio-loss in terms of concrete score:
 $$
 \begin{equation}
 \label{eq:score-loss-prop}
@@ -2099,7 +2036,7 @@ where $C$ is a constant independent of $\theta$
 <details>
 <summary>Concrete Score Derivation</summary>
 <div>
-Consider the KL-derived loss: <span style="color: red"> cite eq </span>
+Consider the KL-derived loss @eq:ratio-loss:
 $$
 \begin{equation}
 \label{eq:score-loss-rates}
@@ -2507,14 +2444,7 @@ In particular, sampling from discrete diffusion (running the reverse CTMC from $
 <summary>Proof</summary>
 <div>
 
-We start from the infinitesimal reverse-time transition of the discrete diffusion process <span style="color: red">(**ref your eq**)</span>:
-
-$$
-\begin{equation}
-\label{eq:dd-reverse-step}
-p(x_{t-\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t)]_y + o(\Delta t)
-\end{equation}
-$$
+We start from the infinitesimal reverse-time transition of the discrete diffusion process @eq:reverse-rate.
 
 **Step 1: variable change $t' = 1 - t$.** We have $t = 1 - t'$, so $x_t = x_{1-t'}$ and $x_{t - \Delta t} = x_{1 - t' - \Delta t}$. The rate evaluates at $\dot{R}_{1-t'}$. The equation rewrites as:
 
@@ -2536,14 +2466,7 @@ p(x^{\text{FM}}_{t' + \Delta t} = y | x^{\text{FM}}_{t'}) = \mathbb{I}(y = x^{\t
 \end{equation}
 $$
 
-Recall the definition of a probability velocity <span style="color: red">(**cite eq**)</span>: a velocity field $u_{t'}$ generates a process $x^{\text{FM}}_{t'}$ if and only if
-
-$$
-\begin{equation}
-\label{eq:fm-velocity-def}
-p(x^{\text{FM}}_{t' + \Delta t} = y | x^{\text{FM}}_{t'} = x) = \mathbb{I}(y = x^{\text{FM}}_{t'}) + \Delta t \, [u_{t'}(x^{\text{FM}}_{t'})]_y + o(\Delta t)
-\end{equation}
-$$
+Recall the definition of a probability velocity @eq:prob-velocity: a velocity field $u_{t'}$ generates a process $x^{\text{FM}}_{t'}$ if and only if $ p(x^{\text{FM}}_{t' + \Delta t} = y | x^{\text{FM}}_{t'} = x) = \mathbb{I}(y = x^{\text{FM}}_{t'}) + \Delta t \, [u_{t'}(x^{\text{FM}}_{t'})]_y + o(\Delta t) $.
 
 Identifying the two first-order terms in $\Delta t$ directly gives:
 
@@ -2631,7 +2554,7 @@ $$
 
 **These two losses are not equivalent in general.** $L_{\text{CFM}}$ is a divergence between rate vectors, nonnegative objects that are not normalized to sum to one, while $L_{\text{CM}}$ is a divergence between probability distributions. Comparing them directly is not well-defined outside of a specific parameterization.
 
-**For the mask source**, the velocity field and the denoiser are linked by a simple rescaling (<span style="color:red">ref eq</span>), $u_{\theta,t}^i(\mathbf{x})_v = \frac{1}{1-t}\,P_{\theta,t}(X_1^i = v | \mathbf{x})$ for $v \neq m$, which makes the two losses directly comparable:
+**For the mask source**, the velocity field and the denoiser are linked by a simple rescaling (@eq:velocity-posterior), $u_{\theta,t}^i(\mathbf{x})_v = \frac{1}{1-t}\,P_{\theta,t}(X_1^i = v | \mathbf{x})$ for $v \neq m$, which makes the two losses directly comparable:
 
 $$
 \begin{equation}
@@ -2644,7 +2567,7 @@ $$
 <summary>Derivation</summary>
 <div>
 
-The CFM loss for the mask source can be written as a weighted cross-entropy <span style="color:red">ref eq</span>:
+The CFM loss for the mask source can be written as a weighted cross-entropy from @eq:cfm-loss and @eq:velocity-posterior:
 
 $$
 \begin{equation}

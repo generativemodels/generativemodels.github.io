@@ -19,6 +19,9 @@ resetCounters();
 const onload = jsOnLoadSetupCounters('fig');
 const equationRefsOnload = `
 (() => {
+	let equationTooltip;
+	const equationPreviews = new Map();
+
 	const rowTop = (display, el) => {
 		for (let node = el; node && node !== display; node = node.parentElement) {
 			if (!(node instanceof HTMLElement)) continue;
@@ -36,11 +39,74 @@ const equationRefsOnload = `
 		), entries[0]);
 	};
 
+	const ensureEquationTooltip = () => {
+		if (equationTooltip) return equationTooltip;
+		equationTooltip = document.createElement('div');
+		equationTooltip.className = 'equation-ref-tooltip';
+		document.body.appendChild(equationTooltip);
+		return equationTooltip;
+	};
+
+	const cloneEquationPreview = (display) => {
+		const clone = display.cloneNode(true);
+		clone.querySelectorAll('[id]').forEach((node) => node.removeAttribute('id'));
+		clone.querySelectorAll('[data-equation-label]').forEach((node) => node.remove());
+		return clone;
+	};
+
+	const positionTooltip = (tip, link) => {
+		const rect = link.getBoundingClientRect();
+		const margin = 10;
+		let left = rect.left;
+		let top = rect.bottom + 8;
+
+		const tipRect = tip.getBoundingClientRect();
+		if (left + tipRect.width > window.innerWidth - margin) {
+			left = window.innerWidth - tipRect.width - margin;
+		}
+		if (left < margin) left = margin;
+		if (top + tipRect.height > window.innerHeight - margin) {
+			top = rect.top - tipRect.height - 8;
+		}
+		if (top < margin) top = margin;
+
+		tip.style.left = left + 'px';
+		tip.style.top = top + 'px';
+	};
+
+	const showEquationTooltip = (link) => {
+		const label = link.getAttribute('data-equation-ref');
+		const display = label ? equationPreviews.get(label) : null;
+		if (!display) return;
+
+		const tip = ensureEquationTooltip();
+		tip.replaceChildren(cloneEquationPreview(display));
+		tip.style.display = 'block';
+		positionTooltip(tip, link);
+	};
+
+	const hideEquationTooltip = () => {
+		if (!equationTooltip) return;
+		equationTooltip.style.display = 'none';
+	};
+
+	const bindEquationTooltip = (link) => {
+		if (link.dataset.equationHoverBound === '1') return;
+		link.dataset.equationHoverBound = '1';
+		link.addEventListener('mouseenter', () => showEquationTooltip(link));
+		link.addEventListener('focus', () => showEquationTooltip(link));
+		link.addEventListener('mouseleave', hideEquationTooltip);
+		link.addEventListener('blur', hideEquationTooltip);
+	};
+
 	const resolveEquationRefs = () => {
 		const labels = new Map();
+		equationPreviews.clear();
 		let equationNumber = 0;
 
 		document.querySelectorAll('.katex-display').forEach((display) => {
+			if (display.closest('.equation-ref-tooltip')) return;
+
 			const tag = display.querySelector('.katex-html > .tag');
 			if (!tag) return;
 
@@ -63,11 +129,15 @@ const equationRefsOnload = `
 			markers.forEach((marker, index) => {
 				const label = marker.getAttribute('data-equation-label');
 				const entry = closestTag(entries, rowTop(display, marker), index);
-				if (label && entry) labels.set(label, entry.text);
+				if (label && entry) {
+					labels.set(label, entry.text);
+					equationPreviews.set(label, display);
+				}
 			});
 		});
 
 		document.querySelectorAll('a[data-equation-ref]').forEach((link) => {
+			bindEquationTooltip(link);
 			const label = link.getAttribute('data-equation-ref');
 			const text = label ? labels.get(label) : null;
 			if (!text) return;
@@ -146,6 +216,31 @@ const equationRefsOnload = `
 			}
 			.last-updated-on {
 				font-style: italic;
+			}
+			:global(.equation-ref) {
+				white-space: nowrap;
+			}
+			:global(.equation-ref-tooltip) {
+				position: fixed;
+				display: none;
+				z-index: 2000;
+				max-width: min(44rem, 92vw);
+				max-height: min(32rem, 80vh);
+				overflow: auto;
+				background: #ffffff;
+				color: #111827;
+				border: 1px solid #d1d5db;
+				border-radius: 8px;
+				box-shadow: 0 10px 26px rgba(0, 0, 0, 0.15);
+				padding: 0.65rem 0.75rem;
+				font-size: 0.9rem;
+				line-height: 1.45;
+			}
+			:global(.equation-ref-tooltip .katex-display) {
+				margin: 0;
+			}
+			:global(.equation-ref-tooltip .katex-display > .katex) {
+				white-space: nowrap;
 			}
 		</style>
 	</head>
