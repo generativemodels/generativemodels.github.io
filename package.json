@@ -2,6 +2,7 @@
   "name": "genmodels",
   "type": "module",
   "version": "0.0.1",
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
     "dfm:install": "pnpm --dir dfm-live-figure install",
     "build:dfm-figure": "pnpm --dir dfm-live-figure build-only --base=/dfm-live-figure/ && rm -rf public/dfm-live-figure && mkdir -p public/dfm-live-figure && cp -r dfm-live-figure/dist/* public/dfm-live-figure/",
