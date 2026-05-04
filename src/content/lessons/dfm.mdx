@@ -1279,9 +1279,9 @@ m, & \text{with probability } \beta_j
 $$
 
 We now consider the continuous-time limit $T \to \infty$, to avoid tying the model to a fixed number of noise steps.
-In continuous diffusion, applying $tT$ steps gives the cumulative schedule $\bar{\alpha}_t = \prod_{i=1}^{tT}(1 - \beta_i)$, which appears in the forward marginal $q(x_t | x_0) = \mathcal{N}(x_t;\ \sqrt{\bar{\alpha}_t}\, x_0,\ (1 - \bar{\alpha}_t) I)$ and controls the signal amplitude, i.e how much of $x_0$ remains in $x_t$. In the discrete setting, the same product gives the survival probability of a token.
+In continuous diffusion, applying $tT$ ($t \in [0,1]$) steps gives the cumulative schedule $\bar{\alpha}_t = \prod_{i=1}^{tT}(1 - \beta_i)$, which appears in the forward marginal $q(x_t | x_0) = \mathcal{N}(x_t;\ \sqrt{\bar{\alpha}_t}\, x_0,\ (1 - \bar{\alpha}_t) I)$ and controls the signal amplitude, i.e how much of $x_0$ remains in $x_t$. In the discrete setting, the same product gives the survival probability of a token.
 
-Since we want to evaluate this product for any $t \in [0,1]$, fix $t = j/T$ for a given $j$. By the Markov property, the probability that a token has survived up to time $t$ satisfies:
+Fix $t = j/T$ for a given $j$. By the Markov property, the probability that a token has survived up to time $t$ satisfies:
 
 $$
 \begin{align}
@@ -1845,7 +1845,7 @@ $$
     }{
         \frac{\alpha_s-\alpha_t}{1-\alpha_t}[D_{\theta,t}(x_t)]_{x_s}\mathbb{I}(x_s\neq m)
         + \frac{1-\alpha_s}{1-\alpha_t}\mathbb{I}(x_s=m)
-    }  \\
+    } \notag \\
     &= \mathbb{I}(x_t=m)\Bigg[
     \frac{\alpha_s-\alpha_t}{1-\alpha_t}
     \log\frac{\frac{\alpha_s-\alpha_t}{1-\alpha_t}}
@@ -2681,7 +2681,7 @@ L_{\text{CM}}(t) \label{eq:cm-t-1}
   &\quad + t \cdot \mathbb{E}\!\left[ \label{eq:cm-t-6}
       -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t) \label{eq:cm-t-7}
       | x_t^i \neq m \label{eq:cm-t-8}
-    \right] \label{eq:cm-t-9}
+    \right] \notag
 \end{align}
 $$
 
