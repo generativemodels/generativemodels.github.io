@@ -457,7 +457,7 @@ $$
 $$
 
 Suppose that there is a probability velocity $u_t$ generating $(p_t)$.
-Then, the probability velocity writes as a sum of $S$ *tokenwise* probability velocities $u_t^i$, taking values in $\mathcal{V}$:
+Then, the probability velocity writes as a sum of $S$ *tokenwise* probability velocities $u_t^i$, from $\mathcal{V}^S$ to $\mathcal{V}$:
 
 $$
 \begin{equation}
@@ -488,7 +488,7 @@ $$
 $$
 where $\mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})$ equals 1 if $\mathbf{y}$ and $\mathbf{x}$ differ at most at position $i$, and we used $\prod_{i=1}^S \mathbb{I}(y^i = x^i) = \mathbb{I}(\mathbf{y} = \mathbf{x})$.
 
-By comparing this result with the definition of the probability velocity @eq:prob-velocity, we directly identify:
+By comparing this result with the definition of the probability velocity (@eq:prob-velocity), we directly identify:
 $$
 \begin{equation}
 \label{eq:factorized-velocity-2}
@@ -499,14 +499,15 @@ $$
 </details>
 
 It follows that for infinitesimally small time steps, each sequence $\mathbf{x}$ is assumed to transition only to states where at most one token differs.
-It yields a substantial computational gain: instead of learning one transition object on the full sequence space $\mathcal{S}=\mathcal{V}^S$ (exponential in $S$), we learn $S$ local transition objects, each on the vocabulary space $\mathcal{V}$.
+It yields a substantial computational gain: instead of learning one transition object $u$ on the full sequence space $\mathcal{S}=\mathcal{V}^S$ (exponential in $S$), we learn $S$ local transition objects $u^i$, each on the vocabulary space $\mathcal{V}$.
 
 For example, take the vocabulary $\mathcal{V}=\{A,B\}$, sequence length $S=3$, and current sequence $\mathbf{x}=ABA$.
 We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$:
 
 <div class="dfm-local-example">
   <div class="dfm-local-example__source" aria-label="Current sequence ABA">
-    <span class="dfm-local-example__pos-1">A</span><span class="dfm-local-example__pos-2">B</span><span class="dfm-local-example__pos-3">A</span>
+    {/* <span class="dfm-local-example__pos-1">A</span><span class="dfm-local-example__pos-2">B</span><span class="dfm-local-example__pos-3">A</span> */}
+    ABA
   </div>
 
   <div class="dfm-local-example__matrix" aria-label="Velocity vector from ABA">
@@ -527,7 +528,8 @@ We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$:
           <td>$0$</td>
         </tr>
         <tr class="dfm-local-example__active">
-          <td><span class="dfm-local-example__state"><span class="dfm-local-example__pos-1">A</span><span class="dfm-local-example__pos-2">B</span><span class="dfm-local-example__pos-3">A</span></span></td>
+          {/* <td><span class="dfm-local-example__state"><span class="dfm-local-example__pos-1">A</span><span class="dfm-local-example__pos-2">B</span><span class="dfm-local-example__pos-3">A</span></span></td> */}
+          ABA
           <td>$u_t^{\color{#15803d}{1}}(\mathbf{x})_{\color{#15803d}{A}}+u_t^{\color{#dc2626}{2}}(\mathbf{x})_{\color{#dc2626}{B}}+u_t^{\color{#2563eb}{3}}(\mathbf{x})_{\color{#2563eb}{A}}$</td>
         </tr>
         <tr class="dfm-local-example__active">
@@ -571,7 +573,7 @@ This modelling step implies that at each sampling step, we draw each token indep
 $$
 \begin{equation}
 \label{eq:token-sampling}
-x_{\tau+h}^i \sim \text{Cat}\left(\mathbf{e}_{x_\tau^i} + h u_\tau^i(\mathbf{x}_\tau)\right)
+x_{t+h}^i \sim \text{Cat}\left(\mathbf{e}_{x_t^i} + h u_t^i(\mathbf{x}_t)\right)
 \end{equation}
 $$
 
