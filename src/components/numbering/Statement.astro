@@ -21,9 +21,13 @@ const counterLabel = `${typeByKind[kind]}:${label}`
 ---
 
 <div class="statement">
-  <p class="statement__title">
-    <strong>{kind} <Counter label={counterLabel} />{title ? ` (${title})` : ''}.</strong>
-  </p>
+  <strong class="statement__title">{kind} <Counter label={counterLabel} />{title ? ` (${title})` : ''}.</strong>{' '}
   <slot />
 </div>
 
+<style>
+  .statement > :global(p:first-of-type) {
+    display: inline;
+    margin-top: 0;
+  }
+</style>
