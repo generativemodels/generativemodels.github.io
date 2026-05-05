@@ -895,13 +895,12 @@ So $u_t$ satisfies the Kolmogorov equation for $p_t$ and therefore generates $p_
 
 {/* If needed we can add the same figure u,ucond,p,pcond as the one in the CFM blogpost, because it's still valid.*/}
 
-This is the exact same logic as in continuous FM: since the target field is identified as a
-conditional expectation, it can be learned through regression problem.
+This theorem follows the exact same logic as in continuous FM, and has the same practical consequence: since the target field is identified as a conditional expectation, it can be learned through a regression problem.
 In continuous spaces, this is typically introduced via the $L^2$ projection view, as the conditional expectation solves
 $$
 \begin{equation}
 \label{eq:l2-proj}
-u_t(\mathbf{x}) = \underset{u}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\mathbf{z} \sim \pi \\ \mathbf{x_t} \sim p_t(\cdot | \mathbf{z})}} \!\left[\left\|u_t(\mathbf{x}_t | \mathbf{z}) - u(\mathbf{x_t})\right\|^2 \right]
+u_t(\mathbf{x}) = \underset{u \text{ measurable}}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})}} \!\left[\left\|u_t(\mathbf{x}_t | \mathbf{z}) - u(\mathbf{x}_t)\right\|^2 \right]
 \end{equation}
 $$
 In discrete spaces, since we compare nonneg­ative rate vectors that behave like local probabilities, a Kullback-Leibler style objective is more natural.
@@ -910,7 +909,7 @@ for any Bregman divergence, and KL is the Bregman choice adapted to our setting:
 $$
 \begin{equation}
 \label{eq:kl-proj}
-u_t(\mathbf{x}) ={} \underset{u}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\mathbf{z} \sim \pi \\ \mathbf{x_t} \sim p_t(\cdot | \mathbf{z})}} \!\left[ \mathrm{KL} \left(u(\mathbf{x}_t | \mathbf{z}), u(\mathbf{x_t})\right)  \right]
+u_t(\mathbf{x}) ={} \underset{u}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})}} \!\left[ \mathrm{KL} \left(u(\mathbf{x}_t | \mathbf{z}), u(\mathbf{x}_t)\right)  \right]
 \end{equation}
 $$
 
@@ -1056,7 +1055,7 @@ where the last equality uses $x^i = m$. Both cases match the claimed formula.
 
 Because the term $\mathbb{I}(v = x^i)$ is a known constant given the current state, learning the velocity field $u$ is mathematically exactly equivalent to learning the denoiser probability $\mathbb{P}(X_1^i = v | X_t = \mathbf{x})$.
 
-Consequently, we can train the denoiser directly. Using the KL divergence between the true clean token distribution and the learned one, the loss simplifies to the standard cross-entropy:
+Consequently, we can train a denoiser $P_{\theta, t}$ directly. Using the KL divergence between the true clean token distribution and the learned one, the loss simplifies to the standard cross-entropy:
 
 $$
 \begin{equation}
@@ -1081,11 +1080,11 @@ $$
 */}
 
 By the same argument as in @eq:kl-proj, the true denoiser is the KL projection of the conditional clean-token distribution:
-
+$P_t(X_1^i | X_t = \mathbf{x})$ minimizes in $P$
 $$
 \begin{equation}
 \label{eq:denoiser-kl-proj}
-P_t(X_1^i | X_t = \mathbf{x}) ={} \underset{P}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t(\cdot | \mathbf{x}_1)}} \!\left[ \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x},\, \mathbf{x}_1),\, P(X_1^i | X_t = \mathbf{x})\right) \right]
+\mathbb{E}_{\substack{\mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t(\cdot | \mathbf{x}_1)}} \!\left[ \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x},\, \mathbf{x}_1),\, P(X_1^i | X_t = \mathbf{x})\right) \right]
 \end{equation}
 $$
 
