@@ -692,13 +692,13 @@ $$
 \end{equation}
 $$
 
-Now, let's examine the right-hand side using the analytic formulation of the velocity field $u_{t}(v | x_1^{i})_{y^{i}} = \frac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = v) \right) \mathbb{I}(v = m)$:
+Now, let's examine the right-hand side using the analytic formulation of the velocity field $u_{t}(v | x_1^{i})_{y^{i}} = \frac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) \mathbb{I}(v = m)$:
 $$
 \begin{align}
 &\sum_{v \in \mathcal{V} } u_t(v | x_1^i)_{y^i} \, q_t(v | x_1^{i})  \label{eq:mask-velocity-rhs-1} \\
-&= \sum_{v \in \mathcal{V} } \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = v) \right) \mathbb{I}(v = m) \, q_t(v | x_1^{i})  \label{eq:mask-velocity-rhs-2} \\
+&= \sum_{v \in \mathcal{V} } \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) \mathbb{I}(v = m) \, q_t(v | x_1^{i})  \label{eq:mask-velocity-rhs-2} \\
 &= \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) q_t(m | x_1^{i})  \label{eq:mask-velocity-rhs-3} \\
-&= \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) \label{eq:mask-velocity-rhs-4}
+&=  \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \label{eq:mask-velocity-rhs-4}
 \end{align}
 $$
 
@@ -711,12 +711,11 @@ Hence $(u_t(\cdot | x_1^i), q_t(\cdot | x_1^i))$ satisfies the Kolmogorov equati
 
 
 <details>
-<summary>Conditional velocities for source target conditioning, and uniform source</summary>
+<summary>Values of conditional velocities for source target conditioning, and uniform source</summary>
 <div>
 
-**Source-Target Conditioning**
-
-Here, we condition on both the start and end points, so $z^i = (x_0^i, x_1^i)$. The token $x^i$ at time $t$ is simply $x_1^i$ with probability $t$, and $x_0^i$ with probability $1 - t$:
+**Source-Target Conditioning**:
+Here, we condition on both the start and end points, so $z^i = (x_0^i, x_1^i)$. The token $x^i$ at time $t$ is simply chosen to be $x_1^i$ with probability $t$, and $x_0^i$ with probability $1 - t$:
 $$
 \begin{equation}
 \label{eq:pair-path}
@@ -729,8 +728,8 @@ $$
 \begin{equation}
 \label{eq:pair-velocity}
 u_t(x^i | x_0^i, x_1^i)_v = \begin{cases}
-\dfrac{1}{1 - t} & \text{if } v = x_1^i \text{ and } x^i = x_0^i, \\[0.3cm]
--\dfrac{1}{1 - t} & \text{if } v = x^i = x_0^i, \\[0.3cm]
+\tfrac{1}{1 - t} & \text{if } v = x_1^i \text{ and } x^i = x_0^i, \\
+-\tfrac{1}{1 - t} & \text{if } v = x^i = x_0^i, \\
 0 & \text{otherwise}.
 \end{cases}
 \end{equation}
@@ -748,9 +747,7 @@ u_t(x^i | x_0^i = 1,\, x_1^i = 2)_v = \begin{array}{c|ccc}
 \end{array}
 $$
 
-**Uniform Source**
-
-When $p_0$ is the uniform distribution, we can only condition on the target $z^i = x_1^i$. At time $t$, the token is the target $x_1^i$ with probability $t + (1 - t) \frac{1}{|\mathcal{V}|}$, or is drawn uniformly from other tokens in the vocabulary $\mathcal{V}$ with probability $(1 - t) \frac{1}{|\mathcal{V}|}$:
+**Uniform Source**: When $p_0$ is the uniform distribution, we can only condition on the target $z^i = x_1^i$. At time $t$, the token is the target $x_1^i$ with probability $t + (1 - t) \frac{1}{|\mathcal{V}|}$, or is drawn uniformly from other tokens in the vocabulary $\mathcal{V}$ with probability $(1 - t) \frac{1}{|\mathcal{V}|}$:
 $$
 \begin{equation}
 \label{eq:uniform-path}
@@ -852,8 +849,8 @@ We now arrive to the heart of Discrete Flow Matching: building a velocity that t
 **Fundamental Theorem of Discrete FM.** The probability velocity obtained by taking the conditional expectation of the conditional velocities,
 $$
 \begin{align}
-u_t(\mathbf{x})_{\mathbf{y}} \label{eq:marginal-velocity-def-1}
-&:= \mathbb{E}_{\substack{\mathbf{z}}}\!\left[u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} | X_t = \mathbf{x}\right]  \label{eq:marginal-velocity-def-2} \\
+u_t(\mathbf{x})_{\mathbf{y}}
+:= \mathbb{E}_{\substack{\mathbf{z}}}\!\left[u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} | X_t = \mathbf{x}\right]  \label{eq:marginal-velocity-def-2}
 &= \sum_{\mathbf{z}} u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(\mathbf{z} | X_t = \mathbf{x}) \, \label{eq:marginal-velocity-def-3}
 \end{align}
 $$
