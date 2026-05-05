@@ -16,7 +16,7 @@ const beta = (tags ?? []).includes('beta');
 
 resetDefines();
 resetCounters();
-const onload = jsOnLoadSetupCounters('fig');
+const onload = ['fig', 'def', 'lemma', 'prop', 'thm', 'cor'].map((type) => jsOnLoadSetupCounters(type)).join('\n');
 const equationRefsOnload = `
 (() => {
 	let equationTooltip;

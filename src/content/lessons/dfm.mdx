@@ -16,6 +16,7 @@ import diffusion from '../../assets/diffusion.svg'
 import InlineSvg from '../../components/InlineSvg.astro'
 import Counter from '../../components/numbering/Counter.astro'
 import Ref from '../../components/numbering/Ref.astro'
+import Statement from '../../components/numbering/Statement.astro'
 import SudokuFlowMatching from '../../components/sudoku_flow_matching_generative.jsx';
 import DFMSampling from '../../components/DFMSampling.jsx';
 import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
@@ -312,7 +313,7 @@ and if $p_t$ is defined as the law of the ODE solution $x(t)$ at time $t$ when $
 Here comes the first distinction between discrete and continuous FM: as solving an ODE when the state space is discrete is not possible, discrete FM relies on a different type of object: the *probability velocity*.
 
 **Definition (Probability Velocity)**:
-Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, and $(X_t)_{t\in[0,1]}$ be random variables taking values in $\mathcal{S}$, of laws $(p_t)_{t \in [0, 1]}$.
+Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, and $(X_t)_{t\in[0,1]}$ be random variables of laws $(p_t)_{t \in [0, 1]}$.
 Denote $u_t := u(\cdot, t)$.
 In the discrete case, we say that $u$ *generates* the probability path $(p_t)_{t \in [0, 1]}$ if
 $$
@@ -321,6 +322,7 @@ $$
 \mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{x} = \mathbf{y}) + h u_{t}(\mathbf{x})_{\mathbf{y}} + o(h)
 \end{equation}
 $$
+</Statement>
 If we index the state space as $\mathcal{S} = \{\mathbf{y}_1, \dots, \mathbf{y}_{|\mathcal{S}|}\}$ and choose $k$ such that $\mathbf{y}_k = \mathbf{x}$ (the current state), then the full transition-probability vector reads
 $$
 \begin{equation}
@@ -339,10 +341,36 @@ $$
 \end{equation}
 $$
 
+where $\mathbf{e}_{\mathbf{x}}$ is the one-hot vector corresponding to the current state $\mathbf{x}$.
+
+Intuitively, $u_t(\mathbf{x})_{\mathbf{y}}$ is the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
+Much like the ODE TODO cite ODE can be discretized with Euler's method, the sampling process @eq:prob-velocity can be discretized as
+$$
+\begin{equation}
+\label{eq:euler-sampling}
+\mathbf{x}_{t + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_t} + h u_\tau(\mathbf{x}_t)\right)
+\end{equation}
+$$
+
+As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
+We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**. This explains why we are allowed to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
+
 **Remark (Mass conservation for probability velocities).**
 The probability velocity $u$ must preserve probability mass: for @eq:prob-velocity to define a valid probability, for every $t\in [0, 1]$ $u_t$ must satisfy:
 1. **Positivity:** $u_t(\mathbf{x})_{\mathbf{y}} \ge 0$ for all $\mathbf{y} \neq \mathbf{x}$.
+$$
+\begin{equation}
+\label{eq:velocity-positivity}
+u_t(\mathbf{x})_{\mathbf{y}} \ge 0, \qquad \mathbf{y} \neq \mathbf{x}.
+\end{equation}
+$$
 2. **Normalization:** $\sum_{\mathbf{y} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} = 0$ for all $\mathbf{x} \in \mathcal{S}$ (and so $u_t(\mathbf{x})_{\mathbf{x}} \le 0$).
+$$
+\begin{equation}
+\label{eq:velocity-normalization}
+\sum_{\mathbf{y} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} = 0.
+\end{equation}
+$$
 
 
 
@@ -352,14 +380,14 @@ The probability velocity $u$ must preserve probability mass: for @eq:prob-veloci
 Positivity guarantees nonnegative off-diagonal transition probabilities:
 $$
 \begin{equation}
-\label{eq:velocity-positivity}
+\label{eq:velocity-positivity-proof}
 \mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x}) = h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h) \ge 0, \qquad \mathbf{y}\neq\mathbf{x}.
 \end{equation}
 $$
 Normalization guarantees total mass conservation:
 $$
 \begin{equation}
-\label{eq:velocity-normalization}
+\label{eq:velocity-normalization-proof}
 \sum_{\mathbf{y}\in\mathcal{S}} \mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x})
 = 1 + h\sum_{\mathbf{y}\in\mathcal{S}}u_t(\mathbf{x})_{\mathbf{y}} + o(h) = 1 + o(h).
 \end{equation}
@@ -387,7 +415,7 @@ This explains why we are able to take $p_0 = \delta_{m\ldots m}$ and still produ
 In Continuous Flow Matching, we have the guarantee that a velocity field $u_t$ generates a probability path $(p_t)$ if the pair $(p_t, u_t)$ satisfies the continuity equation $\partial_t p_t + \nabla \cdot (u_t p_t) = 0$.
 The equivalent in the discrete setting is called the Kolmogorov Equation:
 
-**Proposition (Kolmogorov Equation)**:
+<Statement kind="Proposition" label="kolmogorov-equation" title="Kolmogorov Equation">
 The probability velocity $u_t$ generates $(p_t)$ in the sense of @eq:prob-velocity if and only if the pair $(u_t, p_t)$ satisfies the Kolmogorov equation:
 $$
 \begin{equation}
@@ -396,6 +424,7 @@ $$
 \frac{d}{dt} p_t(\mathbf{y}) = \sum_{\mathbf{x} \in \mathcal{S}} u_{t}(\mathbf{x})_{\mathbf{y}} \, p_t(\mathbf{x})
 \end{equation}
 $$
+</Statement>
 
 <span style="color: red"> XXX interpretation </span>
 
@@ -447,7 +476,7 @@ Learning probability velocities taking values in the full sequence space $\mathc
 To make computations tractable, Discrete Flow Matching makes a **factorization assumption**: the probability path it builds updates each token in the sequence independently.
 As the next proposition shows, this has a fundamental consequence: the probability velocity that generates it can be written as a sum of token-wise contributions.
 
-**Proposition (Factorization):**
+<Statement kind="Proposition" label="factorization" title="Factorization">
 Let $(X_t)$ be random variables of laws $p_t$, and assume that the transition probabilities factorize over tokens, namely for $\mathbf{x}, \mathbf{y} \in \mathcal{S}$:
 $$
 \begin{align}
@@ -466,6 +495,8 @@ u_t(\mathbf{x})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \ma
 \end{equation}
 $$
 where $\mathbf{x}^{\neq i} \in \mathcal{V}^{S-1}$ denotes the sequence except $\mathbf{x}$ except its $i$-th element $x^i$.
+</Statement>
+
 
 <details>
 <summary>Proof</summary>
@@ -580,10 +611,9 @@ $$
 <figure>
   <DFMSampling client:load />
   <figcaption>
-    This animation shows the generation process of a sequence of lenghth 4 with a known probability velocity $u_t$. We can observe that at each step, all tokens are updated independently and that most of the times, the tokens stay at their masked state. The probability of drawing the mask token $m$ decreases at each step, while the probability of drawing other tokens increases. Once a token is unmasked, it cannot be remasked again until the end of the process. Different samples can be generated from the same initial sequence (change the seed!), because the sampling is stochastic at each step.
+    <strong>Figure <Counter label="fig:dfm-sampling" />:</strong> This animation shows the generation process of a sequence of lenghth 4 with a known probability velocity $u_t$. We can observe that at each step, all tokens are updated independently and that most of the times, the tokens stay at their masked state. The probability of drawing the mask token $m$ decreases at each step, while the probability of drawing other tokens increases. Once a token is unmasked, it cannot be remasked again until the end of the process. Different samples can be generated from the same initial sequence (change the seed!), because the sampling is stochastic at each step.
   </figcaption>
 </figure>
-
 
 Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of Discrete Flow Matching!
 
@@ -610,7 +640,7 @@ $p_0(\cdot | \mathbf{x}_1)$ is a Dirac at the all-masked sequence, while $p_1(\c
 The interest of this conditional probability path is that we can derive the associated probability velocity.
 
 <span style='color: red'> clarification needed here, the velocity is scalar, it generates $q_t$ not $p_t$ </span>
-**Proposition (Conditional velocity)**:
+<Statement kind="Proposition" label="conditional-velocity" title="Conditional velocity">
 The conditional velocity generating the path @eq:mask-path-1 is:
 $$
 \begin{equation}
@@ -622,6 +652,7 @@ u_t(x^i | x_1^i)_v = \begin{cases}
 \end{cases}
 \end{equation}
 $$
+</Statement>
 
 Remember that $u$ is a rate of change of probability: $u_t(x^i | x_1^i)_v$ quantifies the instantaneous probability flow from the current token $x^i$ toward token $v$.
 In the masked-source setting, the flow progressively removes mass from $m$ and transfers it to the target token $x_1^i$.
@@ -639,7 +670,7 @@ m & 0 & 0 & 0 & -\tfrac{1}{1-t}
 $$
 
 <details>
-<summary>Proof of Proposition XXX TODO</summary>
+<summary>Proof of Proposition <Ref label="prop:conditional-velocity" /></summary>
 <div>
 
 We verify that the conditional velocity field $u_t(\cdot | \mathbf{x}_1)$ generates the conditional probability path $p_t(\cdot | \mathbf{x_1})$ by ensuring that the pair satisfies the Kolmogorov equation. For a token at position $i$, we need to check:
@@ -751,9 +782,12 @@ $$
 </div>
 </details>
 
-<DFMLiveFigure
-    title="Discrete Flow Matching Live Figure"
-    height="570px"/>
+<figure>
+  <DFMLiveFigure
+      title="Discrete Flow Matching Live Figure"
+      height="570px"/>
+  <figcaption><strong>Figure <Counter label="fig:dfm-live" />:</strong></figcaption>
+</figure>
 
 #### From conditional to unconditional velocity
 
@@ -843,7 +877,7 @@ $$
 \end{align}
 $$
 
-Alternative proof: apply the Kolmogorov equation to each conditional process and average over $\mathbf{z}$:
+**Alternative proof**: apply the Kolmogorov equation to each conditional process and average over $\mathbf{z}$:
 $$
 \begin{align}
 \frac{d}{dt}p_t(\mathbf{y}) \label{eq:marginal-kolmogorov-1}
@@ -878,10 +912,11 @@ u_t(\mathbf{x}) ={} \underset{u}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\
 \end{equation}
 $$
 
-<span style="color:red">A discussion on KL (negative entries, how to enforce posititvty and summing to 0?)</span>
+Here $\mathrm{KL}$ denotes the generalized KL divergence between two positive vectors $a,b \in \mathbb{R}_+^d$, $\mathrm{KL}(a,b) = \sum_{j=1}^d a_j \log(a_j/b_j) - a_j + b_j$.
+When applying it to probability velocities, we only compare the off-diagonal entries of $u_t(\mathbf{x})$, i.e. the rates $u_t(\mathbf{x})_{\mathbf{y}}$ for $\mathbf{y}\neq\mathbf{x}$.
+These vectors are indeed positive (cf. @eq:velocity-positivity), and we can skip the diagonal entry since it is fixed by the other values, cf. @eq:velocity-normalization.
 
-<span style="color:red">For me (MM) we are done, it only remains to introduce the loss over $\theta$:
-The exact conditional expectation is approximated by a neural network $u_{\theta,t}$, trained by minimizing over $\theta$</span>
+The exact conditional expectation is approximated by a neural network $u_{\theta,t}$, trained by minimizing over $\theta$:
 $$
 \begin{align}
 L_{\text{CDFM}}(\theta) \label{eq:cdfm-1}
@@ -1092,7 +1127,10 @@ L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \math
 $$
 */}
 
-<DFMSampling denoiser client:load />
+<figure>
+  <DFMSampling denoiser client:load />
+  <figcaption><strong>Figure <Counter label="fig:dfm-denoiser-sampling" />:</strong></figcaption>
+</figure>
 
 <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
   <colgroup>
@@ -1397,7 +1435,7 @@ Now, the goal is to find an analog to the continuous time ODE of the forward pro
 
 To do so, we take the first-order Taylor expansion for a small time step $\Delta t$ of the transition matrix $\bar{Q}_{t+\Delta t | t}$.
 
-**Proposition** (Forward rate matrix):
+<Statement kind="Proposition" label="forward-rate-matrix" title="Forward rate matrix">
 The transition matrix $\bar{Q}_{t|s}$ induces a continuous-time Markov chain characterized by a forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$:
 
 $$
@@ -1425,6 +1463,7 @@ q(x_{t+\Delta t} = y \mid x_t) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{Q}_t(x_t
 $$
 
 where $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$, i.e. the instantaneous rate of transitioning from state $x_t$ to state $y$.
+</Statement>
 
 <details>
 <summary>Proof</summary>
@@ -1478,7 +1517,8 @@ To generate data, we define a reverse process that progressively unmasks tokens.
 
 In continuous diffusion, the reverse process can be derived reversing the forward SDE $ dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt $. In the discrete setting, we can also reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
 
-**Proposition**: the reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
+<Statement kind="Proposition" label="reverse-rate" title="Reverse rate">
+The reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
 $$
 \begin{equation}
 \label{eq:reverse-rate}
@@ -1497,6 +1537,7 @@ $$
 \end{cases}
 \end{equation}
 $$
+</Statement>
 
 <details>
 <summary>Proof</summary>
@@ -1605,7 +1646,8 @@ immediately, with equality iff the reverse trajectories perfectly recover the fo
 </details>
 */}
 
-**Theorem**(ELBO of discrete diffusion) The ELBO for a discrete diffusion process is given by:
+<Statement kind="Theorem" label="discrete-diffusion-elbo" title="ELBO of discrete diffusion">
+The ELBO for a discrete diffusion process is given by:
 
 $$
 \begin{align}
@@ -1613,6 +1655,7 @@ $$
 & - \sum_{j=1}^{T} \mathbb{E}_{x_{j/T} \sim q( \cdot | x_0)} \left[ \mathrm{KL}\!\left(q\!\left(x_{(j-1)/T} \mid x_{j/T}, x_0\right),\, p_\theta\!\left(x_{(j-1)/T} \mid x_{j/T}\right)\right) \right]  \label{eq:discrete-elbo-2} \notag
 \end{align}
 $$
+</Statement>
 
 <details>
 <summary>Training Loss Proof</summary>
@@ -1715,13 +1758,15 @@ where the first KL term is a constant independent of $\theta$, since $p_\theta(x
 
 The sum of KL terms corresponds to a forward trajectory where $x_0, x_{1/T}, \ldots, x_1$ is sampled from the noising process, and at each step the learned reverse transition $p_\theta(x_{(j-1)/T} | x_{j/T})$ is trained to match the true posterior reverse transition $q(x_{(j-1)/T} | x_{j/T}, x_0)$. Now that we want to specialize this loss to the case of masked diffusion, we first need to calculate $q(x_{(j-1)/T} | x_{j/T}, x_0)$.
 
-**Lemma**: for masked diffusion, $x_t = m$ and $s<t$, we have:
+<Statement kind="Lemma" label="masked-diffusion-bridge">
+For masked diffusion, $x_t = m$ and $s<t$, we have:
 $$
 \begin{equation}
 \label{eq:bridge-mask}
 q(x_s | x_t, x_0) = \left[ \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \mathbb{I}(x_s = x_0) + \frac{1 - \alpha_s}{1 - \alpha_t} \mathbb{I}(x_s = m) \right]
 \end{equation}
 $$
+</Statement>
 
 <details>
 <summary>Proof</summary>
@@ -1740,7 +1785,8 @@ We conclude using that $x_s$ is either at stae $x_0$ or at state $m$ with probab
 </div>
 </details>
 
-**Proposition** (Training Loss Proof for Masked Diffusion): In the specific case of masked diffusion, we can express the loss in terms of the denoiser output $D_{\theta,t}(x_t)$:
+<Statement kind="Proposition" label="masked-diffusion-training-loss" title="Training Loss Proof for Masked Diffusion">
+In the specific case of masked diffusion, we can express the loss in terms of the denoiser output $D_{\theta,t}(x_t)$:
 
 $$
 \begin{equation}
@@ -1748,6 +1794,7 @@ $$
 L(\theta) = \mathbb{E}_{\substack{\mathbf{x}_0 \sim p_{\text{data}} \\ x_t^i \sim q( \cdot | x_0^i)}} \sum_{i=1}^{S} \left[ \mathbb{I}(x_t^i = m) \left( -\frac{\dot{\alpha}_t}{1 - \alpha_t} \mathbf{x}_0^{i \top} \log D_{\theta,t}^i(\mathbf{x}_t) \right) \right]
 \end{equation}
 $$
+</Statement>
 
 <details>
 <summary>Proof</summary>
@@ -1924,7 +1971,8 @@ $$
 \end{equation}
 $$
 
-**Proposition** (Continuous-time ELBO): In the continuous-time limit, the ELBO becomes:
+<Statement kind="Proposition" label="continuous-time-elbo" title="Continuous-time ELBO">
+In the continuous-time limit, the ELBO becomes:
 
 $$
 \begin{equation}
@@ -1935,6 +1983,7 @@ $$
 \end{aligned}
 \end{equation}
 $$
+</Statement>
 
 <details>
 <summary>Continuous-time limit proof</summary>
@@ -2021,7 +2070,8 @@ $$
 \end{equation}
 $$
 
-**Proposition**(concrete score matching): We can express the loss @eq:ratio-loss in terms of concrete score:
+<Statement kind="Proposition" label="concrete-score-matching" title="Concrete score matching">
+We can express the loss @eq:ratio-loss in terms of concrete score:
 $$
 \begin{equation}
 \label{eq:score-loss-prop}
@@ -2029,6 +2079,7 @@ L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \B
 \end{equation}
 $$
 where $C$ is a constant independent of $\theta$
+</Statement>
 
 <details>
 <summary>Concrete Score Derivation</summary>
@@ -2494,7 +2545,9 @@ To make generation tractable, the standard approach used in the industry for lar
     * **Denoise:** Create $\mathbf{x}_{k+1}$ by setting $x_{k+1}^i = z^i$ for all $i \in \mathcal{I}$, keeping the rest as masks
 3. **Return** fully generated sequence $\mathbf{x}_N$
 
-**Proposition** (Sampling-Scheme equivalence): Suppose that the denoiser does not need to know the current time in its predictions, i.e. for any step $k$ and any given sequence $\mathbf{x}$, $D_{\theta,k}(\mathbf{x}) = D_{\theta}(\mathbf{x})$. If we choose the uniform random planner that selects positions uniformly at random among the masked tokens, i.e., $G_\phi(\mathbf{z}, \mathbf{x}_t) = \text{Unif}(\{i : x_t^i = m\})$, then planner-guided sampling with $N = S$ steps and $f(k) = 1$ token per step is exactly equivalent to the sampling procedure given @eq:reverse-rate as $\Delta t \to 0$.
+<Statement kind="Proposition" label="sampling-scheme-equivalence" title="Sampling-Scheme equivalence">
+Suppose that the denoiser does not need to know the current time in its predictions, i.e. for any step $k$ and any given sequence $\mathbf{x}$, $D_{\theta,k}(\mathbf{x}) = D_{\theta}(\mathbf{x})$. If we choose the uniform random planner that selects positions uniformly at random among the masked tokens, i.e., $G_\phi(\mathbf{z}, \mathbf{x}_t) = \text{Unif}(\{i : x_t^i = m\})$, then planner-guided sampling with $N = S$ steps and $f(k) = 1$ token per step is exactly equivalent to the sampling procedure given @eq:reverse-rate as $\Delta t \to 0$.
+</Statement>
 
 However, in practice, we rarely decide to unmask tokens by picking a random position at each step. A simple and widely used strategy is the soft greedy planner. Instead of unmasking tokens at random, it selects the positions where the denoiser is most confident in its predictions. We then relax this strict selection into a soft probability distribution using a softmax function with a temperature parameter $\tau$:
 $$
@@ -2576,7 +2629,10 @@ $$
 $$
 Here, $w^i$ represents the normalized weight of position $i$ assigned by the planner, and $\alpha$ is a hyperparameter that controls the strength of this planner guidance. To maintain numerical stability, the planner weights are detached: they reweight the loss, but gradients are not propagated through the planner itself.
 
-<DFMSampling denoiser planner client:load />
+<figure>
+  <DFMSampling denoiser planner client:load />
+  <figcaption><strong>Figure <Counter label="fig:dfm-planner-sampling" />:</strong></figcaption>
+</figure>
 
 #### Training Losses
 

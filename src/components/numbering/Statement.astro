@@ -1,0 +1,29 @@
+---
+import Counter from './Counter.astro'
+
+type Kind = 'Definition' | 'Lemma' | 'Proposition' | 'Theorem' | 'Corollary'
+
+const typeByKind: Record<Kind, string> = {
+  Definition: 'def',
+  Lemma: 'lemma',
+  Proposition: 'prop',
+  Theorem: 'thm',
+  Corollary: 'cor',
+}
+
+const { kind, label, title } = Astro.props as {
+  kind: Kind
+  label: string
+  title?: string
+}
+
+const counterLabel = `${typeByKind[kind]}:${label}`
+---
+
+<div class="statement">
+  <p class="statement__title">
+    <strong>{kind} <Counter label={counterLabel} />{title ? ` (${title})` : ''}.</strong>
+  </p>
+  <slot />
+</div>
+
