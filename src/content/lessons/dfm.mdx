@@ -312,7 +312,7 @@ and if $p_t$ is defined as the law of the ODE solution $x(t)$ at time $t$ when $
 
 Here comes the first distinction between discrete and continuous FM: as solving an ODE when the state space is discrete is not possible, discrete FM relies on a different type of object: the *probability velocity*.
 
-**Definition (Probability Velocity)**:
+<Statement kind="Definition" label="probability-velocity" title="Probability Velocity">
 Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, and $(X_t)_{t\in[0,1]}$ be random variables of laws $(p_t)_{t \in [0, 1]}$.
 Denote $u_t := u(\cdot, t)$.
 In the discrete case, we say that $u$ *generates* the probability path $(p_t)_{t \in [0, 1]}$ if
@@ -2326,7 +2326,8 @@ where $x_0^{\pi(<i)} = (x_0^{\pi(1)}, \ldots, x_0^{\pi(i-1)})$ denotes the token
 
 The following proposition shows that the MDM training objective is equivalent to the AO-ARM objective.
 
-**Proposition (MDM and AO-ARM Equivalence):** Let $\mathcal{L}_{\text{MDM}}(\theta)$ denote the masked diffusion training loss with linear schedule $\alpha_t = 1 - t$ and uniform time sampling $t \sim \mathcal{U}(0,1)$:
+<Statement kind="Proposition" label="mdm-ao-arm-equivalence" title="MDM and AO-ARM Equivalence">
+Let $\mathcal{L}_{\text{MDM}}(\theta)$ denote the masked diffusion training loss with linear schedule $\alpha_t = 1 - t$ and uniform time sampling $t \sim \mathcal{U}(0,1)$:
 $$
 \begin{align}
 \mathcal{L}_{\text{MDM}}(\theta) ={} & -\mathbb{E}_{t \sim \mathcal{U}(0,1),\, \mathbf{x}_0 \sim p_{\text{data}},\, \mathbf{x}_t \sim q(\cdot | \mathbf{x}_0)}  \label{eq:loss-mdm-exp-1} \\
@@ -2334,6 +2335,7 @@ $$
 \end{align}
 $$
 Then $\mathcal{L}_{\text{MDM}}(\theta) = \mathcal{L}_{\text{AO-ARM}}(\theta)$.
+</Statement>
 
 This equivalence has a practical consequence: since the MDM is implicitly trained on all possible token orderings, it does not privilege left-to-right dependencies.
 
