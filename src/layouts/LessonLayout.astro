@@ -6,7 +6,7 @@ import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
 
-import { resetCounters, jsOnLoadSetupCounters } from '../components/numbering/CountersTools';
+import { jsOnLoadSetupCounters } from '../components/numbering/CountersTools';
 import { resetDefines } from '../components/typst/typst-context';
 
 type Props = CollectionEntry<'lessons'>['data'];
@@ -15,7 +15,6 @@ const { title, description, pubDate, updatedDate, heroImage, tags } = Astro.prop
 const beta = (tags ?? []).includes('beta');
 
 resetDefines();
-resetCounters();
 const onload = ['fig', 'def', 'lemma', 'prop', 'thm', 'cor'].map((type) => jsOnLoadSetupCounters(type)).join('\n');
 const equationRefsOnload = `
 (() => {

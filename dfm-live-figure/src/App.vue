@@ -143,7 +143,7 @@ const VocabularyStack = () => (
 </script>
 <template>
   <div class="dfm-card">
-    <h2 class="dfm-title">Conditional Probability Paths</h2>
+    <h2 class="dfm-title">Conditional Probability Paths p<sub>t</sub>(· | x<sub>1</sub>)</h2>
 
     <D3Wrapper
       class="svg-vis"
@@ -264,7 +264,7 @@ const VocabularyStack = () => (
     </label>
 
     <div v-if="!state.showXfocuseprobat" class="samples-section">
-      <h2 class="samples-title">Samples from conditional probability paths</h2>
+      <h2 class="samples-title">Samples from conditional probability paths x<sub>t</sub> | x<sub>1</sub></h2>
       <div class="samples-list">
         <div v-for="(sample, idx) in state.sampledStrings" :key="idx" class="sample-row">
           <span

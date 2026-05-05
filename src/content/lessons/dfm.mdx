@@ -1,7 +1,7 @@
 ---
 title: 'Discrete Diffusion and Flow Matching'
 menu: 'Discrete Flow Matching (DFM)'
-description: 'On discrete flow matching models and their core principles, and parallel with continuous flow matching'
+description: 'On Discrete Flow Matching models and their core principles, and parallel with Continuous Flow Matching'
 pubDate: '2025-10-08'
 heroImage: '../../assets/blog-placeholder-3.jpg'
 order: 610
@@ -263,13 +263,13 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 Flow Matching (FM) and diffusion are the state-of-the-art frameworks for continuous data generation, particularly images. This blog post is a pedagogical introduction to their adaptation to discrete data.
 
 [The first section](#discrete-flow-matching) contains an introduction to Discrete Flow Matching while the [second section](#discrete-diffusion) introduces Discrete Diffusion. Both can be read independently and the reader already familiar with one or the other method can skip the associated section.
-The connection between Discrete Diffusion and Flow matching is made explicit in [the last section](#equivalence-with-discrete-flow-matching).
+The connection between Discrete Diffusion and Flow Matching is made explicit in [the last section](#equivalence-with-discrete-flow-matching).
 
 
 
 ### Generating discrete data
 
-Like their continuous analogs, discrete flow matching and diffusion aim at mapping a simple source distribution to a complex target distribution (the actual data we want to generate).
+Like their continuous analogs, Discrete Flow Matching and Discrete Diffusion aim at mapping a simple source distribution to a complex target distribution (the actual data we want to generate).
 To do so, they create a sequence of intermediate distributions $(p_t)_{t}$ that progressively evolve from source to target distribution.
 
 In this blog post, we deal with discrete data: the space on which the probability distributions are defined is $\mathcal{S} := \mathcal{V}^S$, namely the space of sequences of length $S \in \mathbb{N}$ over a given vocabulary $\mathcal{V}$.
@@ -283,13 +283,13 @@ The source distribution acts as our starting point for generation and is typical
 In this post, *we use the mask distribution ($p_{\text{mask}}$) as our running example*; adaptations in the case of other distributions are available as toggleable content.
 
 As a first example, consider generating Sudoku grids. The vocabulary is $\mathcal{V} = \{1, 2, \ldots, 9, m\}$, and the sequence length is 81, as there are 81 cases in a grid.
-Discrete flow matching and diffusion start from a sample from the source distribution, i.e. a fully masked grid here.
+Discrete Flow Matching and Discrete Diffusion start from a sample from the source distribution, i.e. a fully masked grid here.
 The model then iteratively fills this grid, step-by-step, finally reaching a sample from the target distribution (a valid, completed Sudoku board).
 
 <figure>
   <SudokuFlowMatching client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:sudoku-sampling" />:</strong> Visualisation of the sampling process for discrete flow matching/diffusion: a sample from the source distribution (here a fully masked sudoku grid) is transformed into a sample from the target distribution (here a valid sudoku grid).
+    <strong>Figure <Counter label="fig:sudoku-sampling" />:</strong> Visualisation of the sampling process for Discrete Flow Matching/Discrete Diffusion: a sample from the source distribution (here a fully masked sudoku grid) is transformed into a sample from the target distribution (here a valid sudoku grid).
   </figcaption>
 </figure>
 
@@ -313,7 +313,7 @@ x(0) = x_0 \\
 $$
 and if $p_t$ is defined as the law of the ODE solution $x(t)$ at time $t$ when $x_0 \sim p_0$, we say that $u$ generates the probability path $(p_t)_{t \in [0, 1]}$.
 
-Here comes the first distinction between discrete and continuous FM: as solving an ODE when the state space is discrete is not possible, discrete FM relies on a different type of object: the *probability velocity*.
+Here comes the first distinction between discrete and Continuous FM: as solving an ODE when the state space is discrete is not possible, discrete FM relies on a different type of object: the *probability velocity*.
 
 <Statement kind="Definition" label="probability-velocity" title="Probability Velocity">
 Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, and $(X_t)_{t\in[0,1]}$ be random variables of laws $(p_t)_{t \in [0, 1]}$.
@@ -356,7 +356,7 @@ $$
 $$
 
 As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
-We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**. This explains why we are allowed to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
+We reach a fundamental point: unlike Continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in Discrete Flow Matching is inherently stochastic at each step**. This explains why we are allowed to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
 
 **Remark (Mass conservation for probability velocities).**
 The probability velocity $u$ must preserve probability mass: for @eq:prob-velocity to define a valid probability, for every $t\in [0, 1]$ $u_t$ must satisfy:
@@ -409,7 +409,7 @@ $$
 $$
 where $\mathbf{e}_{\mathbf{x}} \in \mathbb{R}^{|\mathcal{S}|}$ is the one-hot vector corresponding to state $\mathbf{x} \in \mathcal{S}$, and $\text{Cat}$ denotes the categorical distribution.
 As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u_t(\mathbf{x})_{\mathbf{y}}$.
-We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**.
+We reach a fundamental point: unlike Continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in Discrete Flow Matching is inherently stochastic at each step**.
 This explains why we are able to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
 
 
@@ -622,13 +622,13 @@ Equipped with the links between probability paths and velocities, with our simpl
 
 #### Building the probability path
 
-Similarly to continuous flow matching, there are infinitely many possible choices for a probability path $(p_t)$ going from source $p_0$ to target $p_1$.
+Similarly to Continuous Flow Matching, there are infinitely many possible choices for a probability path $(p_t)$ going from source $p_0$ to target $p_1$.
 To build a specific one, we borrow the core idea from Continuous Flow Matching: we first define **conditional** probability paths for which the exact conditional velocity is known and easy to compute.
 Then, we show that the resulting global velocity (obtained by marginalizing the conditional velocities) is guaranteed to generate a probability path that transports $p_0$ to $p_1$. All that's left is to learn it as a simple conditional expectation from data, which neural networks know how to do!
 
 The conditioning variable $\mathbf{z} \in \mathcal{Z}^S$ that we use to build conditional paths and velocities can be either:
-* **A target sample:** $\mathbf{z} = \mathbf{x}_1$ (useful when the source $p_0$ is a known, simple distribution like uniform or mask).
-* **A source-target pair:** $\mathbf{z} = (\mathbf{x}_0, \mathbf{x}_1)$ (useful when transforming between two arbitrary datasets).
+* **A target sample:** $\mathbf{z} = \mathbf{x}_1$, with $\mathcal{Z} = \mathcal{V}$ (useful when the source $p_0$ is a known, simple distribution like uniform or mask).
+* **A source-target pair:** $\mathbf{z} = (\mathbf{x}_0, \mathbf{x}_1)$, with $\mathcal{Z} = \mathcal{V} \times \mathcal{V}$ (useful when transforming between two arbitrary datasets).
 
 To simplify the exposition, we will use $\mathbf{z} = \mathbf{x}_1$.
 Having chosen $\mathbf{z}$, we chose a conditional probability path.
@@ -787,7 +787,7 @@ $$
       title="Discrete Flow Matching Live Figure"
       height="570px"/>
   <figcaption>
-    <strong>Figure <Counter label="fig:dfm-live" />:</strong> Top: evolution of the conditional probability paths @eq:mask-path-1, where the vocabulary is restricted to the characters in $\mathbf{x}_1 \cup \{m\}$. In each cell, white indicates probability zero for sampling that token, while a fully colored cell indicates probability one. Bottom: for a given time $t$, five samples drawn directly from the conditional probability path @eq:mask-path-1. The average number of masked tokens sampled decreases linearly over time.
+    <strong>Figure <Counter label="fig:dfm-live" />:</strong> Top: evolution of the conditional path $p_t(\cdot | \mathbf{x}_1)$ defined in @eq:mask-path-1, where the vocabulary is restricted to the characters in $\mathbf{x}_1 \cup \{m\}$. In each cell, white indicates probability zero for sampling that token, while a fully colored cell indicates probability one. Bottom: for a given time $t$, five samples $x_t | \mathbf{x}_1$ drawn directly from the conditional probability path @eq:mask-path-1.
   </figcaption>
 </figure>
 
@@ -895,7 +895,8 @@ So $u_t$ satisfies the Kolmogorov equation for $p_t$ and therefore generates $p_
 
 {/* If needed we can add the same figure u,ucond,p,pcond as the one in the CFM blogpost, because it's still valid.*/}
 
-This theorem follows the exact same logic as in continuous FM, and has the same practical consequence: since the target field is identified as a conditional expectation, it can be learned through a regression problem.
+This theorem follows the exact same logic as in Continuous FM, and has the same practical consequence: since the target field is identified as a conditional expectation, it can be learned through a regression problem.
+
 In continuous spaces, this is typically introduced via the $L^2$ projection view, as the conditional expectation solves
 $$
 \begin{equation}
@@ -921,7 +922,7 @@ The exact conditional expectation is approximated by a neural network $u_{\theta
 $$
 \begin{align}
 L_{\text{CDFM}}(\theta) \label{eq:cdfm-1}
-&= \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x} \sim p_t( \cdot | \mathbf{z})}}\left[ \mathrm{KL}\left(u_t(\mathbf{x}_t | \mathbf{z}), u_{\theta,t}(\mathbf{x})\right) \right]  \label{eq:cdfm-2} \\
+&= \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t( \cdot | \mathbf{z})}}\left[ \mathrm{KL}\left(u_t(\mathbf{x}_t | \mathbf{z}), u_{\theta,t}(\mathbf{x}_t)\right) \right]  \label{eq:cdfm-2} \\
 & =\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t( \cdot | \mathbf{z})}}\left[ \sum_{i=1}^S \mathrm{KL}\left( u_t(x^i_t | z^i), u_{\theta,t}^i(\mathbf{x}_t) \right) \right] \label{eq:cdfm-3}
 \end{align}
 $$
@@ -933,16 +934,16 @@ To train our model, we use the KL divergence to measure the difference between v
 $$
 \begin{equation}
 \label{eq:dfm-loss}
-L_{\text{DFM}}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_t \sim p_t}}\left[ \mathrm{KL}\left(u_t(\mathbf{x}_t), u_{\theta,t}(\mathbf{x})\right) \right]
+L_{\text{DFM}}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_t \sim p_t}}\left[ \mathrm{KL}\left(u_t(\mathbf{x}_t), u_{\theta,t}(\mathbf{x}_t)\right) \right]
 \end{equation}
 $$
 
-However, $u_t(\mathbf{x})$ requires marginalizing over the entire dataset, making it computationally intractable. Following the approach of continuous flow matching, we instead use the **conditional discrete flow matching loss**:
+However, $u_t(\mathbf{x}_t)$ requires marginalizing over the entire dataset, making it computationally intractable. Following the approach of Continuous Flow Matching, we instead use the **conditional Discrete Flow Matching loss**:
 
 $$
 \begin{equation}
 \label{eq:cdfm-loss}
-L_{\text{CDFM}}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x} \sim p_t( \cdot | \mathbf{z})}}\left[ \mathrm{KL}\left(u_t(\mathbf{x} | \mathbf{z}), u_{\theta,t}(\mathbf{x})\right) \right]
+L_{\text{CDFM}}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t( \cdot | \mathbf{z})}}\left[ \mathrm{KL}\left(u_t(\mathbf{x}_t | \mathbf{z}), u_{\theta,t}(\mathbf{x}_t)\right) \right]
 \end{equation}
 $$
 
@@ -956,7 +957,7 @@ In particular, both objectives have the same minimizers. */}
 #### Learning with denoiser parameterization
 
 
-In continuous flow matching withs straight interpolation paths $x_t = (1-t) x_0 + tx_1$, learning the ideal velocity $\mathbb{E}[x_1 - x_0 | x_t=x]$ is mathematically equivalent to learning the ideal denoiser $\mathbb{E}[x_1 | x_t = x]$, since the two are linked via $\mathbb{E}[x_1 - x_0 | x_t=x] = \frac{1}{1 - t} ( \mathbb{E}[x_1 | x_t = x] - x)$.
+In Continuous Flow Matching withs straight interpolation paths $x_t = (1-t) x_0 + tx_1$, learning the ideal velocity $\mathbb{E}[x_1 - x_0 | x_t=x]$ is mathematically equivalent to learning the ideal denoiser $\mathbb{E}[x_1 | x_t = x]$, since the two are linked via $\mathbb{E}[x_1 - x_0 | x_t=x] = \frac{1}{1 - t} ( \mathbb{E}[x_1 | x_t = x] - x)$.
 It turns out the same type of denoiser-velocity equivalence holds in the discrete case:
 $$
 \begin{equation}
@@ -1128,10 +1129,12 @@ L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \math
 $$
 */}
 
+{/*
 <figure>
   <DFMSampling denoiser client:load />
   <figcaption><strong>Figure <Counter label="fig:dfm-denoiser-sampling" />:</strong> Sampling process using a learned denoiser and the sampling rule @eq:token-sampling. The velocity is calculated using @eq:velocity-posterior.</figcaption>
 </figure>
+*/}
 
 <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
   <colgroup>
@@ -1148,15 +1151,15 @@ $$
     {/* ASPECT 1 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', borderTop: '1px solid #ccc', textAlign: 'center' }}>
-        <strong>1. Define a conditioning variable $\mathbf{z}$ with some known distribution $p(\mathbf{z})$</strong>
+        <strong>1. Define a conditioning variable $\mathbf{z}$ with some known distribution $\pi(\mathbf{z})$</strong>
       </td>
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $\mathbf{z}=(\mathbf{x}_0, \mathbf{x}_1)$ with <br /> $p(\mathbf{z}) = p_0 \times p_{\text{data}}$
+        $\mathbf{z}=(\mathbf{x}_0, \mathbf{x}_1)$ with <br /> $\pi(\mathbf{z}) = p_0 \times p_{\text{data}}$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $\mathbf{z}=(\mathbf{x}_0, \mathbf{x}_1)$ with <br /> $p(\mathbf{z}) = p_0 \times p_{\text{data}}$
+        $\mathbf{z}=(\mathbf{x}_0, \mathbf{x}_1)$ with <br /> $\pi(\mathbf{z}) = p_0 \times p_{\text{data}}$
       </td>
     </tr>
 
@@ -1168,7 +1171,7 @@ $$
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $\mathcal{N}((1 - t) x_0 + t x_1, \sigma^2 \text{Id})$ <br /> $= \prod_{i=1}^S \mathcal{N}((1-t)x_0^i + t x_1^i, \sigma^2)$
+        $p_t(\mathbf{x} | \mathbf{z}) = \mathbb{I}\!\left(\mathbf{x} = (1 - t)\mathbf{x}_0 + t\mathbf{x}_1\right)$ <br /> $= \prod_{i=1}^S \mathbb{I}\!\left(x^i = (1-t)x_0^i + t x_1^i\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
         $p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | x_0^j, x_1^j)$ <br /> where $q_t \sim \text{Cat}((1 - t) \mathbf{e}_{x_0^j} + t \mathbf{e}_{x_1^j} )$
@@ -1208,22 +1211,22 @@ $$
     {/* ASPECT 5 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>5. Variational family $q_{\theta,t}(x_1 | \mathbf{x}_t)$ </strong> <br /> $L = - \mathbb{E}_{x_1} \log q_{\theta,t}(x_1 | \mathbf{x}_t) = - \mathbb{E}_{x_1} \sum_{i=1}^S \log q_{\theta,t}^i(x_1^i | \mathbf{x}_t)$
+        <strong>5. Denoising view</strong>
       </td>
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q_{\theta,t}(x_1^i | \mathbf{x}_t) = \mathcal{N}(\mathbb{E}_\theta[x_1^i | \mathbf{x}_t], \sigma^2)$ <br /> $L = D_{L^2}(x_1, \mathbb{E}_\theta[X_1 | X_t = \mathbf{x}_t])$ <br /> $= \sum_{i=1}^S \left(x_1^i - \mathbb{E}_\theta[X_1^i | X_t = \mathbf{x}_t]\right)^2$
+        $D_{\theta,t}(\mathbf{x}_t) := \mathbb{E}_\theta[X_1 | X_t = \mathbf{x}_t]$ <br /> $L = D_{L^2}(x_1, \mathbb{E}_\theta[X_1 | X_t = \mathbf{x}_t])$ <br /> $= \sum_{i=1}^S \left(x_1^i - \mathbb{E}_\theta[X_1^i | X_t = \mathbf{x}_t]\right)^2$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q_{\theta,t}(x_1^i | \mathbf{x}_t) = \text{Cat}(P_{\theta,t}(X_1^i | \mathbf{x}_t))$ <br /> $L = \sum_{i=1}^S \mathrm{KL}^i(\mathbf{e}_{x_1^i}, P_{\theta,t}(X_1^i | X_t = \mathbf{x}_t))$ <br /> $= -\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)$
+        $D_{\theta,t}^i(\mathbf{x}_t) := P_{\theta,t}(X_1^i | \mathbf{x}_t) \in \Delta_{\mathcal{V}}$ <br /> $L = \sum_{i=1}^S \mathrm{KL}\!\left(\mathbf{e}_{x_1^i}, D_{\theta,t}^i(\mathbf{x}_t)\right)$ <br /> $= -\sum_{i=1}^S \log D_{\theta,t}^i(\mathbf{x}_t)_{x_1^i}$
       </td>
     </tr>
 
     {/* ASPECT 6 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>6. Training in practice</strong> <br /> <em>Sample $t \sim \mathcal{U}_{[0,1]}, \mathbf{z} \sim p_z, \mathbf{x}_t \sim p(\mathbf{x} | t, \mathbf{z})$</em>
+        <strong>6. Training in practice</strong> <br /> <em>Sample $t \sim \mathcal{U}_{[0,1]}, \mathbf{z} \sim \pi, \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})$</em>
       </td>
     </tr>
     <tr>
@@ -1238,15 +1241,15 @@ $$
     {/* ASPECT 7 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>7. Sampling</strong> <br /> <em>Sample $\mathbf{x}_0 \sim p_0$, Integration scheme on $t \in [0, 1]$</em>
+        <strong>7. Sampling</strong> <br /> <em>Sample $\mathbf{x}_0 \sim p_0$, integration scheme for $k=0,\ldots,N-1$</em>
       </td>
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        Numerical Integration (Euler ODE): <br /> $\mathbf{x}_{k+1} = \mathbf{x}_k + \frac{1}{N} u_{\theta,t}(\mathbf{x}_k)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}(\mathbf{x}) = \frac{1}{1-t}\!\left(\mathbb{E}_\theta[X_1 | X_t = \mathbf{x}] - \mathbf{x}\right)$
+        Numerical Integration (Euler ODE): <br /> $\mathbf{x}_{k+1} = \mathbf{x}_k + \frac{1}{N} u_{\theta,k/N}(\mathbf{x}_k)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,k/N}(\mathbf{x}) = \frac{1}{1-k/N}\!\left(\mathbb{E}_\theta[X_1 | X_{k/N} = \mathbf{x}] - \mathbf{x}\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        Continuous Time Markov Chain: <br /> $x_{k+1}^i \sim \text{Cat}\!\left(\mathbf{e}_{x_k^i} + \frac{1}{N} u_{\theta,t}^i(\mathbf{x}_k)\right)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}^i(\mathbf{x}) = \frac{1}{1-t}\!\left(P_{\theta,t}(X_1^i | \mathbf{x}) - (\mathbf{e}_{x^i})\right)$
+        Continuous Time Markov Chain: <br /> $x_{k+1}^i \sim \text{Cat}\!\left(\mathbf{e}_{x_k^i} + \frac{1}{N} u_{\theta,k/N}^i(\mathbf{x}_k)\right)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,k/N}^i(\mathbf{x}) = \frac{1}{1-k/N}\!\left(P_{\theta,k/N}(X_1^i | \mathbf{x}) - \mathbf{e}_{x^i}\right)$
       </td>
     </tr>
 
@@ -1271,19 +1274,28 @@ $$
 
 ### Discrete Diffusion
 
-Continuous diffusion models learn to generate data like images by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise. In the discrete setting, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
-Therefore, as in continuous diffusion, we follow the same three steps:
-1. Define a forward process modeled as a Markov chain, where each step independently replaces tokens with a mask token until the sequence is fully corrupted.
+Continuous Diffusion models learn to generate data like images by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise. In Discrete Diffusion, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
+Therefore, as in Continuous Diffusion, we follow the same three steps:
+1. Define a forward process modeled as a Markov chain, where each token independently follows a corruption process that replaces it with a mask token.
 2. Show that the reverse process is also a Markov chain, and derive its associated dynamics.
 3. Learn the reverse process by training a neural network to align the trajectories of the forward and reverse processes.
 
-<span style="color: red"> if we chose not to talk about concrete score, we can concatenate in 2 steps: define a forward, then learn a reverse that align trajectories. </span>
+<blockquote style={{ fontSize: '0.9em' }}>
+<p><strong>Commentaire global (long, peut-être lire en diagonal + le blog et ensuite revenir dessus ?):</strong> J'ai un peu du mal à structurer. Si j'ai bien compris l'idée du score matching, l'idée est qu'il parte de leur forward sde/ode, ils dérivent une ode/sde qui simulent le reverse process de cette forward et ça highlight le score qui est la quantité qu'il faut apprendre pour pouvoir faire du Euler sur cette SDE et sampler. Il y a en parallèle la vision DDPM qui: construit step by step un forward qui mask les tokens à chaque step, et ensuite ils apprennent un reverse dont le but va être de partir du mask et d'apprendre le modèle à "lire la trajectoire qui a généré ce masque" à l'envers. En discrete (et en continu aussi je crois) les deux approches donnent exactement la même loss (KL entre les vélocités) mais j'ai du mal à bien enchaîner je trouve: si je lis la partie au dessus en fait la loss vient naturellement de l'équation et on voit pas trop pk je fais tt le blabla en bas avec les trajectoires, de la mm manière si je commence par le blabla en bas j'arrive à une loss pour masked diffusion et tout ce qui suit n'est pas très très utile. Je peux aussi faire qqch de plus séquentiel: d'abord présenter vu uniquement DDPM avec texte jusque loss pour masked diffusion, et ensuite clairement dire que dans ce qui suit j'essaie de reproduire la vision "concrete_score" en diffusion, et j'introduis alors Q_dot, R_dot, etc, ... Dernier point : si je me restreins à la vision DDPM, j'aurais du mal à faire l'équivalence avec flow matching.</p>
+<p>Je peux proposer le plan :</p>
+<ul>
+  <li>Vue purement DDPM.</li>
+  <li>Vue purement Score Matching.</li>
+  <li>Équivalence entre les deux (on minimize exactement la même loss).</li>
+</ul>
+</blockquote>
 
 #### Forward Process
 
-We first consider the forward process: we start from a clean sequence $\mathbf{x_0}$, and we progressively replace each token by the mask token, transforming the sequence into $\mathbf{x_1} = mm...m$. Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token in the following.
+We first consider the forward process: we start from a clean sequence $\mathbf{x_0}$, and we progressively replace each token by the mask token, transforming the sequence into $\mathbf{x_1} = mm...m$.
+Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token in the following.
 
-In continuous Denoising Diffusion Probabilistic Models (DDPM), we start by defining a local noising process over $T$ steps, where each step slightly corrupts the signal by adding Gaussian noise:
+In Continuous Denoising Diffusion Probabilistic Models (DDPM), we start by defining a local noising process over $T$ steps, where each step slightly corrupts the signal by adding Gaussian noise:
 
 $$
 \begin{equation}
@@ -1305,9 +1317,12 @@ m, & \text{with probability } \beta_j
 $$
 
 We now consider the continuous-time limit $T \to \infty$, to avoid tying the model to a fixed number of noise steps.
-In continuous diffusion, applying $tT$ ($t \in [0,1]$) steps gives the cumulative schedule $\bar{\alpha}_t = \prod_{i=1}^{tT}(1 - \beta_i)$, which appears in the forward marginal $q(x_t | x_0) = \mathcal{N}(x_t;\ \sqrt{\bar{\alpha}_t}\, x_0,\ (1 - \bar{\alpha}_t) I)$ and controls the signal amplitude, i.e how much of $x_0$ remains in $x_t$. In the discrete setting, the same product gives the survival probability of a token.
+In Continuous Diffusion, applying $tT$ ($t \in [0,1]$) steps gives the cumulative schedule $\bar{\alpha}_t = \prod_{i=1}^{tT}(1 - \beta_i)$, which appears in the forward marginal $q(x_t | x_0) = \mathcal{N}(x_t;\ \sqrt{\bar{\alpha}_t}\, x_0,\ (1 - \bar{\alpha}_t) I)$.
+It controls the signal amplitude, i.e how much of $x_0$ remains in $x_t$.
 
-Fix $t = j/T$ for a given $j$. By the Markov property, the probability that a token has survived up to time $t$ satisfies:
+In the discrete setting, the same product gives the survival probability of a token.
+Fix $t = j/T$ for a given $j$.
+By the Markov property, the probability that a token has survived up to time $t$ satisfies:
 
 $$
 \begin{align}
@@ -1322,14 +1337,7 @@ q(x_t = x_0 \mid x_0)
 $$
 by chaining $j$ consecutive transitions.
 
-For a clean continuous-time limit, we introduce a continuous masking-rate function $\beta : [0,1] \to \mathbb{R}_+$, so that, when we discretize it over the $T$ steps, with $\Delta t = 1/T$, we get:
-
-$$
-\begin{equation}
-\beta_i = \beta(i/T)\Delta t
-= \frac{1}{T}\beta\left(\frac{i}{T}\right).
-\end{equation}
-$$
+For a clean continuous-time limit, we introduce a continuous masking-rate function $\beta : [0,1] \to \mathbb{R}_+$, so that, when we discretize it over the $T$ steps, with $\Delta t = 1/T$, we get: $ \beta_i = \beta(i/T)\Delta t = \frac{1}{T}\beta\left(\frac{i}{T}\right). $
 
 Then:
 
@@ -1366,7 +1374,7 @@ We deduce the following properties on $\alpha_t$ from the derivation above:
 - $\alpha_1 = 0$: at time $t=1$, all tokens are masked.
 - $\alpha_t$ is decreasing in $t$: as time increases, the probability of a token being unmasked decreases.
 
-Using the Markov property of the process, we can compute the transition probabilities between any two time steps $s < t$:
+Using the Markov property of the process, we can then compute the transition probabilities between any two time steps $s < t$:
 $$
 \begin{equation}
 \label{eq:forward-transition}
@@ -1414,7 +1422,6 @@ $$
 </div>
 </details>
 
-<span style="color: red"> START FACULATIVE IF NOT CONCRETE SCORE. BUT NEEDED TO ESTABLISH EQUIVALENCE WITH FLOW MATCHING, so I would keep it. (What's next: local transition "equations" for forward and reverse processes)  </span>
 
 **Matrix view**: we can represent these transition probabilities in a Matrix $\bar{Q}_{t|s} \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$, satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$.
 $$
@@ -1432,7 +1439,7 @@ $$
 \end{align}
 $$
 
-Now, the goal is to find an analog to the continuous time ODE of the forward process in continuous diffusion $ dx_t = f_t(x_t)\,dt + g_t\,dW_t $.
+Now, the goal is to find an analog to the continuous time ODE of the forward process in Continuous Diffusion $ dx_t = f_t(x_t)\,dt + g_t\,dW_t $.
 
 To do so, we take the first-order Taylor expansion for a small time step $\Delta t$ of the transition matrix $\bar{Q}_{t+\Delta t | t}$.
 
@@ -1514,9 +1521,9 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 
 #### Reverse Process
 
-To generate data, we define a reverse process that progressively unmasks tokens.
+To generate data, we want to find a reverse process that progressively unmasks tokens to produce a clean sequence.
 
-In continuous diffusion, the reverse process can be derived reversing the forward SDE $ dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt $. In the discrete setting, we can also reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
+In Continuous Diffusion, the reverse process can be derived reversing the forward SDE $ dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt $. In the discrete setting, we can also reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
 
 <Statement kind="Proposition" label="reverse-rate" title="Reverse rate">
 The reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
@@ -1559,11 +1566,9 @@ For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a v
 </div>
 </details>
 
-<span style="color: red"> END FACULATIVE IF NOT CONCRETE SCORE </span>
 
 #### Training
 
-<span style="color: red"> if we remove the section on backwrad process, add a sentence </span>
 Our objective is to minimize the KL divergence between the distribution induced by the forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
 
 $$
@@ -1889,7 +1894,6 @@ which matches the sequence-level training loss defined previously.
 </div>
 </details>
 
-<span style="color: red"> UNTIL THE END, FACULATIVE IF NOT CONCRETE SCORE </span>
 
 Our goal is now to derive a loss that can be generalized for other noising processes. In the continuous-time limit $T \to \infty$, each discrete transition $q(x_s | x_t)$ is replaced by an instantaneous rate $\dot{R}_t(x_t)$. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
 
@@ -2051,7 +2055,7 @@ $$
 
 #### Concrete Score
 
-In continuous diffusion, the score function $\nabla \log p_t(x)$ dictates the deterministic reverse ODE:$ dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt $.
+In Continuous Diffusion, the score function $\nabla \log p_t(x)$ dictates the deterministic reverse ODE:$ dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt $.
 Thus, to sample samples from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
 
 In a discrete state space, there is no notion of a continuous gradient. However, one can write the sampling equation for the reverse process.
@@ -2470,10 +2474,10 @@ with the same $f(k, \mathbf{x}_0)$ defined in Step 1.
 
 ### Equivalence with Discrete Flow Matching
 
-While discrete diffusion and discrete flow matching share similar mathematical foundations, their primary difference lies in the time convention. In discrete diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. Discrete flow matching uses the exact opposite convention.
+While Discrete Diffusion and Discrete Flow Matching share similar mathematical foundations, their primary difference lies in the time convention. In Discrete Diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. Discrete Flow Matching uses the exact opposite convention.
 
 
-We can perfectly translate between the two frameworks using a simple time reversal: $t_{\text{FM}} = 1 - t_{\text{DD}}$. Concretely, if $(x_t)_{t \in [0,1]}$ denotes the discrete diffusion reverse process, then the time-reversed process $\tilde{x}_{t'} := x_{1-t'}$ is a valid discrete flow matching process: it has the same law as the flow matching process with velocity field:
+We can perfectly translate between the two frameworks using a simple time reversal: $t_{\text{FM}} = 1 - t_{\text{DD}}$. Concretely, if $(x_t)_{t \in [0,1]}$ denotes the discrete diffusion reverse process, then the time-reversed process $\tilde{x}_{t'} := x_{1-t'}$ is a valid Discrete Flow Matching process: it has the same law as the flow matching process with velocity field:
 
 $$
 \begin{equation}

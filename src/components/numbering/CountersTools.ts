@@ -12,27 +12,31 @@ function getCounterGroup(type: string) {
   return statementTypes.has(type) ? 'statement' : type
 }
 
+function getCounterGroupKey(type: string, scope: string) {
+  return `${scope}:${getCounterGroup(type)}`
+}
+
 function getCounterKey(type: string, name: string) {
   return `${type}:${name}`
 }
 
-export function ensureCounter(type: string) {
-  const group = getCounterGroup(type)
+export function ensureCounter(type: string, scope = 'global') {
+  const group = getCounterGroupKey(type, scope)
   if (!counters[group]) {
     counters[group] = { map: {}, counter: 0 };
   }
   return counters[group];
 }
 
-export function incrementCounter(type: string, name: string) {
-  const ct = ensureCounter(type);
+export function incrementCounter(type: string, name: string, scope = 'global') {
+  const ct = ensureCounter(type, scope);
   ct.map[getCounterKey(type, name)] = ct.counter;
   ct.counter++;
   return ct.counter;
 }
 
-export function getCounterText(type: string, name: string) {
-  const ct = ensureCounter(type);
+export function getCounterText(type: string, name: string, scope = 'global') {
+  const ct = ensureCounter(type, scope);
   return String((ct.map[getCounterKey(type, name)] ?? 0) + 1);
 }
 
@@ -44,8 +48,8 @@ export function resetCounters() {
   counters = {};
 }
 
-export function resetCounter(type: string) {
-  delete counters[type];
+export function resetCounter(type: string, scope = 'global') {
+  delete counters[getCounterGroupKey(type, scope)];
 }
 
 
@@ -54,11 +58,19 @@ export function resetCounter(type: string) {
 
 export const jsSetupCounteurs = function(type: string) {
   const texts = {} as Record<string, string>;
-  document.querySelectorAll(`.counter--${type}`).forEach(el => {
+  const statementTypes = ['def', 'lemma', 'prop', 'thm', 'cor'];
+  const types = statementTypes.includes(type) ? statementTypes : [type];
+  const counterSelector = types.map((t) => `.counter--${t}`).join(',');
+  const refSelector = types.map((t) => `.counter-ref--${t}`).join(',');
+
+  document.querySelectorAll(counterSelector).forEach((el, index) => {
     const label = `${el.getAttribute('data-type')}:${el.getAttribute('data-name')}`;
-    texts[label] = el.getAttribute('data-text') || '';
+    const text = String(index + 1);
+    texts[label] = text;
+    el.textContent = text;
+    el.setAttribute('data-text', text);
   });
-  document.querySelectorAll(`.counter-ref--${type}`).forEach(el => {
+  document.querySelectorAll(refSelector).forEach(el => {
     const label = `${el.getAttribute('data-type')}:${el.getAttribute('data-name')}`;
     if (texts[label]) {
       el.textContent = texts[label];
