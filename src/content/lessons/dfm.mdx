@@ -272,11 +272,11 @@ Like their continuous analogs, discrete flow matching and diffusion aim at mappi
 To do so, they create a sequence of intermediate distributions $(p_t)_{t}$ that progressively evolve from source to target distribution.
 
 In this blog post, we deal with discrete data: the space on which the probability distributions are defined is $\mathcal{S} := \mathcal{V}^S$, namely the space of sequences of length $S \in \mathbb{N}$ over a given vocabulary $\mathcal{V}$.
-A sequence $x$ in $\mathcal{S}$ is denoted as $\mathbf{x} = x^1 \dots x^S$, the $x^i$'s being called *tokens*.
+A sequence $\mathbf{x}$ in $\mathcal{S}$ is denoted as $\mathbf{x} = x^1 \dots x^S$, the $x^i$'s being called *tokens*.
 In the vocabulary, we add a special token: the mask token, denoted as $m$.
 
 The source distribution acts as our starting point for generation and is typically chosen to be either:
-- The **mask distribution ($p_{\text{mask}} := \delta_{m\ldots m}$):** All sequences start entirely filled with the mask token $m$.
+- The **mask distribution ($p_{\text{mask}} := \delta_{m\ldots m}$):** All sequences start entirely filled with the mask token $m$; $\delta$ is the Dirac delta distribution.
 - The **uniform distribution ($p_{\text{unif}}$):** All tokens in the starting sequence are sampled uniformly across the vocabulary $\mathcal{V}$.
 
 In this post, *we use the mask distribution ($p_{\text{mask}}$) as our running example*; adaptations in the case of other distributions are available as toggleable content.
@@ -289,7 +289,7 @@ The model then iteratively fills this grid, step-by-step, finally reaching a sam
 <SudokuFlowMatching client:load />
 
 
-We first introduce Discrete Flow Matching; the reader already familiar with this technique can jump directly to [Discrete Diffusion](#discrete-diffusion).
+We first introduce Discrete Flow Matching; the reader already familiar with this technique can jump directly to the [Discrete Diffusion section](#discrete-diffusion).
 
 ### Discrete Flow Matching
 
