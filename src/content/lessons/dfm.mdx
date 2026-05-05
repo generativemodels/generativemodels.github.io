@@ -261,13 +261,10 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 
 Flow Matching (FM) and diffusion are the state-of-the-art frameworks for continuous data generation, particularly images. This blog post is a pedagogical introduction to their adaptation to discrete data.
 
-[Discrete Flow Matching](#discrete-flow-matching) contains an introduction to Discrete Flow Matching, [Discrete Diffusion](#discrete-diffusion) an introduction to Discrete Diffusion. The connection between the two is made explicit in [Equivalence with Discrete Flow Matching](#equivalence-with-discrete-flow-matching).
-The reader already familiar with one or the other method can skip the associated section.
+[The first section](#discrete-flow-matching) contains an introduction to Discrete Flow Matching while the [second section](#discrete-diffusion) introduces Discrete Diffusion. Both can be read independently and the reader already familiar with one or the other method can skip the associated section.
+The connection between Discrete Diffusion and Flow matching is made explicit in [the last section](#equivalence-with-discrete-flow-matching).
 
 
-{/*
-Discrete diffusion models were first introduced independently by two simultaneous papers at NeurIPS 2021 [<a class="cite-ref" href="#ref-1">1</a>,<a class="cite-ref" href="#ref-2">2</a>], later extended to continuous time [<a class="cite-ref" href="#ref-3">3</a>], made competitive with autoregressive models by SEDD [<a class="cite-ref" href="#ref-4">4</a>], and then extended with flow-based formulations in [<a class="cite-ref" href="#ref-5">5</a>] and [<a class="cite-ref" href="#ref-6">6</a>].
-*/}
 
 ### Generating discrete data
 
