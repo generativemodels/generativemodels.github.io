@@ -286,9 +286,12 @@ As a first example, consider generating Sudoku grids. The vocabulary is $\mathca
 Discrete flow matching and diffusion start from a sample from the source distribution, i.e. a fully masked grid here.
 The model then iteratively fills this grid, step-by-step, finally reaching a sample from the target distribution (a valid, completed Sudoku board).
 
-
-<SudokuFlowMatching client:load />
-
+<figure>
+  <SudokuFlowMatching client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:sudoku-sampling" />:</strong> Visualisation of the sampling process for discrete flow matching/diffusion: a sample from the source distribution (here a fully masked sudoku grid) is transformed into a sample from the target distribution (here a valid sudoku grid).
+  </figcaption>
+</figure>
 
 We first introduce Discrete Flow Matching; the reader already familiar with this technique can jump directly to the [Discrete Diffusion section](#discrete-diffusion).
 
@@ -786,7 +789,9 @@ $$
   <DFMLiveFigure
       title="Discrete Flow Matching Live Figure"
       height="570px"/>
-  <figcaption><strong>Figure <Counter label="fig:dfm-live" />:</strong></figcaption>
+  <figcaption>
+    <strong>Figure <Counter label="fig:dfm-live" />:</strong> Top: evolution of the conditional probability paths @eq:mask-path-1, where the vocabulary is restricted to the characters in $\mathbf{x}_1 \cup \{m\}$. In each cell, white indicates probability zero for sampling that token, while a fully colored cell indicates probability one. Bottom: for a given time $t$, five samples drawn directly from the conditional probability path @eq:mask-path-1. The average number of masked tokens sampled decreases linearly over time.
+  </figcaption>
 </figure>
 
 #### From conditional to unconditional velocity
@@ -1129,7 +1134,7 @@ $$
 
 <figure>
   <DFMSampling denoiser client:load />
-  <figcaption><strong>Figure <Counter label="fig:dfm-denoiser-sampling" />:</strong></figcaption>
+  <figcaption><strong>Figure <Counter label="fig:dfm-denoiser-sampling" />:</strong> Sampling process using a learned denoiser and the sampling rule @eq:token-sampling. The velocity is calculated using @eq:velocity-posterior.</figcaption>
 </figure>
 
 <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
