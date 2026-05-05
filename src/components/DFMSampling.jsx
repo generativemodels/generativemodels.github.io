@@ -338,10 +338,10 @@ function TokenBox({ token, highlight, label, selected }) {
   );
 }
 
-function BarChart({ values, labels, colors, title, height = 110, highlightIdx = null, diverging = false, dimmed = false }) {
+function BarChart({ values, labels, colors, title, height = 110, highlightIdx = null, diverging = false, dimmed = false, maxValue = null }) {
   const maxAbs = diverging
     ? Math.max(...values.map(Math.abs), 0.01)
-    : Math.max(...values, 0.01);
+    : (maxValue ?? Math.max(...values, 0.01));
   const barW = 32;
   const gap = 6;
   const totalW = values.length * (barW + gap) - gap;
@@ -666,7 +666,7 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
           fontFamily: "'DM Mono', monospace", margin: 0, textAlign: "center",
         }}
       >
-        S={S}, V=&#123;{TOKEN_LABELS.slice(0, V - 1).join(",")}&#125;, mask source, {numSteps} {isPlannerMode ? "planner" : "Euler"} steps (dt={(1/numSteps).toFixed(3)}) &middot; sample #{sampleCount}
+        S={S}, V=&#123;{TOKEN_LABELS.join(", ")}&#125;, mask source, {numSteps} {isPlannerMode ? "planner" : "Euler"} steps (dt={(1/numSteps).toFixed(3)}) &middot; sample #{sampleCount}
       </p>
 
       {/* Mode + panel toggles */}
@@ -852,7 +852,7 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
                   fontWeight: 500, transition: "color 0.3s ease",
                 }}
               >
-                e + h&middot;u
+                e<sub>x<sub>t</sub><sup>i</sup></sub> + h&nbsp;u<sub>t</sub><sup>i</sup>(x<sub>t</sub>)
               </span>
               {data.sampling_dist && data.sampling_dist.map((d, i) => {
                 const sampledIdx = TOKEN_LABELS.indexOf(nextXt[i]);
@@ -865,6 +865,7 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
                     title={`pos ${i + 1}`}
                     height={90}
                     diverging={false}
+                    maxValue={1}
                     highlightIdx={phase === 1 ? sampledIdx : null}
                   />
                 );
