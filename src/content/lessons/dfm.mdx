@@ -339,30 +339,12 @@ $$
 \end{equation}
 $$
 
-
-We can interpret $u_t(\mathbf{x})_{\mathbf{y}}$ as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
-Much like the ODE TODO cite ODE can be discretized with Euler's method, the sampling process @eq:prob-velocity can be discretized as
-$$
-\begin{equation}
-\label{eq:euler-sampling}
-\mathbf{x}_{t + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_t} + h u_\tau(\mathbf{x}_t)\right)
-\end{equation}
-$$
-where $\mathbf{e}_{\mathbf{x}} \in \mathbb{R}^{|\mathcal{S}|}$ is the one-hot vector corresponding to the current state $\mathbf{x} \in \mathcal{S}$, and $\text{Cat}$ denotes the categorical distribution.
-
-
-As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
-We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**. This explains why we are allowed to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
-
 **Remark (Mass conservation for probability velocities).**
 The probability velocity $u$ must preserve probability mass: for @eq:prob-velocity to define a valid probability, for every $t\in [0, 1]$ $u_t$ must satisfy:
 1. **Positivity:** $u_t(\mathbf{x})_{\mathbf{y}} \ge 0$ for all $\mathbf{y} \neq \mathbf{x}$.
 2. **Normalization:** $\sum_{\mathbf{y} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} = 0$ for all $\mathbf{x} \in \mathcal{S}$ (and so $u_t(\mathbf{x})_{\mathbf{x}} \le 0$).
 
-{/*
-Hence, for each state $\mathbf{x}$,
-$u_t(\mathbf{x})_{\mathbf{x}} = -\sum_{\mathbf{y} \neq \mathbf{x}} u_t(\mathbf{x})_{\mathbf{y}}$.
-*/}
+
 
 <details>
 <summary>Justification</summary>
@@ -386,8 +368,24 @@ $$
 </details>
 
 
+We can interpret $u_t(\mathbf{x})_{\mathbf{y}}$ as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
+Much like the ODE TODO cite ODE can be discretized with Euler's method, the sampling process @eq:prob-velocity can be discretized as
+$$
+\begin{equation}
+\label{eq:euler-sampling}
+\mathbf{x}_{t + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_t} + h u_t(\mathbf{x}_t)\right)
+\end{equation}
+$$
+where $\mathbf{e}_{\mathbf{x}} \in \mathbb{R}^{|\mathcal{S}|}$ is the one-hot vector corresponding to state $\mathbf{x} \in \mathcal{S}$, and $\text{Cat}$ denotes the categorical distribution.
+As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u_t(\mathbf{x})_{\mathbf{y}}$.
+We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**.
+This explains why we are able to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
+
+
+
+
 In Continuous Flow Matching, we have the guarantee that a velocity field $u_t$ generates a probability path $(p_t)$ if the pair $(p_t, u_t)$ satisfies the continuity equation $\partial_t p_t + \nabla \cdot (u_t p_t) = 0$.
-In Discrete Flow Matching, we also have such a tool: the Kolmogorov Equation.
+The equivalent in the discrete setting is called the Kolmogorov Equation:
 
 **Proposition (Kolmogorov Equation)**:
 The probability velocity $u_t$ generates $(p_t)$ in the sense of @eq:prob-velocity if and only if the pair $(u_t, p_t)$ satisfies the Kolmogorov equation:
@@ -439,18 +437,18 @@ By hypothesis, the given probability path $p_t$ also satisfies this exact same l
 </div>
 </details>
 
-Now that we are equipped with adequate definitions of probability paths and velocities for the discrete case, together with a way to check that one is associated to the other, we can state the approach of Discrete Flow Matching, which is the same as Continuous Flow Matching:
-1. Build an explicit probability path $(p_t)$ going from $p_0$ to $p_1$ @eq:marginal-path using a conditioning variable, conditional probability paths and conditional velocities.
-2. Build an probability velocity $u_t$ generating $(p_t)$ @eq:marginal-velocity-def-2
-3. Provide an explicit loss to learn $u_t$ as a neural network @eq:cdfm-2
+Now that we are equipped with adequate definitions of probability paths and velocities for the discrete case, together with a way to check that one is associated to the other, we can state the approach of Discrete Flow Matching, which is in fact the same as Continuous Flow Matching:
+1. Build an explicit probability path $(p_t)$ going from $p_0$ to $p_1$ (@eq:marginal-path) using a conditioning variable, conditional probability paths and conditional velocities.
+2. Build a probability velocity $u_t$ generating $(p_t)$ (@eq:marginal-velocity-def-2)
+3. Provide an explicit loss to learn $u_t$ as a neural network (@eq:cdfm-2)
 
-However, Learning probability velocities taking values in the full sequence space $\mathcal{S}=\mathcal{V}^S$ is cumbersome, as the cardinality of the latter is $|\mathcal{V}|^S$.
-To make computations tractable, Discrete Flow Matching makes a **factorization assumption**: the probability path it builds updates each position independently.
+Before embarking on this task, we make an important modelling choice.
+Learning probability velocities taking values in the full sequence space $\mathcal{S}=\mathcal{V}^S$ is cumbersome, as the cardinality of the latter is $|\mathcal{V}|^S$, e.g. $11^{81}$ for the sudoku example!
+To make computations tractable, Discrete Flow Matching makes a **factorization assumption**: the probability path it builds updates each token in the sequence independently.
 As the next proposition shows, this has a fundamental consequence: the probability velocity that generates it can be written as a sum of token-wise contributions.
 
 **Proposition (Factorization):**
-Let $(X_t)$ be random variables of laws $p_t$; assume that the probability path $(p_t)$ is  generated by $u_t$.
-In addition, assume that the transition probabilities factorize over tokens, namely for $\mathbf{x}, \mathbf{y} \in \mathcal{S}$:
+Let $(X_t)$ be random variables of laws $p_t$, and assume that the transition probabilities factorize over tokens, namely for $\mathbf{x}, \mathbf{y} \in \mathcal{S}$:
 $$
 \begin{align}
 \mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) &:= \mathbb{P}(X_{t+h}^1 = y_1, X_{t+h}^2 = y_2, \dots, X_{t+h}^S = y_S | X_t = \mathbf{x})  \label{eq:factorized-path-1} \\
@@ -458,7 +456,7 @@ $$
 \end{align}
 $$
 
-Suppose that there is a probabilility velocity $u_t$ generating $p_t$.
+Suppose that there is a probability velocity $u_t$ generating $(p_t)$.
 Then, the probability velocity writes as a sum of $S$ *tokenwise* probability velocities $u_t^i$, taking values in $\mathcal{V}$:
 
 $$
@@ -467,7 +465,7 @@ $$
 u_t(\mathbf{x})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i}
 \end{equation}
 $$
-
+where $\mathbf{x}^{\neq i} \in \mathcal{V}^{S-1}$ denotes the sequence except $\mathbf{x}$ except its $i$-th element $x^i$.
 
 <details>
 <summary>Proof</summary>
