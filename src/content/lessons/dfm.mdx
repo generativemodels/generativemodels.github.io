@@ -295,9 +295,9 @@ We first introduce Discrete Flow Matching; the reader already familiar with this
 
 #### Setup: probability velocities
 
-In this section we adopt the Flow Matching convention: time goes from $t=0$ to $t=1$, the source distribution is $p_0$, and the target distribution is $p_1$.
+In this section we adopt the Flow Matching convention: time goes from $t=0$ to $t=1$, the source distribution is thus denoted $p_0$ while the target distribution is $p_1$.
 
-In the classical *Continuous* Flow Matching, a central object is the *velocity field* $u: \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d$, that governs the generating process: samples are obtained as solutions at time $t=1$ of the Ordinary Differential Equation
+In *Continuous* Flow Matching, a central object is the *velocity field* $u: \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d$, that governs the generating process: samples are obtained as solutions at time $t=1$ of the Ordinary Differential Equation (ODE)
 $$
 \begin{equation}
 \label{eq:flow-ode}
@@ -307,13 +307,12 @@ x(0) = x_0 \\
 \end{cases}
 \end{equation}
 $$
-and if $p_t$ is defined as the law of the solution $x(t)$ at time $t$ when $x_0 \sim p_0$, we say that $u$ generates $(p_t)$.
+and if $p_t$ is defined as the law of the ODE solution $x(t)$ at time $t$ when $x_0 \sim p_0$, we say that $u$ generates the probability path $(p_t)_{t \in [0, 1]}$.
 
-Solving an ODE when the state space is discrete is not possible.
-Discrete FM relies on a different type of object, a *probability velocity*.
+Here comes the first distinction between discrete and continuous FM: as solving an ODE when the state space is discrete is not possible, discrete FM relies on a different type of object: the *probability velocity*.
 
 **Definition (Probability Velocity)**:
-Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, and $(X_t)_{t\in[0,1]}$ be random variables of laws $(p_t)_{t \in [0, 1]}$.
+Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, and $(X_t)_{t\in[0,1]}$ be random variables taking values in $\mathcal{S}$, of laws $(p_t)_{t \in [0, 1]}$.
 Denote $u_t := u(\cdot, t)$.
 In the discrete case, we say that $u$ *generates* the probability path $(p_t)_{t \in [0, 1]}$ if
 $$
@@ -340,9 +339,8 @@ $$
 \end{equation}
 $$
 
-where $\mathbf{e}_{\mathbf{x}}$ is the one-hot vector corresponding to the current state $\mathbf{x}$.
 
-Intuitively, $u_t(\mathbf{x})_{\mathbf{y}}$ is the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
+We can interpret $u_t(\mathbf{x})_{\mathbf{y}}$ as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
 Much like the ODE TODO cite ODE can be discretized with Euler's method, the sampling process @eq:prob-velocity can be discretized as
 $$
 \begin{equation}
@@ -350,6 +348,8 @@ $$
 \mathbf{x}_{t + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_t} + h u_\tau(\mathbf{x}_t)\right)
 \end{equation}
 $$
+where $\mathbf{e}_{\mathbf{x}} \in \mathbb{R}^{|\mathcal{S}|}$ is the one-hot vector corresponding to the current state $\mathbf{x} \in \mathcal{S}$, and $\text{Cat}$ denotes the categorical distribution.
+
 
 As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
 We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**. This explains why we are allowed to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
