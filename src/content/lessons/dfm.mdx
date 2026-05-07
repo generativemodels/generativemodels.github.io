@@ -19,6 +19,7 @@ import Ref from '../../components/numbering/Ref.astro'
 import Statement from '../../components/numbering/Statement.astro'
 import SudokuFlowMatching from '../../components/sudoku_flow_matching_generative.jsx';
 import DFMSampling from '../../components/DFMSampling.jsx';
+import MaskedDiffusionForward from '../../components/MaskedDiffusionForward.jsx';
 import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 
 <T defines='
@@ -1274,25 +1275,20 @@ $$
 
 ### Discrete Diffusion
 
-Continuous Diffusion models learn to generate data like images by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise. In Discrete Diffusion, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
-Therefore, as in Continuous Diffusion, we follow the same three steps:
-1. Define a forward process modeled as a Markov chain, where each token independently follows a corruption process that replaces it with a mask token.
-2. Show that the reverse process is also a Markov chain, and derive its associated dynamics.
-3. Learn the reverse process by training a neural network to align the trajectories of the forward and reverse processes.
+Continuous Diffusion models learn to generate data like images by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
+In Discrete Diffusion, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
+There are two commonly equivalent perspectives on Continuous Diffusion:
 
-<blockquote style={{ fontSize: '0.9em' }}>
-<p><strong>Commentaire global (long, peut-être lire en diagonal + le blog et ensuite revenir dessus ?):</strong> J'ai un peu du mal à structurer. Si j'ai bien compris l'idée du score matching, l'idée est qu'il parte de leur forward sde/ode, ils dérivent une ode/sde qui simulent le reverse process de cette forward et ça highlight le score qui est la quantité qu'il faut apprendre pour pouvoir faire du Euler sur cette SDE et sampler. Il y a en parallèle la vision DDPM qui: construit step by step un forward qui mask les tokens à chaque step, et ensuite ils apprennent un reverse dont le but va être de partir du mask et d'apprendre le modèle à "lire la trajectoire qui a généré ce masque" à l'envers. En discrete (et en continu aussi je crois) les deux approches donnent exactement la même loss (KL entre les vélocités) mais j'ai du mal à bien enchaîner je trouve: si je lis la partie au dessus en fait la loss vient naturellement de l'équation et on voit pas trop pk je fais tt le blabla en bas avec les trajectoires, de la mm manière si je commence par le blabla en bas j'arrive à une loss pour masked diffusion et tout ce qui suit n'est pas très très utile. Je peux aussi faire qqch de plus séquentiel: d'abord présenter vu uniquement DDPM avec texte jusque loss pour masked diffusion, et ensuite clairement dire que dans ce qui suit j'essaie de reproduire la vision "concrete_score" en diffusion, et j'introduis alors Q_dot, R_dot, etc, ... Dernier point : si je me restreins à la vision DDPM, j'aurais du mal à faire l'équivalence avec flow matching.</p>
-<p>Je peux proposer le plan :</p>
-<ul>
-  <li>Vue purement DDPM.</li>
-  <li>Vue purement Score Matching.</li>
-  <li>Équivalence entre les deux (on minimize exactement la même loss).</li>
-</ul>
-</blockquote>
+- **Variational perspective**: predict the noise that was added at noise level $\sigma$ (or, equivalently, a cleaned-up version of the sample), and use this prediction to take one denoising step. A representative model in this family is Denoising Diffusion Probabilistic Models (DDPM).
+- **Score-based perspective**: predict a score function, i.e. the direction pointing toward more likely samples at noise level $\sigma$, and follow it to move from noise back to data. A representative model in this family is Score SDE.
 
-#### Forward Process
+For each perspective, we will establish the analog in the discrete setting, and we will then show that the two viewpoints lead to the same training objective.
 
-We first consider the forward process: we start from a clean sequence $\mathbf{x_0}$, and we progressively replace each token by the mask token, transforming the sequence into $\mathbf{x_1} = mm...m$.
+#### Variational Perspective
+
+We start with the variational perspective: we model the forward (noising) process explicitly, and learn the reverse (denoising) process by maximizing a variational lower bound on the likelihood of the data, exactly as in DDPM.
+
+**Forward process.** We first consider the forward process: we start from a clean sequence $\mathbf{x_0}$, and we progressively replace each token by the mask token, transforming the sequence into $\mathbf{x_1} = mm...m$.
 Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token in the following.
 
 In Continuous Denoising Diffusion Probabilistic Models (DDPM), we start by defining a local noising process over $T$ steps, where each step slightly corrupts the signal by adding Gaussian noise:
@@ -1422,154 +1418,14 @@ $$
 </div>
 </details>
 
+<figure>
+  <MaskedDiffusionForward initialShowDiscrete={true} initialShowContinuous={false} client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Discrete masked forward process induced by the finite-step transition in @eq:forward-transition and @eq:mdm-step. Top: 1) At step $k$, an unmasked token stays at $x_0$ with probability $\alpha_{(k+1)/T}/\alpha_{k/T}$; after masking, this probability is zero. 2) Changing the seed changes the time the clean token transitions to the mask token. Bottom: 1) We sample $N$ independent trajectories using the same transition rule. For each time step $i/T$, we report the proportion of trajectories that are still unmasked (blue dots) 2) As both $T$ and $N$ grow, this empirical curve (aggregation of blue dots) should approach the noise schedule $\alpha_t$ (white curve).
+  </figcaption>
+</figure>
 
-**Matrix view**: we can represent these transition probabilities in a Matrix $\bar{Q}_{t|s} \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$, satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$.
-$$
-\begin{align}
-\bar{Q}_{t|s}
-&=
-\begin{pmatrix}
-\frac{\alpha_t}{\alpha_s} & 0 & \dots & 0 & 1 - \frac{\alpha_t}{\alpha_s}  \\
-0 & \frac{\alpha_t}{\alpha_s} & \dots & 0 & 1 - \frac{\alpha_t}{\alpha_s}  \\
-\vdots & \vdots & \ddots & \vdots & \vdots  \\
-0 & 0 & \dots & \frac{\alpha_t}{\alpha_s} & 1 - \frac{\alpha_t}{\alpha_s}  \\
-0 & 0 & \dots & 0 & 1
-\end{pmatrix}  \\
-&= \frac{\alpha_t}{\alpha_s} I + \left(1 - \frac{\alpha_t}{\alpha_s}\right)\mathbf{1}\mathbf{e}_m^\top \label{eq:transition-matrix}
-\end{align}
-$$
-
-Now, the goal is to find an analog to the continuous time ODE of the forward process in Continuous Diffusion $ dx_t = f_t(x_t)\,dt + g_t\,dW_t $.
-
-To do so, we take the first-order Taylor expansion for a small time step $\Delta t$ of the transition matrix $\bar{Q}_{t+\Delta t | t}$.
-
-<Statement kind="Proposition" label="forward-rate-matrix" title="Forward rate matrix">
-The transition matrix $\bar{Q}_{t|s}$ induces a continuous-time Markov chain characterized by a forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$:
-
-$$
-\begin{equation}
-\label{eq:q-dot-def}
-\dot{Q}_t = \sigma(t)
-\begin{pmatrix}
--1 & 0 & \dots & 0 & 1 \\
-0 & -1 & \dots & 0 & 1 \\
-\vdots & \vdots & \ddots & \vdots & \vdots \\
-0 & 0 & \dots & -1 & 1 \\
-0 & 0 & \dots & 0 & 0
-\end{pmatrix}
-= \sigma(t) (\mathbf{1}\mathbf{e}_m^\top - I)
-\end{equation}
-$$
-
-where $\sigma(t) = -\dot{\alpha}_t / \alpha_t > 0$ is the instantaneous masking rate. The forward process is then characterized by:
-
-$$
-\begin{equation}
-\label{eq:forward-rate}
-q(x_{t+\Delta t} = y \mid x_t) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{Q}_t(x_t)]_y + o(\Delta t)
-\end{equation}
-$$
-
-where $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$, i.e. the instantaneous rate of transitioning from state $x_t$ to state $y$.
-</Statement>
-
-<details>
-<summary>Proof</summary>
-<div>
-
-Consider a small time step $\Delta t$. Using the first-order Taylor expansion $\alpha_{t+\Delta t} \approx \alpha_t + \dot{\alpha}_t \Delta t$, the ratio of survival probabilities becomes:
-
-$$
-\begin{equation}
-\label{eq:alpha-ratio}
-\frac{\alpha_{t+\Delta t}}{\alpha_t} \approx 1 + \frac{\dot{\alpha}_t}{\alpha_t} \Delta t
-\end{equation}
-$$
-
-Substituting into the compact expression @eq:transition-matrix for $\bar{Q}_{t+\Delta t|t}$:
-
-$$
-\begin{align}
-\bar{Q}_{t+\Delta t|t} &\approx \left(1 + \frac{\dot{\alpha}_t}{\alpha_t}\Delta t\right) I + \left(1 - \left(1 + \frac{\dot{\alpha}_t}{\alpha_t}\Delta t\right)\right)\mathbf{1}\mathbf{e}_m^\top  \label{eq:q-dot-derivation-1} \\
-&= I + \Delta t\, \frac{\dot{\alpha}_t}{\alpha_t} \left(I - \mathbf{1}\mathbf{e}_m^\top\right) \label{eq:q-dot-derivation-2}
-\end{align}
-$$
-
-We now calculate $q(x_{t+\Delta t} \mid x_t) = \text{Cat}(x_{t+\Delta t};\ \bar{Q}_{t+\Delta t|t}^\top x_t)$. For a fixed state $x_t = e_k$, the probability of transitioning to state $y$ is the $y$-th entry of $\bar{Q}_{t+\Delta t|t}^\top e_k$:
-
-$$
-\begin{align}
-q(x_{t+\Delta t} = y \mid x_t) &= \left[\bar{Q}_{t+\Delta t|t}^\top e_k\right]_y  \label{eq:forward-rate-proof-1} \\
-&= \mathbb{I}(y = x_t) + \Delta t\, \frac{\dot{\alpha}_t}{\alpha_t}\left[\left(I - \mathbf{1}\mathbf{e}_m^\top\right)^\top\right]_{ky} + o(\Delta t) \label{eq:forward-rate-proof-2}
-\end{align}
-$$
-
-Identifying the coefficient of $\Delta t$ with $[\dot{Q}_t(x_t)]_y$ yields:
-
-$$
-\begin{equation}
-\label{eq:q-dot-mask}
-\dot{Q}_t = \frac{\dot{\alpha}_t}{\alpha_t}\left(I - \mathbf{1}\mathbf{e}_m^\top\right) = \sigma(t)\left(\mathbf{1}\mathbf{e}_m^\top - I\right)
-\end{equation}
-$$
-
-where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, $\dot{\alpha}_t < 0$, so $\sigma(t)$ is indeed positive.
-
-</div>
-</details>
-
-
-#### Reverse Process
-
-To generate data, we want to find a reverse process that progressively unmasks tokens to produce a clean sequence.
-
-In Continuous Diffusion, the reverse process can be derived reversing the forward SDE $ dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt $. In the discrete setting, we can also reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
-
-<Statement kind="Proposition" label="reverse-rate" title="Reverse rate">
-The reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
-$$
-\begin{equation}
-\label{eq:reverse-rate}
-p(x_{t-\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t)]_y + o(\Delta t)
-\end{equation}
-$$
-
-Moreover, the matrix $\dot{R}_t$ is defined as:
-$$
-\begin{equation}
-\label{eq:reverse-rate-mask}
-[\dot{R}_t(x_t)]_y =
-\begin{cases}
-[\dot{Q}_t(y)]_{x_t} \frac{q(X_t = y)}{q(X_t = x_t)} & \text{if } y \neq x_t \\
-- \sum_{y' \neq x_t} [\dot{R}_t(x_t)]_{y'} & \text{if } y = x_t
-\end{cases}
-\end{equation}
-$$
-</Statement>
-
-<details>
-<summary>Proof</summary>
-<div>
-
-Using Bayes' theorem, for $y \neq x_t$:
-$$
-\begin{align}
-p(x_{t-\Delta t} = y | x_t) &= \frac{q(x_t | x_{t-\Delta t} = y) q(x_{t-\Delta t} = y)}{q(x_t)}  \label{eq:reverse-rate-proof-1} \\
-&= \frac{\big(\Delta t [\dot{Q}_t(y)]_{x_t} + o(\Delta t)\big) \big(q(X_t = y) + O(\Delta t)\big)}{q(X_t = x_t)}  \label{eq:reverse-rate-proof-2} \\
-&= \Delta t \left( [\dot{Q}_t(y)]_{x_t} \frac{q(X_t = y)}{q(X_t = x_t)} \right) + o(\Delta t) \label{eq:reverse-rate-proof-3}
-\end{align}
-$$
-
-By identifying this result with the definition of the reverse local transition $p(x_{t-\Delta t} = y | x_t) = \Delta t [\dot{R}_t(x_t)]_y + o(\Delta t)$, we conclude for $y \neq x_t$.
-For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a valid transition rate matrix must sum to zero, so $[\dot{R}_t(x_t)]_{x_t} = - \sum_{y' \neq x_t} [\dot{R}_t(x_t)]_{y'}$.
-
-</div>
-</details>
-
-
-#### Training
-
-Our objective is to minimize the KL divergence between the distribution induced by the forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
+**Training.** Generating data requires a reverse process that progressively unmasks tokens to produce a clean sequence. We learn it by training a neural network whose generated trajectories align with those of the forward process. In practice, this is done by minimizing the KL divergence between the distribution induced by the forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
 
 $$
 \begin{equation}
@@ -1895,7 +1751,243 @@ which matches the sequence-level training loss defined previously.
 </details>
 
 
-Our goal is now to derive a loss that can be generalized for other noising processes. In the continuous-time limit $T \to \infty$, each discrete transition $q(x_s | x_t)$ is replaced by an instantaneous rate $\dot{R}_t(x_t)$. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
+#### Score-based Perspective
+
+We now turn to the score-based viewpoint. In Continuous Diffusion, the forward process is given by an SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, from which one derives the reverse SDE; the score $\nabla \log p_t(x)$ is then the only data-dependent quantity that the model needs to learn.
+
+We follow the same path in the discrete setting. Since there is no SDE here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$. We then reverse it to obtain $p(x_{t-\Delta t} | x_t)$, and identify the discrete object analogous to the score $\nabla \log p_t(x)$ that the model needs to learn.
+
+<div style={{ fontStyle: 'italic', fontSize: '0.9em', opacity: 0.7 }}>
+Rq: j'ai un peu du mal à justifier pk j'introduis cet objet à ce moment précis mm si c'est clair un peu plus loin.
+</div>
+
+We collect the transition probabilities into a matrix $\bar{Q}_{t|s} \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$ satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$:
+$$
+\begin{align}
+\bar{Q}_{t|s}
+&=
+\begin{pmatrix}
+\frac{\alpha_t}{\alpha_s} & 0 & \dots & 0 & 1 - \frac{\alpha_t}{\alpha_s}  \\
+0 & \frac{\alpha_t}{\alpha_s} & \dots & 0 & 1 - \frac{\alpha_t}{\alpha_s}  \\
+\vdots & \vdots & \ddots & \vdots & \vdots  \\
+0 & 0 & \dots & \frac{\alpha_t}{\alpha_s} & 1 - \frac{\alpha_t}{\alpha_s}  \\
+0 & 0 & \dots & 0 & 1
+\end{pmatrix}  \\
+&= \frac{\alpha_t}{\alpha_s} I + \left(1 - \frac{\alpha_t}{\alpha_s}\right)\mathbf{1}\mathbf{e}_m^\top \label{eq:transition-matrix}
+\end{align}
+$$
+
+<div style={{ fontStyle: 'italic', fontSize: '0.9em', opacity: 0.7 }}>
+Rq: j'ai un peu du mal à justifier pk j'introduis cet objet à ce moment précis mm si c'est clair un peu plus loin.
+</div>
+
+Taking the first-order Taylor expansion of $\bar{Q}_{t+\Delta t | t}$ in $\Delta t$ then yields the *forward rate matrix* $\dot{Q}_t$.
+
+<Statement kind="Proposition" label="forward-rate-matrix" title="Forward rate matrix">
+The transition matrix $\bar{Q}_{t|s}$ induces a continuous-time Markov chain characterized by a forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$:
+
+$$
+\begin{equation}
+\label{eq:q-dot-def}
+\dot{Q}_t = \sigma(t)
+\begin{pmatrix}
+-1 & 0 & \dots & 0 & 1 \\
+0 & -1 & \dots & 0 & 1 \\
+\vdots & \vdots & \ddots & \vdots & \vdots \\
+0 & 0 & \dots & -1 & 1 \\
+0 & 0 & \dots & 0 & 0
+\end{pmatrix}
+= \sigma(t) (\mathbf{1}\mathbf{e}_m^\top - I)
+\end{equation}
+$$
+
+where $\sigma(t) = -\dot{\alpha}_t / \alpha_t > 0$ is the instantaneous masking rate. The forward process is then characterized by:
+
+$$
+\begin{equation}
+\label{eq:forward-rate}
+q(x_{t+\Delta t} = y \mid x_t) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{Q}_t(x_t)]_y + o(\Delta t)
+\end{equation}
+$$
+
+where $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$.
+</Statement>
+
+<details>
+<summary>Proof</summary>
+<div>
+
+Consider a small time step $\Delta t$. Using the first-order Taylor expansion $\alpha_{t+\Delta t} \approx \alpha_t + \dot{\alpha}_t \Delta t$, the ratio of survival probabilities becomes:
+
+$$
+\begin{equation}
+\label{eq:alpha-ratio}
+\frac{\alpha_{t+\Delta t}}{\alpha_t} \approx 1 + \frac{\dot{\alpha}_t}{\alpha_t} \Delta t
+\end{equation}
+$$
+
+Substituting into the compact expression @eq:transition-matrix for $\bar{Q}_{t+\Delta t|t}$:
+
+$$
+\begin{align}
+\bar{Q}_{t+\Delta t|t} &\approx \left(1 + \frac{\dot{\alpha}_t}{\alpha_t}\Delta t\right) I + \left(1 - \left(1 + \frac{\dot{\alpha}_t}{\alpha_t}\Delta t\right)\right)\mathbf{1}\mathbf{e}_m^\top  \label{eq:q-dot-derivation-1} \\
+&= I + \Delta t\, \frac{\dot{\alpha}_t}{\alpha_t} \left(I - \mathbf{1}\mathbf{e}_m^\top\right) \label{eq:q-dot-derivation-2}
+\end{align}
+$$
+
+We now calculate $q(x_{t+\Delta t} \mid x_t) = \text{Cat}(x_{t+\Delta t};\ \bar{Q}_{t+\Delta t|t}^\top x_t)$. For a fixed state $x_t = e_k$, the probability of transitioning to state $y$ is the $y$-th entry of $\bar{Q}_{t+\Delta t|t}^\top e_k$:
+
+$$
+\begin{align}
+q(x_{t+\Delta t} = y \mid x_t) &= \left[\bar{Q}_{t+\Delta t|t}^\top e_k\right]_y  \label{eq:forward-rate-proof-1} \\
+&= \mathbb{I}(y = x_t) + \Delta t\, \frac{\dot{\alpha}_t}{\alpha_t}\left[\left(I - \mathbf{1}\mathbf{e}_m^\top\right)^\top\right]_{ky} + o(\Delta t) \label{eq:forward-rate-proof-2}
+\end{align}
+$$
+
+Identifying the coefficient of $\Delta t$ with $[\dot{Q}_t(x_t)]_y$ yields:
+
+$$
+\begin{equation}
+\label{eq:q-dot-mask}
+\dot{Q}_t = \frac{\dot{\alpha}_t}{\alpha_t}\left(I - \mathbf{1}\mathbf{e}_m^\top\right) = \sigma(t)\left(\mathbf{1}\mathbf{e}_m^\top - I\right)
+\end{equation}
+$$
+
+where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, $\dot{\alpha}_t < 0$, so $\sigma(t)$ is indeed positive.
+
+</div>
+</details>
+
+The matrix $\dot{Q}_t$ plays the same role for the discrete forward process as $f_t$ plays for the continuous one. In Continuous Diffusion, the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$ says that, over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $\Delta t\,[\dot{Q}_t(x_t)]_y$ to first order.
+
+<figure>
+  <MaskedDiffusionForward initialShowDiscrete={false} initialShowContinuous={true} client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:masked-forward-continuous" />:</strong> Euler simulation of the infinitesimal forward transition @eq:forward-rate. Top: the next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y \mid x_t) = \mathbb{I}(y=x_t) + \Delta t[\dot{Q}_t(x_t)]_y + o(\Delta t)$, giving a continuous-time discretization to compare with the discrete jumps in Figure <Ref label="fig:masked-forward-discrete" />. Bottom: as in Figure <Ref label="fig:masked-forward-discrete" />, we aggregate sampled trajectories and report the fraction still unmasked; the empirical curve (in orange) can differ from the discrete jumps simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
+  </figcaption>
+</figure>
+
+**Reverse process.** In Continuous Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In the discrete setting, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
+
+<Statement kind="Proposition" label="reverse-rate" title="Reverse rate">
+The reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
+$$
+\begin{equation}
+\label{eq:reverse-rate}
+p(x_{t-\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t)]_y + o(\Delta t)
+\end{equation}
+$$
+
+Moreover, the matrix $\dot{R}_t$ is defined as:
+$$
+\begin{equation}
+\label{eq:reverse-rate-mask}
+[\dot{R}_t(x_t)]_y =
+\begin{cases}
+[\dot{Q}_t(y)]_{x_t} \frac{q(X_t = y)}{q(X_t = x_t)} & \text{if } y \neq x_t \\
+- \sum_{y' \neq x_t} [\dot{R}_t(x_t)]_{y'} & \text{if } y = x_t
+\end{cases}
+\end{equation}
+$$
+</Statement>
+
+<details>
+<summary>Proof</summary>
+<div>
+
+Using Bayes' theorem, for $y \neq x_t$:
+$$
+\begin{align}
+p(x_{t-\Delta t} = y | x_t) &= \frac{q(x_t | x_{t-\Delta t} = y) q(x_{t-\Delta t} = y)}{q(x_t)}  \label{eq:reverse-rate-proof-1} \\
+&= \frac{\big(\Delta t [\dot{Q}_t(y)]_{x_t} + o(\Delta t)\big) \big(q(X_t = y) + O(\Delta t)\big)}{q(X_t = x_t)}  \label{eq:reverse-rate-proof-2} \\
+&= \Delta t \left( [\dot{Q}_t(y)]_{x_t} \frac{q(X_t = y)}{q(X_t = x_t)} \right) + o(\Delta t) \label{eq:reverse-rate-proof-3}
+\end{align}
+$$
+
+By identifying this result with the definition of the reverse local transition $p(x_{t-\Delta t} = y | x_t) = \Delta t [\dot{R}_t(x_t)]_y + o(\Delta t)$, we conclude for $y \neq x_t$.
+For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a valid transition rate matrix must sum to zero, so $[\dot{R}_t(x_t)]_{x_t} = - \sum_{y' \neq x_t} [\dot{R}_t(x_t)]_{y'}$.
+
+</div>
+</details>
+
+
+**Concrete score.** In Continuous Diffusion, the score function $\nabla \log p_t(x)$ governs the reverse SDE $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $. Thus, to sample from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
+
+The natural discrete analog is the **concrete score**, defined as the ratio of marginal probabilities at neighboring states:
+$$
+s_t(x_t)_y \;=\; \frac{q(X_t = y)}{q(X_t = x_t)} \quad (y \neq x_t).
+$$
+Recalling @eq:reverse-rate-mask, the concrete score is precisely the quantity that converts the (known) forward rate $\dot{Q}_t$ into the reverse rate $\dot{R}_t$:
+$$
+\begin{equation}
+\label{eq:concrete-score}
+s_t(x_t)_y \;=\; \frac{[\dot{R}_t(x_t)]_y}{[\dot{Q}_t(x_t)]_y}.
+\end{equation}
+$$
+In particular, learning the concrete score is sufficient to sample from the reverse process:
+$$
+\begin{equation}
+\label{eq:score-sampling}
+\mathbb{P}\!\left(X_{t-h} = y | X_t = x_t\right) = \mathbb{I}(x_t=y) + h\,[\dot{Q}_t(x_t)]_y\,s_{\theta,t}(x_t)_y + o(h).
+\end{equation}
+$$
+
+It remains to design a tractable training loss for the concrete score. As in Continuous Diffusion, where denoising score matching exploits that the marginal score is a conditional expectation of the (tractable) conditional score, the same identity holds here. Defining the conditional concrete score $s_t(x_t | x_0)_y \;:=\; p_t(y | x_0)/p_t(x_t | x_0)$, we have for $y \neq x_t$:
+
+$$
+\begin{align}
+s_t(x_t)_y \;=\; \frac{p_t(y)}{p_t(x_t)}
+&\;=\; \frac{\sum_{x_0} p_t(y|x_0)\,p(x_0)}{p_t(x_t)} \label{eq:concrete-score-cond-exp-1} \\
+&\;=\; \sum_{x_0} \frac{p_t(y|x_0)}{p_t(x_t|x_0)}\;\frac{p_t(x_t|x_0)\,p(x_0)}{p_t(x_t)} \label{eq:concrete-score-cond-exp-2} \\
+&\;=\; \mathbb{E}_{x_0 \sim q(\cdot|x_t)}\!\left[\,s_t(x_t|x_0)_y\,\right] \label{eq:concrete-score-cond-exp-3}
+\end{align}
+$$
+
+using Bayes' rule $q(x_0 | x_t) = p_t(x_t | x_0)\,p(x_0)/p_t(x_t)$ in the last line. We recover here the discrete analog of the denoising score matching identity from Continuous Diffusion $\nabla \log p_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}[\nabla \log p_t(x_t | x_0)]$.
+
+
+<div style={{ fontStyle: 'italic', fontSize: '0.9em', opacity: 0.7 }}>
+C'est le même trick que pour flow matching mais les deux parties sont censées être indépendantes, je répète l'argument ou je cite uniquement l'équation du flow matching ?
+We then use the same trick as in denoising score matching: since the target field is identified as a conditional expectation, it can be learned through a regression problem. Etc ...
+</div>
+
+This gives the characterization:
+
+$$
+\begin{equation}
+\label{eq:score-kl-argmin}
+s_t \;=\; \underset{s}{\operatorname{argmin}}\ \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q(\cdot|x_0)}}\!\Bigg[ \sum_{y \neq x_t} \mathrm{KL}\!\left(s_t(x_t | x_0)_y,\, s(x_t)_y\right) \Bigg]
+\end{equation}
+$$
+
+Approximating $s_t$ by a neural network $s_{\theta,t}$ and weighting each term by the forward rate $[\dot{Q}_t(x_t)]_y$ (which leaves the minimizer unchanged) yields the loss:
+
+$$
+\begin{equation}
+\label{eq:score-kl-loss}
+L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q(\cdot|x_0)}} \Bigg[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y\, \mathrm{KL}\!\left(s_t(x_t | x_0)_y,\, s_{\theta,t}(x_t)_y\right) \Bigg]
+\end{equation}
+$$
+
+Expanding the KL and dropping $\theta$-independent terms gives the equivalent explicit form:
+
+<Statement kind="Proposition" label="concrete-score-matching" title="Concrete score matching">
+The concrete score $s_t$ is the minimizer (over $s_{\theta,t}$) of
+$$
+\begin{equation}
+\label{eq:score-loss-prop}
+L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \Bigg[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y \bigg( s_{\theta,t}(x_t)_y - \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \log s_{\theta,t}(x_t)_y \bigg) \Bigg] + C
+\end{equation}
+$$
+where $C$ is a constant independent of $\theta$.
+</Statement>
+
+
+#### Equivalence between the two viewpoints
+
+We have arrived at two losses: the variational (ELBO) loss @eq:discrete-elbo-1 derived in Part 1 (that can be rewritten as @eq:mdm-loss for masked diffusion), and the concrete score matching loss @eq:score-loss-prop derived in Part 2. We now show that they are in fact one and the same: taking the continuous-time limit of the variational ELBO produces, after a change of variable, exactly @eq:score-loss-prop.
+
+We start from @eq:discrete-elbo-1. In the continuous-time limit $T \to \infty$, each discrete transition $q(x_s | x_t)$ is replaced by an instantaneous rate $\dot{R}_t(x_t)$. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
 
 $$
 \begin{equation}
@@ -1916,7 +2008,7 @@ $$
  & & & 0 \\
 0 & \dots \, r_t \, \dots & 0 & -r_t
 \end{pmatrix}
-= r_t\, m (x_0 - m)^\top
+= r_t\, \mathbf{e}_m (x_0 - \mathbf{e}_m)^\top
 \end{equation}
 $$
 
@@ -1951,30 +2043,21 @@ R_{s|t}^{x_0} =
 \end{align}
 $$
 
-where the entry $\frac{\alpha_s - \alpha_t}{1 - \alpha_t}$ in the last row appears at the column corresponding to $x_0$, and can be compactly written as $R_{s|t}^{x_0} = I + \frac{\alpha_s - \alpha_t}{1 - \alpha_t} m(x_0 - m)^\top$.
+where the entry $\frac{\alpha_s - \alpha_t}{1 - \alpha_t}$ in the last row appears at the column corresponding to $x_0$, and can be compactly written as $R_{s|t}^{x_0} = I + \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \mathbf{e}_m(x_0 - \mathbf{e}_m)^\top$.
 
 Taking the first-order Taylor expansion (noting that $\alpha_{t - \Delta t} - \alpha_t \approx -\dot{\alpha}_t \Delta t$):
 
 $$
 \begin{align}
-R_{t - \Delta t \mid t}^{x_0} &= I + \frac{-\dot{\alpha}_t \Delta t}{1 - \alpha_t} m(x_0 - m)^\top + o(\Delta t)  \label{eq:bridge-rate-1} \\
+R_{t - \Delta t \mid t}^{x_0} &= I + \frac{-\dot{\alpha}_t \Delta t}{1 - \alpha_t} \mathbf{e}_m(x_0 - \mathbf{e}_m)^\top + o(\Delta t)  \label{eq:bridge-rate-1} \\
 &= I + \Delta t\, \dot{R}_t(x_t | x_0) + o(\Delta t) \label{eq:bridge-rate-2}
 \end{align}
 $$
 
-which identifies the conditional reverse rate as $\dot{R}_t(x_t | x_0) = r_t\, m(x_0 - m)^\top$ with $r_t = -\dot{\alpha}_t / (1 - \alpha_t)$.
+which identifies the conditional reverse rate as $\dot{R}_t(x_t | x_0) = r_t\, \mathbf{e}_m(x_0 - \mathbf{e}_m)^\top$ with $r_t = -\dot{\alpha}_t / (1 - \alpha_t)$.
 
 </div>
 </details>
-
-Note that $\dot{R}_t(x_t)$ can be obtained by averaging over the posterior $q(x_0 | x_t)$:
-
-$$
-\begin{equation}
-\label{eq:reverse-cond-exp}
-\dot{R}_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}\!\left[\dot{R}_t(x_t | x_0)\right]
-\end{equation}
-$$
 
 <Statement kind="Proposition" label="continuous-time-elbo" title="Continuous-time ELBO">
 In the continuous-time limit, the ELBO becomes:
@@ -2053,44 +2136,13 @@ L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_{\text{data}} \\ x_t \sim q( \cdo
 \end{equation}
 $$
 
-#### Concrete Score
-
-In Continuous Diffusion, the score function $\nabla \log p_t(x)$ dictates the deterministic reverse ODE:$ dx_t = \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_t(x_t)\right)dt $.
-Thus, to sample samples from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
-
-In a discrete state space, there is no notion of a continuous gradient. However, one can write the sampling equation for the reverse process.
-Define $s_t(x_t)_y = \frac{q(X_t = y)}{q(X_t = x_t)}$.
-Then, remembering from @eq:reverse-rate-mask that:
-$$
-\begin{equation}
-\label{eq:concrete-score}
-s_t(x_t)_y = \frac{[\dot{R}_t(x_t)]_y}{[\dot{Q}_t(x_t)]_y}
-\end{equation}
-$$
-we can directly write the sampling used with a learned concrete score:
-$$
-\begin{equation}
-\label{eq:score-sampling}
-\mathbb{P}\!\left(X_{t-h} = y | X_t = x_t\right) = \mathbb{I}(x_t=y) + h\,[\dot{Q}_t(x_t)]_y\,s_{\theta,t}(x_t)_y + o(h)
-\end{equation}
-$$
-
-<Statement kind="Proposition" label="concrete-score-matching" title="Concrete score matching">
-We can express the loss @eq:ratio-loss in terms of concrete score:
-$$
-\begin{equation}
-\label{eq:score-loss-prop}
-L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \Bigg[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y \bigg( s_{\theta,t}(x_t)_y - \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \log s_{\theta,t}(x_t)_y \bigg) \Bigg] + C
-\end{equation}
-$$
-where $C$ is a constant independent of $\theta$
-</Statement>
+It remains to re-express @eq:ratio-loss in terms of the concrete score. Writing the reverse rates as $[\dot{R}_{t}(x_t)]_y = [\dot{Q}_t(x_t)]_y\,s_{t}(x_t)_y$ we recover, up to a $\theta$-independent constant, the concrete score matching loss @eq:score-loss-prop established in Part 2. The two viewpoints therefore minimize the same objective.
 
 <details>
-<summary>Concrete Score Derivation</summary>
+<summary>Equivalence derivation</summary>
 <div>
 
-To express the true denoiser reverse rate, we apply Bayes' theorem to $x_t \to x_s$ conditioned on $x_0$. We get:
+Applying Bayes' theorem to $x_t \to x_s$ conditioned on $x_0$ gives:
 $$
 \begin{equation}
 \label{eq:reverse-bayes}
@@ -2098,7 +2150,7 @@ $$
 \end{equation}
 $$
 
-Substitute $[\dot{R}_{\theta,t}(x_t)]_y = [\dot{Q}_t(x_t)]_y s_{\theta,t}(x_t)_y$ and the expression above in @eq:ratio-loss, we get:
+Substituting $[\dot{R}_{\theta,t}(x_t)]_y = [\dot{Q}_t(x_t)]_y\,s_{\theta,t}(x_t)_y$ and the expression above into @eq:ratio-loss:
 $$
 \begin{equation}
 \label{eq:score-loss}
@@ -2108,7 +2160,7 @@ L_t(\theta) &= \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \
 \end{aligned}
 \end{equation}
 $$
-Expanding the logarithm and grouping $\theta$-independent terms into $C$ gives, up to this constant:
+Expanding the logarithm and grouping $\theta$-independent terms into a constant $C$ gives, up to this constant:
 $$
 \begin{equation}
 \label{eq:score-loss-final}
@@ -2116,7 +2168,7 @@ L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \B
 \end{equation}
 $$
 
-which is exactly the statement in the proposition above.
+which is exactly the loss @eq:score-loss-prop of the concrete score matching proposition.
 </div>
 </details>
 
@@ -2133,9 +2185,16 @@ which is exactly the statement in the proposition above.
   </thead>
   <tbody>
 
-    {/* ASPECT 1 */}
+    {/* PART A HEADER */}
     <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', borderTop: '1px solid #ccc', textAlign: 'center' }}>
+      <td colSpan={2} style={{ padding: '14px', backgroundColor: '#f2f2f2', borderTop: '2px solid #999', borderBottom: '2px solid #999', textAlign: 'center', fontSize: '1.05em' }}>
+        <strong>A. Variational perspective</strong>
+      </td>
+    </tr>
+
+    {/* A.1 Final target */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
         <strong>1. Final target distribution after noising</strong>
       </td>
     </tr>
@@ -2148,7 +2207,7 @@ which is exactly the statement in the proposition above.
       </td>
     </tr>
 
-    {/* ASPECT 2 */}
+    {/* A.2 Local view of forward */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
         <strong>2. Local view of the forward process</strong>
@@ -2165,7 +2224,7 @@ which is exactly the statement in the proposition above.
       </td>
     </tr>
 
-    {/* ASPECT 3 */}
+    {/* A.3 Big jump view of forward */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
         <strong>3. Big jump view of the forward process</strong>
@@ -2182,26 +2241,10 @@ which is exactly the statement in the proposition above.
       </td>
     </tr>
 
-    {/* ASPECT 4 */}
+    {/* A.4 From local to global */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>4. Forward noising equation</strong>
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $dX_t = f_t(X_t)\,dt + g_t\,dW_t$ <br />
-        Euler-Maruyama: $x_{t+\delta t} = x_t + f_t(x_t)\delta t + g_t\sqrt{\delta t}\,\varepsilon_t,\quad \varepsilon_t \sim \mathcal{N}(0,I)$ <br />
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $x_{t+\delta t} \sim \mathrm{Cat}\!\left(e_{x_t} + \delta t\, \dot{Q}_t(x_t) + o(\delta t)\right)$ <br />
-      </td>
-    </tr>
-
-    {/* ASPECT 5 */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>5. From local to global: integrated transition</strong>
+        <strong>4. From local to global: integrated transition</strong>
       </td>
     </tr>
     <tr>
@@ -2217,10 +2260,10 @@ which is exactly the statement in the proposition above.
       </td>
     </tr>
 
-    {/* ASPECT 6 */}
+    {/* A.5 Sandwich view */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>6. Sandwich view</strong>
+        <strong>5. Sandwich view</strong>
       </td>
     </tr>
     <tr>
@@ -2232,11 +2275,10 @@ which is exactly the statement in the proposition above.
       </td>
     </tr>
 
-
-    {/* ASPECT 7 */}
+    {/* A.6 Learnable backward */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>7. Learnable backward process</strong>
+        <strong>6. Learnable backward process</strong>
       </td>
     </tr>
     <tr>
@@ -2250,16 +2292,54 @@ which is exactly the statement in the proposition above.
       </td>
     </tr>
 
-    {/* ASPECT 8 */}
+    {/* A.7 Variational training loss */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>8. Reverse sampling equation</strong>
+        <strong>7. Training loss $\mathcal{L} = \mathrm{KL}\!\left(q(x_{0:T}),\, p_\theta(x_{0:T})\right)$</strong>
       </td>
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $dX_t = \left(f_t(X_t) - \dfrac{1}{2} g_t^2 \nabla \log p_{\theta,t}(X_t)\right)dt$ <br />
-        Euler: $x_{t-\delta t} = x_t - \delta t \left(f_t(x_t) - \dfrac{1}{2} g_t^2 \nabla \log p_{\theta,t}(x_t)\right)$
+        $\mathcal{L} = \dfrac{\beta_t}{2(1-\alpha_t)}\,\left\| \varepsilon - \varepsilon_{\theta,t}(x_t) \right\|^2$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $\mathcal{L} = -\sum_{i=1}^S \mathbf{1}(x_t^i = m)\,\dfrac{1}{t}\,\log \big[D_{\theta,t}^i(x_t)\big]_{x_0^i}$
+      </td>
+    </tr>
+
+    {/* PART B HEADER */}
+    <tr>
+      <td colSpan={2} style={{ padding: '14px', backgroundColor: '#f2f2f2', borderTop: '2px solid #999', borderBottom: '2px solid #999', textAlign: 'center', fontSize: '1.05em' }}>
+        <strong>B. Score-based perspective</strong>
+      </td>
+    </tr>
+
+    {/* B.1 Forward noising equation */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>1. Forward noising equation</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $dX_t = f_t(X_t)\,dt + g_t\,dW_t$ <br />
+        Euler-Maruyama: $x_{t+\delta t} = x_t + f_t(x_t)\delta t + g_t\sqrt{\delta t}\,\varepsilon_t,\quad \varepsilon_t \sim \mathcal{N}(0,I)$ <br />
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $x_{t+\delta t} \sim \mathrm{Cat}\!\left(e_{x_t} + \delta t\, \dot{Q}_t(x_t) + o(\delta t)\right)$ <br />
+      </td>
+    </tr>
+
+    {/* B.2 Reverse sampling equation */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>2. Reverse sampling equation</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $dX_t = \left(f_t(X_t) - g_t^2 \nabla \log p_{\theta,t}(X_t)\right)dt + g_t\,d\bar{W}_t$ <br />
+        Euler-Maruyama: $x_{t-\delta t} = x_t - \delta t \left(f_t(x_t) - g_t^2 \nabla \log p_{\theta,t}(x_t)\right) + g_t\sqrt{\delta t}\,\bar{\varepsilon}_t,\quad \bar{\varepsilon}_t \sim \mathcal{N}(0,I)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
         $x_{t-\delta t} \sim \mathrm{Cat}\!\left(x_{t-\delta t};\, e_{x_t} + \delta t\, \dot{R}_{\theta,t}(x_t) + o(\delta t)\right)$ <br />
@@ -2267,10 +2347,10 @@ which is exactly the statement in the proposition above.
       </td>
     </tr>
 
-    {/* ASPECT 9 */}
+    {/* B.3 Concrete score */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>9. Concrete score</strong>
+        <strong>3. Concrete score</strong>
       </td>
     </tr>
     <tr>
@@ -2282,35 +2362,18 @@ which is exactly the statement in the proposition above.
       </td>
     </tr>
 
-    {/* ASPECT 10 */}
+    {/* B.4 Score matching training loss */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>10. Training loss $\mathcal{L} = \mathrm{KL}\!\left(q(x_{0:T}),\, p_\theta(x_{0:T})\right)$</strong>
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $\mathcal{L} \propto \left\| \tilde{\mu}(x_0,t,x_t) - \mu_{\theta,t}(x_t) \right\|^2$ <br />
-        $\mathcal{L} \propto \left\| \varepsilon - \varepsilon_{\theta,t}(x_t) \right\|^2$
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $\mathcal{L} = \mathrm{KL}\!\left(R_t^{x_0}(x_t),\, \dot{R}_{\theta,t}(x_t)\right)$ <br />
-        $\mathcal{L} = -\sum_{i=1}^S \mathbf{1}(x_t^i = m)\,\dfrac{1}{t}\,\log \big[D_{\theta,t}^i(x_t)\big]_{x_0^i}$
-      </td>
-    </tr>
-
-    {/* ASPECT 11 */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>11. What to fit?</strong>
+        <strong>4. Training loss (score matching)</strong>
       </td>
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '2px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        Predict the noise $\varepsilon_{\theta,t}(x_t)$, then recover $\mu_{\theta,t}(x_t)$
+        $\mathcal{L} = \dfrac{g_t^2}{2}\,\left\| s_{\theta,t}(x_t) - \nabla \log p_t(x_t | x_0) \right\|^2$
       </td>
       <td style={{ padding: '12px', borderBottom: '2px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        Predict the denoiser $D_{\theta,t}^i(x_t)$, then recover $\dot{R}_{\theta,t}(x_t)$
+        $\mathcal{L} = \dot{Q}_t(x_t)\, \mathrm{KL}\!\left(s_t(x_t | x_0),\, s_{\theta,t}(x_t)\right)$
       </td>
     </tr>
 
