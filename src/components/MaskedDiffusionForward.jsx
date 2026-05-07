@@ -26,6 +26,7 @@ const COLOR_CONTINUOUS = "#DD8452";
 const COLOR_CLEAN = "#5bbf6f";
 const COLOR_MASK = "#aaa";
 const COLOR_ALPHA = "rgba(255,255,255,0.85)";
+const COLOR_UNCONDITIONAL = "#9ca3af";
 
 // ── Seeded RNG (mulberry32) ─────────────────────────────────────────
 function makeRng(seed) {
@@ -182,9 +183,9 @@ function NumberInput({ label, value, onApply, color = "#82b4ff", min, max, step 
 function TrajectoryFigure({
   T, alpha, alphaDot, seed, showDiscrete, showContinuous, step,
 }) {
-  const W = 520;
+  const W = 560;
   const H = 200;
-  const padL = 60, padR = 110, padT = 30, padB = 28;
+  const padL = 50, padR = 150, padT = 30, padB = 28;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
 
@@ -204,15 +205,12 @@ function TrajectoryFigure({
   const yOf = (alive) => (alive ? yClean : yMask);
   const clampProb = (p) => Math.max(0, Math.min(1, p));
 
-  function nextCleanProb(traj, mode) {
-    if (step >= T || !traj[step]) return 0;
+  function previousCleanProb(traj) {
+    if (step <= 0 || traj[step]) return 1;
     const t = step / T;
-    if (mode === "discrete") {
-      const aNow = alpha(t);
-      return aNow > 1e-12 ? clampProb(alpha((step + 1) / T) / aNow) : 0;
-    }
-    const a = alpha(t);
-    return a > 1e-12 ? clampProb(1 + (alphaDot(t) / a) * (1 / T)) : 0;
+    const s = (step - 1) / T;
+    const aNow = alpha(t);
+    return aNow < 1 - 1e-12 ? clampProb((alpha(s) - aNow) / (1 - aNow)) : 0;
   }
 
   // Arrow path from step (i-1) to step i. L-shape if a vertical jump happens.
@@ -245,12 +243,16 @@ function TrajectoryFigure({
     );
   }
 
-  // Right-hand bars: P(x_{k+1}=x_0 | x_k) from the current trajectory state.
-  const barX = padL + plotW + 24;
+  // Right-hand bars: one-step bridge probability and the unconditional clean probability.
+  const barX = padL + plotW + 20;
   const barW = 16;
   const barAreaH = 80;
   const barTop = padT + 20;
   const barGap = 8;
+  const activeBarCount = Number(showDiscrete) + Number(showContinuous);
+  const conditionalGroupW = activeBarCount * barW + Math.max(0, activeBarCount - 1) * barGap;
+  const unconditionalBarX = barX + conditionalGroupW + (activeBarCount > 0 ? 22 : 0);
+  const unconditionalCleanProb = clampProb(alpha(step / T));
 
   return (
     <svg width={W} height={H} style={{ overflow: "visible" }}>
@@ -303,20 +305,8 @@ function TrajectoryFigure({
           opacity={i === step ? 1 : 0.7} />
       ))}
 
-      {/* Right-hand bars: P(x_{k+1}=x_0 | x_k) at current step */}
-      <text x={barX + ((showDiscrete && showContinuous) ? barW + barGap / 2 : barW / 2)}
-        y={barTop - 18} textAnchor="middle" fontSize={9}
-        fill="rgba(255,255,255,0.5)" fontFamily="'DM Mono', monospace">
-        P(xₖ₊₁=x₀ | xₖ)
-      </text>
-      <text x={barX + ((showDiscrete && showContinuous) ? barW + barGap / 2 : barW / 2)}
-        y={barTop - 7} textAnchor="middle" fontSize={8}
-        fill="rgba(255,255,255,0.38)" fontFamily="'DM Mono', monospace">
-        k={step}
-      </text>
-
       {showDiscrete && (() => {
-        const p = nextCleanProb(trajD, "discrete");
+        const p = previousCleanProb(trajD);
         const h = p * barAreaH;
         const x = barX;
         return (
@@ -333,7 +323,7 @@ function TrajectoryFigure({
         );
       })()}
       {showContinuous && (() => {
-        const p = nextCleanProb(trajC, "continuous");
+        const p = previousCleanProb(trajC);
         const h = p * barAreaH;
         const x = barX + (showDiscrete ? barW + barGap : 0);
         return (
@@ -346,6 +336,22 @@ function TrajectoryFigure({
             )}
             <text x={x + barW / 2} y={barTop + barAreaH + 12} textAnchor="middle" fontSize={9}
               fill={COLOR_CONTINUOUS} fontFamily="'DM Mono', monospace">{p.toFixed(2)}</text>
+          </g>
+        );
+      })()}
+      {(() => {
+        const p = unconditionalCleanProb;
+        const h = p * barAreaH;
+        return (
+          <g>
+            <rect x={unconditionalBarX} y={barTop} width={barW} height={barAreaH}
+              fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" />
+            {h > 0 && (
+              <rect x={unconditionalBarX} y={barTop + (barAreaH - h)} width={barW} height={h}
+                fill={COLOR_UNCONDITIONAL} opacity={0.85} rx={2} />
+            )}
+            <text x={unconditionalBarX + barW / 2} y={barTop + barAreaH + 12} textAnchor="middle" fontSize={9}
+              fill={COLOR_UNCONDITIONAL} fontFamily="'DM Mono', monospace">{p.toFixed(2)}</text>
           </g>
         );
       })()}
@@ -404,6 +410,7 @@ function AggregateFigure({ T, alpha, alphaDot, N, seed, showDiscrete, showContin
         fill="rgba(255,255,255,0.55)" fontFamily="'DM Mono', monospace">t</text>
       <text x={padL - 38} y={padT + plotH / 2} fontSize={11}
         fill="rgba(255,255,255,0.55)" fontFamily="'DM Mono', monospace"
+        textAnchor="middle" dominantBaseline="central"
         transform={`rotate(-90 ${padL - 38} ${padT + plotH / 2})`}>
         fraction unmasked
       </text>

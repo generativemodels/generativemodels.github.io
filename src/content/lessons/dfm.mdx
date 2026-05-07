@@ -1279,8 +1279,8 @@ Continuous Diffusion models learn to generate data like images by reversing a fo
 In Discrete Diffusion, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
 There are two commonly equivalent perspectives on Continuous Diffusion:
 
-- **Variational perspective**: predict the noise that was added at noise level $\sigma$ (or, equivalently, a cleaned-up version of the sample), and use this prediction to take one denoising step. A representative model in this family is Denoising Diffusion Probabilistic Models (DDPM).
-- **Score-based perspective**: predict a score function, i.e. the direction pointing toward more likely samples at noise level $\sigma$, and follow it to move from noise back to data. A representative model in this family is Score SDE.
+- **Variational perspective** (example: Denoising Diffusion Probabilistic Models (DDPM)): predict, given a noisy sequence $\mathbf{x}_t$ at time $t$, the cleaned sample $\mathbf{x}_0$ that generated $\mathbf{x}_t$ through the forward noising process (or equivalently the noise $\varepsilon$ that was added to $\mathbf{x}_0$ to get $\mathbf{x}_t$), then use this prediction to take one denoising step.
+- **Score-based perspective** (example: Score SDE): predict a score function, i.e. the direction pointing toward more likely samples at noise level $\t$, and follow it to move from noise back to data.
 
 For each perspective, we will establish the analog in the discrete setting, and we will then show that the two viewpoints lead to the same training objective.
 
@@ -1313,7 +1313,7 @@ m, & \text{with probability } \beta_j
 $$
 
 We now consider the continuous-time limit $T \to \infty$, to avoid tying the model to a fixed number of noise steps.
-In Continuous Diffusion, applying $tT$ ($t \in [0,1]$) steps gives the cumulative schedule $\bar{\alpha}_t = \prod_{i=1}^{tT}(1 - \beta_i)$, which appears in the forward marginal $q(x_t | x_0) = \mathcal{N}(x_t;\ \sqrt{\bar{\alpha}_t}\, x_0,\ (1 - \bar{\alpha}_t) I)$.
+In Continuous Diffusion, applying $tT$ ($t \in [0,1]$) steps gives the cumulative schedule $\alpha_t = \prod_{i=1}^{tT}(1 - \beta_i)$, which appears in the forward marginal $q(x_t | x_0) = \mathcal{N}(x_t;\ \sqrt{\alpha_t}\, x_0,\ (1 - \alpha_t) I)$.
 It controls the signal amplitude, i.e how much of $x_0$ remains in $x_t$.
 
 In the discrete setting, the same product gives the survival probability of a token.
@@ -1421,7 +1421,7 @@ $$
 <figure>
   <MaskedDiffusionForward initialShowDiscrete={true} initialShowContinuous={false} client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Discrete masked forward process induced by the finite-step transition in @eq:forward-transition and @eq:mdm-step. Top: 1) At step $k$, an unmasked token stays at $x_0$ with probability $\alpha_{(k+1)/T}/\alpha_{k/T}$; after masking, this probability is zero. 2) Changing the seed changes the time the clean token transitions to the mask token. Bottom: 1) We sample $N$ independent trajectories using the same transition rule. For each time step $i/T$, we report the proportion of trajectories that are still unmasked (blue dots) 2) As both $T$ and $N$ grow, this empirical curve (aggregation of blue dots) should approach the noise schedule $\alpha_t$ (white curve).
+    <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Discrete masked forward with T steps as in @eq:mdm-step (or equivalently in @eq:forward-transition with $s = t - 1/T$) Top: 1) At step $k$, an unmasked token stays at $x_0$ with probability $\alpha_{(k+1)/T}/\alpha_{k/T}$; after masking, this probability is zero. 2) The blue bar shows $q(x_{t-1/T}=x_0 \mid x_t, x_0)$ (@eq:bridge-mask), and the grey bar shows $q(x_t=x_0 \mid x_0)=\alpha_t$. 3) The trajectories are stochastic: changing the seed will change the time at which the clean token transitions to the mask token. Bottom: 1) We sample $N$ independent trajectories using the same transition rule. For each time step $i/T$, we report the proportion of trajectories that are still unmasked (blue dots) 2) As both $T$ and $N$ grow, this empirical curve (aggregation of blue dots) should approach the noise schedule $\alpha_t$ (white curve).
   </figcaption>
 </figure>
 
@@ -1642,13 +1642,83 @@ $$
 &= \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \label{eq:bridge-bayes-3}
 \end{align}
 $$
-We conclude using that $x_s$ is either at stae $x_0$ or at state $m$ with probabilities that sum to 1.
+We conclude using that $x_s$ is either at state $x_0$ or at state $m$ with probabilities that sum to 1.
 
 </div>
 </details>
 
+We can avoid learning the reverse transitions $p_\theta(x_s | x_t)$ directly (as it is a complicated function of two variables) by introducing a learned denoiser.
+For one token, we write $D_{\theta,t}(x_t) \in \Delta(\mathcal{V})$ for the model prediction of the clean-token posterior:
+$$
+\begin{equation}
+\label{eq:masked-diffusion-denoiser}
+[D_{\theta,t}(x_t)]_v \approx \mathbb{P}(X_0 = v | X_t = x_t), \qquad v \in \mathcal{V}.
+\end{equation}
+$$
+This definition naturally extends to each position $i$: $[D_{\theta,t}^i(\mathbf{x}_t)]_v \approx \mathbb{P}(X_0^i = v \mid \mathbf{X}_t = \mathbf{x}_t)$.
+Our goal is to rewrite the ELBO term entirely in terms of this denoiser; the next lemma shows how it induces the reverse transition used in the loss.
+
+<Statement kind="Lemma" label="masked-diffusion-denoiser-bridge">
+For masked diffusion, $s<t$ :
+$$
+\begin{align}
+    p_\theta(x_s=v| x_t=m) &= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,[D_{\theta,t}(x_t)]_v\quad (v\in\mathcal{V}),  \label{eq:bridge-model-1} \\
+    p_\theta(x_s=m| x_t=m) &= \frac{1-\alpha_s}{1-\alpha_t}. \label{eq:bridge-model-2}
+\end{align}
+$$
+</Statement>
+
+<details>
+<summary>Proof</summary>
+<div>
+
+By the law of total probability over the clean token $X_0$, and by the definition of the learned denoiser in @eq:masked-diffusion-denoiser:
+$$
+\begin{align}
+p_\theta(x_s=y | x_t=m)
+&= \sum_{v\in\mathcal{V}} q(x_s=y | x_t=m, x_0=v)\,p_\theta(x_0=v | x_t=m) \label{eq:denoiser-bridge-proof-1} \\
+&= \sum_{v\in\mathcal{V}} q(x_s=y | x_t=m, x_0=v)\,[D_{\theta,t}(x_t)]_v. \label{eq:denoiser-bridge-proof-2}
+\end{align}
+$$
+
+If $y\in\mathcal{V}$, @eq:bridge-mask gives:
+$$
+\begin{align}
+p_\theta(x_s=y | x_t=m)
+&= \sum_{v\in\mathcal{V}}
+\frac{\alpha_s-\alpha_t}{1-\alpha_t}\mathbb{I}(y=v)\,[D_{\theta,t}(x_t)]_v \label{eq:denoiser-bridge-proof-token-1} \\
+&= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,[D_{\theta,t}(x_t)]_y. \label{eq:denoiser-bridge-proof-token-2}
+\end{align}
+$$
+
+For the mask token, @eq:bridge-mask gives a term independent of $v$, hence:
+$$
+\begin{align}
+p_\theta(x_s=m | x_t=m)
+&= \sum_{v\in\mathcal{V}}
+\frac{1-\alpha_s}{1-\alpha_t}\,[D_{\theta,t}(x_t)]_v \label{eq:denoiser-bridge-proof-mask-1} \\
+&= \frac{1-\alpha_s}{1-\alpha_t}, \label{eq:denoiser-bridge-proof-mask-2}
+\end{align}
+$$
+because $D_{\theta,t}(x_t)$ is a probability distribution over $\mathcal{V}$.
+
+</div>
+</details>
+
+Lemma <Ref label="lemma:masked-diffusion-denoiser-bridge" /> directly gives the sampling process from a fully masked sequence toward a clean sequence: for $s<t$, we sample each still masked position $i$ as
+$$
+\begin{equation}
+\label{eq:masked-diffusion-denoiser-sampling}
+x_s^i \sim \mathrm{Cat}\left(
+\frac{\alpha_s-\alpha_t}{1-\alpha_t}D_{\theta,t}^i(\mathbf{x}_t)
++ \frac{1-\alpha_s}{1-\alpha_t}\mathbf{e}_m
+\right).
+\end{equation}
+$$
+When a token is already unmasked, the masked process simply keeps it fixed.
+
 <Statement kind="Proposition" label="masked-diffusion-training-loss" title="Training Loss Proof for Masked Diffusion">
-In the specific case of masked diffusion, we can express the loss in terms of the denoiser output $D_{\theta,t}(x_t)$:
+In the specific case of masked diffusion, we can express the loss in terms of the denoiser output $D_{\theta,t}(\mathbf{x}_t) = (D_{\theta,t}^1(\mathbf{x}_t), \ldots, D_{\theta,t}^S(\mathbf{x}_t)) \in \Delta(\mathcal{V})^S$:
 
 $$
 \begin{equation}
@@ -1662,7 +1732,7 @@ $$
 <summary>Proof</summary>
 <div>
 
-We start from @eq:discrete-elbo-1. Since $x_1 = m$ (fully masked at $t=1$), we have $\mathrm{KL}(q(x_1|x_0) , p_\theta(x_1)) = 0$. Therefore:
+We write the proof only for one token, starting from @eq:discrete-elbo-1. Since $x_1 = m$ (fully masked at $t=1$), we have $\mathrm{KL}(q(x_1|x_0) , p_\theta(x_1)) = 0$. Therefore:
 $$
 \begin{align}
 \text{ELBO}(x_0) = - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right] \label{eq:mdm-elbo-no-source}
@@ -1680,14 +1750,9 @@ $$
 \end{equation}
 $$
 
-We parametrize the reverse model as $p_\theta(x_s| x_t)=q(x_s| x_t,D_{\theta,t}(x_t))$, so when $x_t=m$ we have:
-$$
-\begin{align}
-    p_\theta(x_s=v| x_t=m) &= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,[D_{\theta,t}(x_t)]_v\quad (v\in\mathcal{V}),  \label{eq:bridge-model-1} \\
-    p_\theta(x_s=m| x_t=m) &= \frac{1-\alpha_s}{1-\alpha_t}. \label{eq:bridge-model-2}
-\end{align}
-$$
-using @eq:bridge-mask and replacing $\mathbb{I}(x_s = x_0)$ with $[D_{\theta,t}(x_t)]_v$.
+By Lemma <Ref label="lemma:masked-diffusion-denoiser-bridge" />, when $x_t=m$ the denoiser-parametrized reverse model satisfies
+$p_\theta(x_s=v | x_t=m)=\frac{\alpha_s-\alpha_t}{1-\alpha_t}[D_{\theta,t}(x_t)]_v$ for $v\in\mathcal{V}$ and
+$p_\theta(x_s=m | x_t=m)=\frac{1-\alpha_s}{1-\alpha_t}$.
 
 When $x_t\neq m$, both $q(x_s| x_t,x_0)$ and $p_\theta(x_s| x_t)$ put all their mass on $x_s=x_t=x_0$, so the KL term is zero.
 
@@ -1757,10 +1822,6 @@ We now turn to the score-based viewpoint. In Continuous Diffusion, the forward p
 
 We follow the same path in the discrete setting. Since there is no SDE here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$. We then reverse it to obtain $p(x_{t-\Delta t} | x_t)$, and identify the discrete object analogous to the score $\nabla \log p_t(x)$ that the model needs to learn.
 
-<div style={{ fontStyle: 'italic', fontSize: '0.9em', opacity: 0.7 }}>
-Rq: j'ai un peu du mal à justifier pk j'introduis cet objet à ce moment précis mm si c'est clair un peu plus loin.
-</div>
-
 We collect the transition probabilities into a matrix $\bar{Q}_{t|s} \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$ satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$:
 $$
 \begin{align}
@@ -1778,7 +1839,7 @@ $$
 $$
 
 <div style={{ fontStyle: 'italic', fontSize: '0.9em', opacity: 0.7 }}>
-Rq: j'ai un peu du mal à justifier pk j'introduis cet objet à ce moment précis mm si c'est clair un peu plus loin.
+Rq: j'ai un peu du mal à justifier pk j'introduis la matrice Q barre à ce moment précis mm si c'est clair un peu plus loin.
 </div>
 
 Taking the first-order Taylor expansion of $\bar{Q}_{t+\Delta t | t}$ in $\Delta t$ then yields the *forward rate matrix* $\dot{Q}_t$.
@@ -1801,7 +1862,9 @@ $$
 \end{equation}
 $$
 
-where $\sigma(t) = -\dot{\alpha}_t / \alpha_t > 0$ is the instantaneous masking rate. The forward process is then characterized by:
+where $\sigma(t) = -\dot{\alpha}_t / \alpha_t > 0$ is the instantaneous masking rate.
+
+In other words, the forward process is characterized by:
 
 $$
 \begin{equation}
@@ -1863,7 +1926,7 @@ The matrix $\dot{Q}_t$ plays the same role for the discrete forward process as $
 <figure>
   <MaskedDiffusionForward initialShowDiscrete={false} initialShowContinuous={true} client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:masked-forward-continuous" />:</strong> Euler simulation of the infinitesimal forward transition @eq:forward-rate. Top: the next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y \mid x_t) = \mathbb{I}(y=x_t) + \Delta t[\dot{Q}_t(x_t)]_y + o(\Delta t)$, giving a continuous-time discretization to compare with the discrete jumps in Figure <Ref label="fig:masked-forward-discrete" />. Bottom: as in Figure <Ref label="fig:masked-forward-discrete" />, we aggregate sampled trajectories and report the fraction still unmasked; the empirical curve (in orange) can differ from the discrete jumps simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
+    <strong>Figure <Counter label="fig:masked-forward-continuous" />:</strong> Euler simulation of the infinitesimal forward transition @eq:forward-rate. Top: the next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y \mid x_t) = \mathbb{I}(y=x_t) + \Delta t[\dot{Q}_t(x_t)]_y + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. Bottom: as in Figure <Ref label="fig:masked-forward-discrete" />, we aggregate sampled trajectories and report the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
   </figcaption>
 </figure>
 
@@ -1905,7 +1968,7 @@ p(x_{t-\Delta t} = y | x_t) &= \frac{q(x_t | x_{t-\Delta t} = y) q(x_{t-\Delta t
 $$
 
 By identifying this result with the definition of the reverse local transition $p(x_{t-\Delta t} = y | x_t) = \Delta t [\dot{R}_t(x_t)]_y + o(\Delta t)$, we conclude for $y \neq x_t$.
-For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a valid transition rate matrix must sum to zero, so $[\dot{R}_t(x_t)]_{x_t} = - \sum_{y' \neq x_t} [\dot{R}_t(x_t)]_{y'}$.
+For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a valid transition rate matrix must sum to zero, leading to $[\dot{R}_t(x_t)]_{x_t} = - \sum_{y' \neq x_t} [\dot{R}_t(x_t)]_{y'}$.
 
 </div>
 </details>
@@ -1932,7 +1995,7 @@ $$
 \end{equation}
 $$
 
-It remains to design a tractable training loss for the concrete score. As in Continuous Diffusion, where denoising score matching exploits that the marginal score is a conditional expectation of the (tractable) conditional score, the same identity holds here. Defining the conditional concrete score $s_t(x_t | x_0)_y \;:=\; p_t(y | x_0)/p_t(x_t | x_0)$, we have for $y \neq x_t$:
+It remains to design a tractable training loss for the concrete score. As in Continuous Diffusion, where denoising score matching exploits that the marginal score is a conditional expectation of the (tractable) conditional score: $\nabla \log p_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}[\nabla \log p_t(x_t | x_0)]$, the same identity holds here. Defining the conditional concrete score $s_t(x_t | x_0)_y \;:=\; p_t(y | x_0)/p_t(x_t | x_0)$, we have for $y \neq x_t$:
 
 $$
 \begin{align}
@@ -1943,7 +2006,7 @@ s_t(x_t)_y \;=\; \frac{p_t(y)}{p_t(x_t)}
 \end{align}
 $$
 
-using Bayes' rule $q(x_0 | x_t) = p_t(x_t | x_0)\,p(x_0)/p_t(x_t)$ in the last line. We recover here the discrete analog of the denoising score matching identity from Continuous Diffusion $\nabla \log p_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}[\nabla \log p_t(x_t | x_0)]$.
+using Bayes' rule $q(x_0 | x_t) = p_t(x_t | x_0)\,p(x_0)/p_t(x_t)$ in the last line.
 
 
 <div style={{ fontStyle: 'italic', fontSize: '0.9em', opacity: 0.7 }}>
