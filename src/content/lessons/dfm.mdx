@@ -1750,13 +1750,10 @@ $$
 \end{equation}
 $$
 
-By Lemma <Ref label="lemma:masked-diffusion-denoiser-bridge" />, when $x_t=m$ the denoiser-parametrized reverse model satisfies
-$p_\theta(x_s=v | x_t=m)=\frac{\alpha_s-\alpha_t}{1-\alpha_t}[D_{\theta,t}(x_t)]_v$ for $v\in\mathcal{V}$ and
-$p_\theta(x_s=m | x_t=m)=\frac{1-\alpha_s}{1-\alpha_t}$.
-
 When $x_t\neq m$, both $q(x_s| x_t,x_0)$ and $p_\theta(x_s| x_t)$ put all their mass on $x_s=x_t=x_0$, so the KL term is zero.
 
-Hence only the case $x_t=m$ contributes. Therefore:
+Hence only the case $x_t=m$ contributes. Therefore, using Lemma <Ref label="lemma:masked-diffusion-denoiser-bridge" />,
+
 $$
 \begin{align}
     &\mathrm{KL}\!\left(q(\cdot| x_t,x_0)\,\|\,p_\theta(\cdot| x_t)\right) \label{eq:bridge-kl-proof-1} \\
@@ -1818,11 +1815,11 @@ which matches the sequence-level training loss defined previously.
 
 #### Score-based Perspective
 
-We now turn to the score-based viewpoint. In Continuous Diffusion, the forward process is given by an SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, from which one derives the reverse SDE; the score $\nabla \log p_t(x)$ is then the only data-dependent quantity that the model needs to learn.
+We now turn to the score-based viewpoint. In Continuous Diffusion, the forward process is given by an SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, from which one derives the reverse SDE; the score $\nabla \log p_t(x)$ is then the only quantity that we need to learn to sample from this SDE.
 
 We follow the same path in the discrete setting. Since there is no SDE here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$. We then reverse it to obtain $p(x_{t-\Delta t} | x_t)$, and identify the discrete object analogous to the score $\nabla \log p_t(x)$ that the model needs to learn.
 
-We collect the transition probabilities into a matrix $\bar{Q}_{t|s} \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$ satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$:
+**Forward process.** We collect the transition probabilities into a matrix $\bar{Q}_{t|s} \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$ satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$:
 $$
 \begin{align}
 \bar{Q}_{t|s}
@@ -1898,7 +1895,8 @@ $$
 \end{align}
 $$
 
-We now calculate $q(x_{t+\Delta t} \mid x_t) = \text{Cat}(x_{t+\Delta t};\ \bar{Q}_{t+\Delta t|t}^\top x_t)$. For a fixed state $x_t = e_k$, the probability of transitioning to state $y$ is the $y$-th entry of $\bar{Q}_{t+\Delta t|t}^\top e_k$:
+We now calculate $q(x_{t+\Delta t} \mid x_t) = \text{Cat}(x_{t+\Delta t};\ \bar{Q}_{t+\Delta t|t}^\top x_t)$.
+For a fixed state $x_t = e_k$, the probability of transitioning to state $y$ is the $y$-th entry of $\bar{Q}_{t+\Delta t|t}^\top e_k$:
 
 $$
 \begin{align}
