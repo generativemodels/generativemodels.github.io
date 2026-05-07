@@ -2666,7 +2666,17 @@ In this section, we introduce planners as a way to make sampling more efficient 
 Vanilla sampling in masked diffusion is computationally expensive. It requires $(1/h) \times S$ sequential steps, where $h$ is the time step size and $S$ is the length of the sequence. At every single micro-step, we must compute and draw from probability vectors of size $|\mathcal{V}|$ for all tokens. For example, with a step size of $h = 0.01$ and a sequence length of $S = 3000$, we would need $300,000$ steps to generate a single sample.
 We can parallelize the sampling of all tokens at each step, so the number of forward passes through the model is $1/h = 100$ steps rather than $S/h$, but it requires more memory.
 
-To make generation tractable, the standard approach used in the industry for large masked diffusion models is **planner-guided sampling**. Instead of relying on infinitesimal continuous-time steps, we fix a manageable number of total generation steps, denoted as $N$. At each step, the algorithm aggressively decodes and fixes exactly $S/N$ tokens.
+To make generation tractable, the standard approach used in the industry for large masked diffusion models is **planner-guided sampling**. Instead of relying on infinitesimal continuous-time steps, we fix the total generation steps $N$ and directly use the denoiser to reveal tokens at each step.
+
+<Statement kind="Definition" label="planner" title="Planner">
+A planner $G_\phi$ maps a candidate sequence $\mathbf{z}$ sampled from the denoiser and the current noisy sequence $\mathbf{x}_t$ to a distribution over sets of currently masked positions to reveal. At step $k$, with $\mathcal{M}_k = \{i : x_k^i = m\}$, we write:
+$$
+\begin{equation}
+\label{eq:planner-definition}
+G_\phi(\mathbf{z}, \mathbf{x}_k) \in \Delta\!\left(\left\{\mathcal{I} \subseteq \mathcal{M}_k : |\mathcal{I}| = f(k)\right\}\right).
+\end{equation}
+$$
+</Statement>
 
 **Algorithm: Planner-Guided Sampling**
 
@@ -2674,12 +2684,12 @@ To make generation tractable, the standard approach used in the industry for lar
 1. **Initialize:** $\mathbf{x}_0 \leftarrow (m, \dots, m)$ (a sequence of $S$ mask tokens), schedule $f$ mapping step index to number of tokens to reveal at that step, e.g., $f(k) = S/N$ for all $k$.
 2. **For** $k = 0, 1, \dots, N - 1$:
     * **Plan:** Sample candidate tokens $\mathbf{z} \sim D_{\theta,k}(\mathbf{x}_k)$
-    * **Select:** A "planner" evaluates these candidate predictions based on a specific criterion. It chooses a set of positions $\mathcal{I}$ where $|\mathcal{I}| = f(k)$ to reveal.
+    * **Select:** Sample a set of positions $\mathcal{I} \sim G_\phi(\mathbf{z}, \mathbf{x}_k)$ with $|\mathcal{I}| = f(k)$.
     * **Denoise:** Create $\mathbf{x}_{k+1}$ by setting $x_{k+1}^i = z^i$ for all $i \in \mathcal{I}$, keeping the rest as masks
 3. **Return** fully generated sequence $\mathbf{x}_N$
 
 <Statement kind="Proposition" label="sampling-scheme-equivalence" title="Sampling-Scheme equivalence">
-Suppose that the denoiser does not need to know the current time in its predictions, i.e. for any step $k$ and any given sequence $\mathbf{x}$, $D_{\theta,k}(\mathbf{x}) = D_{\theta}(\mathbf{x})$. If we choose the uniform random planner that selects positions uniformly at random among the masked tokens, i.e., $G_\phi(\mathbf{z}, \mathbf{x}_t) = \text{Unif}(\{i : x_t^i = m\})$, then planner-guided sampling with $N = S$ steps and $f(k) = 1$ token per step is exactly equivalent to the sampling procedure given @eq:reverse-rate as $\Delta t \to 0$.
+Suppose that the denoiser does not need to know the current time in its predictions, i.e. for any step $k$ and any given sequence $\mathbf{x}$, $D_{\theta,k}(\mathbf{x}) = D_{\theta}(\mathbf{x})$. If we choose the uniform random planner that selects positions uniformly at random among the masked tokens, i.e. $G_\phi(\mathbf{z}, \mathbf{x}_t)_i = \frac{1}{|\mathcal{M}_t|}$ for each $i \in \mathcal{M}_t$, then planner-guided sampling with $N = S$ steps and $f(k) = 1$ token per step is exactly equivalent to the sampling procedure given @eq:reverse-rate as $\Delta t \to 0$.
 </Statement>
 
 However, in practice, we rarely decide to unmask tokens by picking a random position at each step. A simple and widely used strategy is the soft greedy planner. Instead of unmasking tokens at random, it selects the positions where the denoiser is most confident in its predictions. We then relax this strict selection into a soft probability distribution using a softmax function with a temperature parameter $\tau$:
@@ -2751,7 +2761,7 @@ $$
 
 However, introducing a planner-aware sampling process creates a mismatch between training and inference. During training, the standard objective masks tokens uniformly at random across all positions and orderings. During inference, the planner reveals tokens along a specific, confidence-guided trajectory.
 
-This difference matters because uniform masking can put training weight on mask patterns that the planner would almost never visit in practice. For example, in a structured sequence where the last token is only predictable after the first two have been revealed, uniform masking may still train the model to predict that last token from $(m,m,m)$ or from $(m,m,B)$, even though a confidence-based planner would first reveal easier positions and avoid asking for that token with so little context. These hard, off-trajectory denoising tasks can inject extra error into the learned denoiser, and those errors can then be amplified during sampling when early wrong predictions become part of the context.
+This difference matters because uniform masking can put training weight on mask patterns that the planner would almost never visit in practice. For example, in a structured sequence where the last token is only predictable after the first two have been revealed, uniform masking may still train the model to predict that last token from $(m,m,m)$ or from $(m,m,B)$, even though a confidence-based planner would first reveal easier positions and avoid asking for that token with so little context. These hard denoising tasks can inject extra error into the learned denoiser, and those errors can then be amplified during sampling when early wrong predictions become part of the context.
 
 A simple fix is to reweight the training loss toward the positions the planner would select. This gives the Planner-Aware Path Learning (PAPL) objective:
 $$
@@ -2769,32 +2779,14 @@ Here, $w^i$ represents the normalized weight of position $i$ assigned by the pla
 
 #### Training Losses
 
-The **conditional flow matching (CFM) loss** is a KL divergence between rate vectors, specifically between the target conditional velocity $u_t(\cdot | x_t^i, x_1^i)$ and the learned velocity $u_{\theta,t}^i(\mathbf{x}_t)$:
+In the discrete flow matching part, we first stated the conditional discrete flow matching loss $L_{\text{CDFM}}$ in @eq:cdfm-1, then said that we can also directly train a denoiser with the conditional discrete denoising loss $L_{\text{CDM}}$ in @eq:cdm-loss.
 
-$$
-\begin{equation}
-\label{eq:cfm-loss}
-L_{\text{CFM}} = \mathbb{E}_{t,\,\mathbf{x}_t,\,x_1}\!\left[\sum_{i=1}^S \mathrm{KL}^i\!\left(u_t(\cdot | x_t^i, x_1^i),\, u_{\theta,t}^i(\mathbf{x}_t)\right)\right]
-\end{equation}
-$$
-
-A complementary approach treats the model as a variational family over the clean token $x_1^i$, minimizing the KL between the true posterior $\mathbf{e}_{x_1^i}$ and the learned categorical distribution $P_{\theta,t}(X_1^i | \mathbf{x}_t)$, which reduces to a cross-entropy:
-
-$$
-\begin{equation}
-\label{eq:cm-loss}
-L_{\text{CM}} = \mathbb{E}_{t,\,\mathbf{x}_t,\,x_1}\!\left[-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right]
-\end{equation}
-$$
-
-**These two losses are not equivalent in general.** $L_{\text{CFM}}$ is a divergence between rate vectors, nonnegative objects that are not normalized to sum to one, while $L_{\text{CM}}$ is a divergence between probability distributions. Comparing them directly is not well-defined outside of a specific parameterization.
-
-**For the mask source**, the velocity field and the denoiser are linked by a simple rescaling (@eq:velocity-posterior), $u_{\theta,t}^i(\mathbf{x})_v = \frac{1}{1-t}\,P_{\theta,t}(X_1^i = v | \mathbf{x})$ for $v \neq m$, which makes the two losses directly comparable:
+These two losses are not equivalent in general. However, for the mask source, the velocity field and the denoiser are linked by a simple rescaling (@eq:velocity-posterior) which makes the two losses directly comparable:
 
 $$
 \begin{equation}
 \label{eq:cfm-cm-scale}
-L_{\text{CFM}}(t) \approx \frac{1}{1-t} \, L_{\text{CM}}(t)
+L_{\text{CDFM}}(t) \approx \frac{1}{1-t} \, L_{\text{CDM}}(t)
 \end{equation}
 $$
 
@@ -2802,12 +2794,12 @@ $$
 <summary>Derivation</summary>
 <div>
 
-The CFM loss for the mask source can be written as a weighted cross-entropy from @eq:cfm-loss and @eq:velocity-posterior:
+The CDFM loss for the mask source can be written as a weighted cross-entropy from @eq:cdfm-1 and @eq:velocity-posterior:
 
 $$
 \begin{equation}
 \label{eq:cfm-mask-loss}
-L_{\text{CFM}}(t) = \mathbb{E}\!\left[\,\sum_{i=1}^S \mathbf{1}(x_t^i = m) \cdot \frac{1}{1-t} \cdot \left(-\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right)\right]
+L_{\text{CDFM}}(t) = \mathbb{E}\!\left[\,\sum_{i=1}^S \mathbf{1}(x_t^i = m) \cdot \frac{1}{1-t} \cdot \left(-\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right)\right]
 \end{equation}
 $$
 
@@ -2815,7 +2807,7 @@ Since $P(x_t^i = m) = 1-t$, applying the law of total expectation causes the mas
 
 $$
 \begin{align}
-L_{\text{CFM}}(t) \label{eq:cfm-t-1}
+L_{\text{CDFM}}(t) \label{eq:cfm-t-1}
   &= (1-t) \cdot \frac{1}{1-t} \cdot \mathbb{E}\!\left[ \label{eq:cfm-t-2}
       -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t) \label{eq:cfm-t-3}
       | x_t^i = m \label{eq:cfm-t-4}
@@ -2827,11 +2819,11 @@ L_{\text{CFM}}(t) \label{eq:cfm-t-1}
 \end{align}
 $$
 
-We decompose $L_{\text{CM}}$ using the same law of total expectation, splitting over masked and unmasked positions:
+We decompose $L_{\text{CDM}}$ using the same law of total expectation, splitting over masked and unmasked positions:
 
 $$
 \begin{align}
-L_{\text{CM}}(t) \label{eq:cm-t-1}
+L_{\text{CDM}}(t) \label{eq:cm-t-1}
   &= (1-t) \cdot \mathbb{E}\!\left[ \label{eq:cm-t-2}
       -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t) \label{eq:cm-t-3}
       | x_t^i = m \label{eq:cm-t-4}
@@ -2848,7 +2840,7 @@ Since a well-trained denoiser trivially reconstructs unmasked positions by copyi
 $$
 \begin{equation}
 \label{eq:cm-mask-loss}
-L_{\text{CM}}(t) \approx (1-t) \cdot \mathbb{E}\!\left[
+L_{\text{CDM}}(t) \approx (1-t) \cdot \mathbb{E}\!\left[
   -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)
   | x_t^i = m
 \right]
@@ -2860,7 +2852,7 @@ Both expressions share the same conditional expectation. Eliminating it yields t
 $$
 \begin{equation}
 \label{eq:cfm-cm}
-L_{\text{CFM}}(t) \approx \frac{1}{1-t}\, L_{\text{CM}}(t)
+L_{\text{CDFM}}(t) \approx \frac{1}{1-t}\, L_{\text{CDM}}(t)
 \end{equation}
 $$
 
