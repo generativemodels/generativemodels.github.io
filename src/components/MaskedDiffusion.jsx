@@ -39,27 +39,56 @@ function makeRng(seed) {
   };
 }
 
-// state[i] is true iff the token is still unmasked at step i (t = i/T).
-function simulateOne(T, alpha, alphaDot, mode, rand) {
+// state[i] is true iff the token is unmasked at grid index i (t = i/T).
+// direction = "forward":  start at x_0 (state[0] = true),  step left to right, masking is irreversible.
+// direction = "reverse" (conditioned on x_0): start at m (state[T] = false), step right to left, unmasking is irreversible.
+function simulateOne(T, alpha, alphaDot, mode, direction, rand) {
   const state = new Array(T + 1);
-  state[0] = true;
-  let alive = true;
-  for (let i = 1; i <= T; i++) {
-    if (!alive) { state[i] = false; continue; }
-    const tPrev = (i - 1) / T;
-    const tCurr = i / T;
-    let pMask;
-    if (mode === "discrete") {
-      const aPrev = alpha(tPrev), aCurr = alpha(tCurr);
-      pMask = aPrev > 1e-12 ? 1 - aCurr / aPrev : 1;
-    } else {
-      const dt = 1 / T;
-      const a = alpha(tPrev), ad = alphaDot(tPrev);
-      pMask = a > 1e-12 ? -ad / a * dt : 1;
+  if (direction === "forward") {
+    state[0] = true;
+    let alive = true;
+    for (let i = 1; i <= T; i++) {
+      if (!alive) { state[i] = false; continue; }
+      const tPrev = (i - 1) / T;
+      const tCurr = i / T;
+      let pMask;
+      if (mode === "discrete") {
+        const aPrev = alpha(tPrev), aCurr = alpha(tCurr);
+        pMask = aPrev > 1e-12 ? 1 - aCurr / aPrev : 1;
+      } else {
+        const dt = 1 / T;
+        const a = alpha(tPrev), ad = alphaDot(tPrev);
+        pMask = a > 1e-12 ? -ad / a * dt : 1;
+      }
+      pMask = Math.max(0, Math.min(1, pMask));
+      if (rand() < pMask) alive = false;
+      state[i] = alive;
     }
-    pMask = Math.max(0, Math.min(1, pMask));
-    if (rand() < pMask) alive = false;
-    state[i] = alive;
+  } else {
+    // Reverse process conditioned on x_0 (eq. bridge-mask in dfm.mdx).
+    state[T] = false;
+    let alive = false;
+    for (let i = T - 1; i >= 0; i--) {
+      if (alive) { state[i] = true; continue; }
+      const tCurr = (i + 1) / T;
+      const sNext = i / T;
+      let pUnmask;
+      if (mode === "discrete") {
+        // (alpha_s - alpha_t) / (1 - alpha_t)
+        const aT = alpha(tCurr), aS = alpha(sNext);
+        const denom = 1 - aT;
+        pUnmask = denom > 1e-12 ? (aS - aT) / denom : 0;
+      } else {
+        // Euler step on the conditional reverse rate -alpha_dot(t) / (1 - alpha(t))
+        const dt = 1 / T;
+        const aT = alpha(tCurr), adT = alphaDot(tCurr);
+        const denom = 1 - aT;
+        pUnmask = denom > 1e-12 ? -adT / denom * dt : 0;
+      }
+      pUnmask = Math.max(0, Math.min(1, pUnmask));
+      if (rand() < pUnmask) alive = true;
+      state[i] = alive;
+    }
   }
   return state;
 }
@@ -84,16 +113,16 @@ function survivalSchedule(T, alpha, alphaDot, mode) {
   return probs;
 }
 
-function singleTrajectory(T, alpha, alphaDot, mode, seed) {
-  return simulateOne(T, alpha, alphaDot, mode, makeRng(seed));
+function singleTrajectory(T, alpha, alphaDot, mode, direction, seed) {
+  return simulateOne(T, alpha, alphaDot, mode, direction, makeRng(seed));
 }
 
-function aggregateTrajectories(T, alpha, alphaDot, mode, N, baseSeed) {
+function aggregateTrajectories(T, alpha, alphaDot, mode, direction, N, baseSeed) {
   const counts = new Array(T + 1).fill(0);
   for (let n = 0; n < N; n++) {
     const seed = (baseSeed + n * 2654435761) | 0;
     const rand = makeRng(seed);
-    const traj = simulateOne(T, alpha, alphaDot, mode, rand);
+    const traj = simulateOne(T, alpha, alphaDot, mode, direction, rand);
     for (let i = 0; i <= T; i++) if (traj[i]) counts[i] += 1;
   }
   return counts.map((c) => c / N);
@@ -181,7 +210,7 @@ function NumberInput({ label, value, onApply, color = "#82b4ff", min, max, step 
 
 // ── Top figure: animated step-by-step trajectory ───────────────────
 function TrajectoryFigure({
-  T, alpha, alphaDot, seed, showDiscrete, showContinuous, step,
+  T, alpha, alphaDot, seed, showDiscrete, showContinuous, step, direction, ghost,
 }) {
   const W = 560;
   const H = 200;
@@ -194,33 +223,72 @@ function TrajectoryFigure({
   const xAt = (i) => padL + (i / T) * plotW;
 
   const trajD = useMemo(
-    () => singleTrajectory(T, alpha, alphaDot, "discrete", seed),
-    [T, alpha, alphaDot, seed]
+    () => singleTrajectory(T, alpha, alphaDot, "discrete", direction, seed),
+    [T, alpha, alphaDot, direction, seed]
   );
   const trajC = useMemo(
-    () => singleTrajectory(T, alpha, alphaDot, "continuous", seed + 7919),
-    [T, alpha, alphaDot, seed]
+    () => singleTrajectory(T, alpha, alphaDot, "continuous", direction, seed + 7919),
+    [T, alpha, alphaDot, direction, seed]
   );
 
   const yOf = (alive) => (alive ? yClean : yMask);
   const clampProb = (p) => Math.max(0, Math.min(1, p));
 
-  function previousCleanProb(traj) {
-    if (step <= 0 || traj[step]) return 1;
-    const t = step / T;
-    const s = (step - 1) / T;
-    const aNow = alpha(t);
-    return aNow < 1 - 1e-12 ? clampProb((alpha(s) - aNow) / (1 - aNow)) : 0;
+  // grid index visited at simulation step k
+  const idxAtStep = (k) => (direction === "forward" ? k : T - k);
+  const currentIdx = idxAtStep(step);
+
+  // P(x_next = x_0 | x_current). The "next" is the next simulation step
+  // (i.e. forward: idx+1 is later in time; reverse: idx-1 is earlier in time).
+  // - Once a token leaves x_0 (forward) or m (reverse), it stays absorbed,
+  //   so for forward: x_current = m  ->  P = 0.
+  //                  reverse: x_current = x_0 -> P = 1 (stays at x_0).
+  // - Otherwise we plug into the corresponding kernel from dfm.mdx.
+  function nextCleanProb(traj, mode) {
+    // No "next" past the last simulation step.
+    if (step >= T) return null;
+    const alive = traj[currentIdx];
+    if (direction === "forward") {
+      if (!alive) return 0; // already masked, stays masked
+      // P(x_{i+1} = x_0 | x_i = x_0) = alpha_{(i+1)/T}/alpha_{i/T}  (discrete)
+      //                              = 1 - (-alpha_dot/alpha) * dt (continuous Euler)
+      const tCurr = currentIdx / T;
+      const tNext = (currentIdx + 1) / T;
+      if (mode === "discrete") {
+        const aPrev = alpha(tCurr);
+        return aPrev > 1e-12 ? clampProb(alpha(tNext) / aPrev) : 0;
+      }
+      const dt = 1 / T;
+      const a = alpha(tCurr), ad = alphaDot(tCurr);
+      const pMask = a > 1e-12 ? -ad / a * dt : 1;
+      return clampProb(1 - pMask);
+    }
+    // reverse: next idx is currentIdx - 1, going backward in time
+    if (alive) return 1; // already at x_0, stays at x_0
+    // P(x_s = x_0 | x_t = m, x_0) = (alpha_s - alpha_t)/(1 - alpha_t)  (discrete)
+    //                             = -alpha_dot(t)/(1 - alpha(t)) * dt   (continuous Euler)
+    const tCurr = currentIdx / T;
+    const sNext = (currentIdx - 1) / T;
+    if (mode === "discrete") {
+      const aT = alpha(tCurr);
+      const denom = 1 - aT;
+      return denom > 1e-12 ? clampProb((alpha(sNext) - aT) / denom) : 0;
+    }
+    const dt = 1 / T;
+    const aT = alpha(tCurr), adT = alphaDot(tCurr);
+    const denom = 1 - aT;
+    return denom > 1e-12 ? clampProb(-adT / denom * dt) : 0;
   }
 
-  // Arrow path from step (i-1) to step i. L-shape if a vertical jump happens.
-  function renderArrow(traj, i, color, dashed, opacity) {
-    if (i < 1 || i > T) return null;
-    const x0 = xAt(i - 1);
-    const x1 = xAt(i);
-    const y0 = yOf(traj[i - 1]);
-    const y1 = yOf(traj[i]);
-    const id = `arrow-${color.replace("#", "")}-${dashed ? "d" : "s"}-${opacity > 0.5 ? "f" : "p"}`;
+  // Arrow path between adjacent grid indices a and b (head at b).
+  // L-shape if a vertical jump happens.
+  function renderArrow(traj, a, b, color, dashed, opacity) {
+    if (a < 0 || b < 0 || a > T || b > T) return null;
+    const x0 = xAt(a);
+    const x1 = xAt(b);
+    const y0 = yOf(traj[a]);
+    const y1 = yOf(traj[b]);
+    const id = `arrow-${color.replace("#", "")}-${dashed ? "d" : "s"}-${opacity > 0.5 ? "f" : "p"}-${a}-${b}`;
     let d;
     if (y0 === y1) {
       d = `M ${x0} ${y0} L ${x1} ${y1}`;
@@ -243,7 +311,30 @@ function TrajectoryFigure({
     );
   }
 
-  // Right-hand bars: one-step bridge probability and the unconditional clean probability.
+  // Ghost trajectory: render the full previous-run path very faintly so the user
+  // can compare reverse against the forward run that produced x_0.
+  function renderGhostPath(ghostTraj, ghostDir, color, dashed) {
+    if (!ghostTraj) return null;
+    const segs = [];
+    for (let k = 1; k <= T; k++) {
+      const a = ghostDir === "forward" ? k - 1 : T - (k - 1);
+      const b = ghostDir === "forward" ? k     : T - k;
+      const x0 = xAt(a), x1 = xAt(b);
+      const y0 = yOf(ghostTraj[a]), y1 = yOf(ghostTraj[b]);
+      if (y0 === y1) {
+        segs.push(`M ${x0} ${y0} L ${x1} ${y1}`);
+      } else {
+        segs.push(`M ${x0} ${y0} L ${x1} ${y0} L ${x1} ${y1}`);
+      }
+    }
+    return (
+      <path d={segs.join(" ")} fill="none" stroke={color} strokeWidth={1.0}
+        strokeLinejoin="round" strokeLinecap="round" opacity={0.18}
+        strokeDasharray={dashed ? "3 3" : undefined} />
+    );
+  }
+
+  // Right-hand bars: next-step survival prob, and the unconditional clean prob for reference.
   const barX = padL + plotW + 20;
   const barW = 16;
   const barAreaH = 80;
@@ -252,7 +343,10 @@ function TrajectoryFigure({
   const activeBarCount = Number(showDiscrete) + Number(showContinuous);
   const conditionalGroupW = activeBarCount * barW + Math.max(0, activeBarCount - 1) * barGap;
   const unconditionalBarX = barX + conditionalGroupW + (activeBarCount > 0 ? 22 : 0);
-  const unconditionalCleanProb = clampProb(alpha(step / T));
+  const unconditionalCleanProb = clampProb(alpha(currentIdx / T));
+
+  // List of visited grid indices (in order of visiting).
+  const visitedIdxs = Array.from({ length: step + 1 }, (_, k) => idxAtStep(k));
 
   return (
     <svg width={W} height={H} style={{ overflow: "visible" }}>
@@ -279,34 +373,56 @@ function TrajectoryFigure({
           stroke="rgba(255,255,255,0.25)" />
       ))}
 
-      {/* Past arrows (transitions for k = 1..step). The latest is brighter. */}
-      {showDiscrete && Array.from({ length: step }, (_, k) => (
-        <g key={`ad${k}`}>
-          {renderArrow(trajD, k + 1, COLOR_DISCRETE, false, k === step - 1 ? 1 : 0.35)}
-        </g>
+      {/* Ghost trajectory of the previous run (drawn underneath everything else). */}
+      {ghost && ghost.discrete && showDiscrete && renderGhostPath(ghost.discrete, ghost.direction, COLOR_DISCRETE, false)}
+      {ghost && ghost.continuous && showContinuous && renderGhostPath(ghost.continuous, ghost.direction, COLOR_CONTINUOUS, true)}
+      {ghost && ghost.discrete && showDiscrete && Array.from({ length: T + 1 }, (_, i) => (
+        <circle key={`gD${i}`} cx={xAt(i)} cy={yOf(ghost.discrete[i])}
+          r={2} fill={COLOR_DISCRETE} opacity={0.22} />
       ))}
-      {showContinuous && Array.from({ length: step }, (_, k) => (
-        <g key={`ac${k}`}>
-          {renderArrow(trajC, k + 1, COLOR_CONTINUOUS, true, k === step - 1 ? 1 : 0.35)}
-        </g>
-      ))}
-
-      {/* Visited dots only (no connecting line). Current dot highlighted. */}
-      {showDiscrete && Array.from({ length: step + 1 }, (_, i) => (
-        <circle key={`dD${i}`} cx={xAt(i)} cy={yOf(trajD[i])}
-          r={i === step ? 5.5 : 3} fill={COLOR_DISCRETE}
-          stroke={i === step ? "#fff" : "none"} strokeWidth={i === step ? 1.5 : 0}
-          opacity={i === step ? 1 : 0.7} />
-      ))}
-      {showContinuous && Array.from({ length: step + 1 }, (_, i) => (
-        <circle key={`dC${i}`} cx={xAt(i)} cy={yOf(trajC[i])}
-          r={i === step ? 5.5 : 3} fill={COLOR_CONTINUOUS}
-          stroke={i === step ? "#fff" : "none"} strokeWidth={i === step ? 1.5 : 0}
-          opacity={i === step ? 1 : 0.7} />
+      {ghost && ghost.continuous && showContinuous && Array.from({ length: T + 1 }, (_, i) => (
+        <circle key={`gC${i}`} cx={xAt(i)} cy={yOf(ghost.continuous[i])}
+          r={2} fill={COLOR_CONTINUOUS} opacity={0.22} />
       ))}
 
+      {/* Past arrows (latest is brighter). */}
+      {showDiscrete && Array.from({ length: step }, (_, k) => {
+        const a = idxAtStep(k);
+        const b = idxAtStep(k + 1);
+        return (
+          <g key={`ad${k}`}>
+            {renderArrow(trajD, a, b, COLOR_DISCRETE, false, k === step - 1 ? 1 : 0.35)}
+          </g>
+        );
+      })}
+      {showContinuous && Array.from({ length: step }, (_, k) => {
+        const a = idxAtStep(k);
+        const b = idxAtStep(k + 1);
+        return (
+          <g key={`ac${k}`}>
+            {renderArrow(trajC, a, b, COLOR_CONTINUOUS, true, k === step - 1 ? 1 : 0.35)}
+          </g>
+        );
+      })}
+
+      {/* Visited dots only. Current dot highlighted with white halo. */}
+      {showDiscrete && visitedIdxs.map((gi, k) => (
+        <circle key={`dD${k}`} cx={xAt(gi)} cy={yOf(trajD[gi])}
+          r={k === step ? 5.5 : 3} fill={COLOR_DISCRETE}
+          stroke={k === step ? "#fff" : "none"} strokeWidth={k === step ? 1.5 : 0}
+          opacity={k === step ? 1 : 0.7} />
+      ))}
+      {showContinuous && visitedIdxs.map((gi, k) => (
+        <circle key={`dC${k}`} cx={xAt(gi)} cy={yOf(trajC[gi])}
+          r={k === step ? 5.5 : 3} fill={COLOR_CONTINUOUS}
+          stroke={k === step ? "#fff" : "none"} strokeWidth={k === step ? 1.5 : 0}
+          opacity={k === step ? 1 : 0.7} />
+      ))}
+
+      {/* Bars: next-step P(x_0). Hidden once we run past the last step. */}
       {showDiscrete && (() => {
-        const p = previousCleanProb(trajD);
+        const p = nextCleanProb(trajD, "discrete");
+        if (p === null) return null;
         const h = p * barAreaH;
         const x = barX;
         return (
@@ -323,7 +439,8 @@ function TrajectoryFigure({
         );
       })()}
       {showContinuous && (() => {
-        const p = previousCleanProb(trajC);
+        const p = nextCleanProb(trajC, "continuous");
+        if (p === null) return null;
         const h = p * barAreaH;
         const x = barX + (showDiscrete ? barW + barGap : 0);
         return (
@@ -360,7 +477,7 @@ function TrajectoryFigure({
 }
 
 // ── Bottom figure: empirical fraction unmasked vs alpha_t ──────────
-function AggregateFigure({ T, alpha, alphaDot, N, seed, showDiscrete, showContinuous }) {
+function AggregateFigure({ T, alpha, alphaDot, N, seed, showDiscrete, showContinuous, direction }) {
   const W = 520;
   const H = 240;
   const padL = 50, padR = 20, padT = 20, padB = 36;
@@ -381,12 +498,12 @@ function AggregateFigure({ T, alpha, alphaDot, N, seed, showDiscrete, showContin
   }, [alpha]);
 
   const aggD = useMemo(
-    () => (showDiscrete ? aggregateTrajectories(T, alpha, alphaDot, "discrete", N, seed) : null),
-    [T, alpha, alphaDot, N, seed, showDiscrete]
+    () => (showDiscrete ? aggregateTrajectories(T, alpha, alphaDot, "discrete", direction, N, seed) : null),
+    [T, alpha, alphaDot, direction, N, seed, showDiscrete]
   );
   const aggC = useMemo(
-    () => (showContinuous ? aggregateTrajectories(T, alpha, alphaDot, "continuous", N, seed + 104729) : null),
-    [T, alpha, alphaDot, N, seed, showContinuous]
+    () => (showContinuous ? aggregateTrajectories(T, alpha, alphaDot, "continuous", direction, N, seed + 104729) : null),
+    [T, alpha, alphaDot, direction, N, seed, showContinuous]
   );
 
   return (
@@ -453,6 +570,7 @@ function AggregateFigure({ T, alpha, alphaDot, N, seed, showDiscrete, showContin
 export default function MaskedDiffusionForward({
   initialShowDiscrete = true,
   initialShowContinuous = true,
+  initialDirection = "forward",
 }) {
   const [scheduleKey, setScheduleKey] = useState("linear");
   const [T, setT] = useState(10);
@@ -461,6 +579,13 @@ export default function MaskedDiffusionForward({
   const [showContinuous, setShowContinuous] = useState(initialShowContinuous);
   const [N, setN] = useState(10000);
   const [aggSeed, setAggSeed] = useState(0);
+  const [direction, setDirection] = useState(initialDirection);
+
+  // Ghost: the other-direction trajectory, displayed faintly behind the current run.
+  // We only show it once the user has actually advanced (Next or Play) at least one
+  // step in that other direction during this session.
+  const [seenForward, setSeenForward] = useState(false);
+  const [seenReverse, setSeenReverse] = useState(false);
 
   // Animation state for top figure
   const [step, setStep] = useState(0);
@@ -470,6 +595,8 @@ export default function MaskedDiffusionForward({
 
   const sched = SCHEDULES[scheduleKey];
   const isFinished = step >= T;
+  const isForward = direction === "forward";
+  const currentT = isForward ? step / T : (T - step) / T;
 
   const advance = useCallback(() => {
     setStep((s) => {
@@ -487,11 +614,40 @@ export default function MaskedDiffusionForward({
 
   useEffect(() => { if (isFinished) setPlaying(false); }, [isFinished]);
 
-  // Reset step when seed, T, or schedule changes
+  // Mark the current direction as "seen" the moment the user advances past step 0.
+  useEffect(() => {
+    if (step <= 0) return;
+    if (isForward) setSeenForward(true);
+    else setSeenReverse(true);
+  }, [step, isForward]);
+
+  // Reset step when seed, T, or schedule changes (and clear seen flags so the
+  // ghost doesn't carry over a stale trajectory drawn from a different setting).
   useEffect(() => {
     setStep(0);
     setPlaying(false);
+    setSeenForward(false);
+    setSeenReverse(false);
   }, [seed, T, scheduleKey]);
+
+  function changeDirection(nextDir) {
+    if (nextDir === direction) return;
+    setDirection(nextDir);
+    setStep(0);
+    setPlaying(false);
+  }
+
+  // Compute the ghost on the fly from the seen flags. It shows the *other*
+  // direction's deterministic trajectory only once the user has stepped at least
+  // once through that direction.
+  const ghost = useMemo(() => {
+    const otherDir = isForward ? "reverse" : "forward";
+    const otherSeen = isForward ? seenReverse : seenForward;
+    if (!otherSeen) return null;
+    const gD = singleTrajectory(T, sched.alpha, sched.alphaDot, "discrete", otherDir, seed);
+    const gC = singleTrajectory(T, sched.alpha, sched.alphaDot, "continuous", otherDir, seed + 7919);
+    return { direction: otherDir, discrete: gD, continuous: gC };
+  }, [isForward, seenForward, seenReverse, T, sched, seed]);
 
   const applyT = (val) => {
     const n = Math.max(2, Math.min(200, Number(val) || T));
@@ -517,6 +673,8 @@ export default function MaskedDiffusionForward({
   function reset() {
     setStep(0);
     setPlaying(false);
+    setSeenForward(false);
+    setSeenReverse(false);
   }
 
   const btnBase = {
@@ -557,22 +715,61 @@ export default function MaskedDiffusionForward({
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
         }}
       >
-        Masked Diffusion: Forward Process
+        {isForward ? "Masked Diffusion: Forward Process" : "Masked Diffusion: Reverse Process (cond. on x₀)"}
       </h2>
       <div style={{
         fontSize: 11, color: "rgba(255,255,255,0.4)",
         fontFamily: "'DM Mono', monospace", margin: 0, textAlign: "center", maxWidth: 560,
         lineHeight: 1.5,
       }}>
-        {showDiscrete && (
-          <div>discrete view: β<sub>i</sub> = 1 − α<sub>i/T</sub> / α<sub>(i−1)/T</sub></div>
-        )}
-        {showContinuous && (
-          <div>continuous view: Euler step on rate −α̇<sub>t</sub>/α<sub>t</sub></div>
+        {isForward ? (
+          <>
+            {showDiscrete && (
+              <div>discrete view: β<sub>i</sub> = 1 − α<sub>i/T</sub> / α<sub>(i−1)/T</sub></div>
+            )}
+            {showContinuous && (
+              <div>continuous view: Euler step on rate −α̇<sub>t</sub>/α<sub>t</sub></div>
+            )}
+          </>
+        ) : (
+          <>
+            {showDiscrete && (
+              <div>discrete view: β<sub>i</sub><sup>rev</sup> = (α<sub>(i−1)/T</sub> − α<sub>i/T</sub>) / (1 − α<sub>i/T</sub>)</div>
+            )}
+            {showContinuous && (
+              <div>continuous view: Euler step on rate −α̇<sub>t</sub>/(1 − α<sub>t</sub>)</div>
+            )}
+          </>
         )}
       </div>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+        <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,255,255,0.12)" }}>
+          {[
+            { value: "forward", label: "▶ forward" },
+            { value: "reverse", label: "◀ reverse" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => changeDirection(opt.value)}
+              style={{
+                padding: "4px 12px",
+                fontSize: 11,
+                fontFamily: "'DM Mono', monospace",
+                fontWeight: direction === opt.value ? 600 : 400,
+                background: direction === opt.value
+                  ? "rgba(167,139,250,0.20)"
+                  : "rgba(255,255,255,0.03)",
+                color: direction === opt.value ? "#a78bfa" : "rgba(255,255,255,0.55)",
+                border: "none",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
         <ToggleButton
           options={[
             { value: "linear", label: "1−t" },
@@ -593,8 +790,16 @@ export default function MaskedDiffusionForward({
           {isFinished ? "Done!" : step === 0 ? "Start" : `Step ${step}/${T}`}
         </span>
         <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: "#82b4ff" }}>
-          t = {(step / T).toFixed(2)}
+          t = {currentT.toFixed(2)}
         </span>
+        {ghost && (
+          <span style={{
+            fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)",
+            fontStyle: "italic",
+          }}>
+            {ghost.direction} run shown in background
+          </span>
+        )}
       </div>
 
       {/* Top: single trajectory */}
@@ -620,7 +825,7 @@ export default function MaskedDiffusionForward({
         <TrajectoryFigure
           T={T} alpha={sched.alpha} alphaDot={sched.alphaDot}
           seed={seed} showDiscrete={showDiscrete} showContinuous={showContinuous}
-          step={step}
+          step={step} direction={direction} ghost={ghost}
         />
 
         {/* Playback controls */}
@@ -755,6 +960,7 @@ export default function MaskedDiffusionForward({
           T={T} alpha={sched.alpha} alphaDot={sched.alphaDot}
           N={N} seed={aggSeed}
           showDiscrete={showDiscrete} showContinuous={showContinuous}
+          direction={direction}
         />
       </div>
     </div>

@@ -19,7 +19,7 @@ import Ref from '../../components/numbering/Ref.astro'
 import Statement from '../../components/numbering/Statement.astro'
 import SudokuFlowMatching from '../../components/sudoku_flow_matching_generative.jsx';
 import DFMSampling from '../../components/DFMSampling.jsx';
-import MaskedDiffusionForward from '../../components/MaskedDiffusionForward.jsx';
+import MaskedDiffusion from '../../components/MaskedDiffusion.jsx';
 import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 
 <T defines='
@@ -1322,12 +1322,12 @@ By the Markov property, the probability that a token has survived up to time $t$
 
 $$
 \begin{align}
-q(x_t = x_0 \mid x_0)
-&= q(x_{j/T} = x_0 \mid x_0) \label{eq:survival-prob-1} \\
-&= q(x_{j/T} = x_0 \mid x_{(j-1)/T} = x_0)\,
-   q(x_{(j-1)/T} = x_0 \mid x_0) \label{eq:survival-prob-2} \\
+q(x_t = x_0 | x_0)
+&= q(x_{j/T} = x_0 | x_0) \label{eq:survival-prob-1} \\
+&= q(x_{j/T} = x_0 | x_{(j-1)/T} = x_0)\,
+   q(x_{(j-1)/T} = x_0 | x_0) \label{eq:survival-prob-2} \\
 &= (1-\beta_j)\,
-   q(x_{(j-1)/T} = x_0 \mid x_0) \label{eq:survival-prob-3} \\
+   q(x_{(j-1)/T} = x_0 | x_0) \label{eq:survival-prob-3} \\
 &= \prod_{i=1}^{j} (1-\beta_i). \label{eq:survival-prob-4}
 \end{align}
 $$
@@ -1339,7 +1339,7 @@ Then:
 
 $$
 \begin{align}
-q(x_t = x_0 \mid x_0)
+q(x_t = x_0 | x_0)
 &= \prod_{i=1}^{j}
 \left(1-\frac{1}{T}\beta\left(\frac{i}{T}\right)\right) \label{eq:survival-prob-5} \\
 &= \exp\left(
@@ -1419,9 +1419,9 @@ $$
 </details>
 
 <figure>
-  <MaskedDiffusionForward initialShowDiscrete={true} initialShowContinuous={false} client:load />
+  <MaskedDiffusion initialShowDiscrete={true} initialShowContinuous={false} client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Discrete masked forward with T steps as in @eq:mdm-step (or equivalently in @eq:forward-transition with $s = t - 1/T$) Top: 1) At step $k$, an unmasked token stays at $x_0$ with probability $\alpha_{(k+1)/T}/\alpha_{k/T}$; after masking, this probability is zero. 2) The blue bar shows $q(x_{t-1/T}=x_0 \mid x_t, x_0)$ (@eq:bridge-mask), and the grey bar shows $q(x_t=x_0 \mid x_0)=\alpha_t$. 3) The trajectories are stochastic: changing the seed will change the time at which the clean token transitions to the mask token. Bottom: 1) We sample $N$ independent trajectories using the same transition rule. For each time step $i/T$, we report the proportion of trajectories that are still unmasked (blue dots) 2) As both $T$ and $N$ grow, this empirical curve (aggregation of blue dots) should approach the noise schedule $\alpha_t$ (white curve).
+    <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Discrete masked forward with T steps as in @eq:mdm-step (or equivalently in @eq:forward-transition with $s = t - 1/T$) Top: 1) At step $k$, an unmasked token stays at $x_0$ with probability $\alpha_{(k+1)/T}/\alpha_{k/T}$; after masking, this probability is zero. 2) The blue bar shows the one-step forward probability $q(x_t=x_0 | x_{t-1/T}=x_0)=\alpha_t/\alpha_{t-1/T}$ (@eq:forward-transition), and the grey bar shows $q(x_t=x_0 | x_0)=\alpha_t$. 3) The trajectories are stochastic: changing the seed will change the time at which the clean token transitions to the mask token. Bottom: 1) We sample $N$ independent trajectories using the same transition rule. For each time step $i/T$, we report the proportion of trajectories that are still unmasked (blue dots) 2) As both $T$ and $N$ grow, this empirical curve (aggregation of blue dots) should approach the noise schedule $\alpha_t$ (white curve).
   </figcaption>
 </figure>
 
@@ -1514,7 +1514,7 @@ The ELBO for a discrete diffusion process is given by:
 $$
 \begin{align}
 \text{ELBO}(x_0) ={}& - \mathrm{KL}(q(x_1 | x_0) , p_{\text{source}})  \label{eq:discrete-elbo-1} \\
-& - \sum_{j=1}^{T} \mathbb{E}_{x_{j/T} \sim q( \cdot | x_0)} \left[ \mathrm{KL}\!\left(q\!\left(x_{(j-1)/T} \mid x_{j/T}, x_0\right),\, p_\theta\!\left(x_{(j-1)/T} \mid x_{j/T}\right)\right) \right]  \label{eq:discrete-elbo-2} \notag
+& - \sum_{j=1}^{T} \mathbb{E}_{x_{j/T} \sim q( \cdot | x_0)} \left[ \mathrm{KL}\!\left(q\!\left(x_{(j-1)/T} | x_{j/T}, x_0\right),\, p_\theta\!\left(x_{(j-1)/T} | x_{j/T}\right)\right) \right]  \label{eq:discrete-elbo-2} \notag
 \end{align}
 $$
 </Statement>
@@ -1655,7 +1655,7 @@ $$
 [D_{\theta,t}(x_t)]_v \approx \mathbb{P}(X_0 = v | X_t = x_t), \qquad v \in \mathcal{V}.
 \end{equation}
 $$
-This definition naturally extends to each position $i$: $[D_{\theta,t}^i(\mathbf{x}_t)]_v \approx \mathbb{P}(X_0^i = v \mid \mathbf{X}_t = \mathbf{x}_t)$.
+This definition naturally extends to each position $i$: $[D_{\theta,t}^i(\mathbf{x}_t)]_v \approx \mathbb{P}(X_0^i = v | \mathbf{X}_t = \mathbf{x}_t)$.
 Our goal is to rewrite the ELBO term entirely in terms of this denoiser; the next lemma shows how it induces the reverse transition used in the loss.
 
 <Statement kind="Lemma" label="masked-diffusion-denoiser-bridge">
@@ -1716,6 +1716,13 @@ x_s^i \sim \mathrm{Cat}\left(
 \end{equation}
 $$
 When a token is already unmasked, the masked process simply keeps it fixed.
+
+<figure>
+  <MaskedDiffusion initialShowDiscrete={true} initialShowContinuous={false} initialDirection="reverse" client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:masked-reverse-discrete" />:</strong> Discrete masked reverse with T steps as in @eq:masked-diffusion-denoiser-sampling (or equivalently @eq:bridge-mask when the denoiser puts all mass on the true $x_0$). Top: 1) At step $k$, a masked token is unmasked with probability $(\alpha_{(k-1)/T}-\alpha_{k/T})/(1-\alpha_{k/T})$; after unmasking, it stays fixed at $x_0$. 2) The blue bar shows $q(x_{t-1/T}=x_0 | x_t=m, x_0)$ (@eq:bridge-mask), and the grey bar shows $q(x_t=x_0 | x_0)=\alpha_t$. Bottom: Similar to <Ref label="fig:masked-forward-discrete" />, but we simulate $N$ trajectories with the reverse process instead.
+  </figcaption>
+</figure>
 
 <Statement kind="Proposition" label="masked-diffusion-training-loss" title="Training Loss Proof for Masked Diffusion">
 In the specific case of masked diffusion, we can express the loss in terms of the denoiser output $D_{\theta,t}(\mathbf{x}_t) = (D_{\theta,t}^1(\mathbf{x}_t), \ldots, D_{\theta,t}^S(\mathbf{x}_t)) \in \Delta(\mathcal{V})^S$:
@@ -1866,7 +1873,7 @@ In other words, the forward process is characterized by:
 $$
 \begin{equation}
 \label{eq:forward-rate}
-q(x_{t+\Delta t} = y \mid x_t) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{Q}_t(x_t)]_y + o(\Delta t)
+q(x_{t+\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{Q}_t(x_t)]_y + o(\Delta t)
 \end{equation}
 $$
 
@@ -1895,12 +1902,12 @@ $$
 \end{align}
 $$
 
-We now calculate $q(x_{t+\Delta t} \mid x_t) = \text{Cat}(x_{t+\Delta t};\ \bar{Q}_{t+\Delta t|t}^\top x_t)$.
+We now calculate $q(x_{t+\Delta t} | x_t) = \text{Cat}(x_{t+\Delta t};\ \bar{Q}_{t+\Delta t|t}^\top x_t)$.
 For a fixed state $x_t = e_k$, the probability of transitioning to state $y$ is the $y$-th entry of $\bar{Q}_{t+\Delta t|t}^\top e_k$:
 
 $$
 \begin{align}
-q(x_{t+\Delta t} = y \mid x_t) &= \left[\bar{Q}_{t+\Delta t|t}^\top e_k\right]_y  \label{eq:forward-rate-proof-1} \\
+q(x_{t+\Delta t} = y | x_t) &= \left[\bar{Q}_{t+\Delta t|t}^\top e_k\right]_y  \label{eq:forward-rate-proof-1} \\
 &= \mathbb{I}(y = x_t) + \Delta t\, \frac{\dot{\alpha}_t}{\alpha_t}\left[\left(I - \mathbf{1}\mathbf{e}_m^\top\right)^\top\right]_{ky} + o(\Delta t) \label{eq:forward-rate-proof-2}
 \end{align}
 $$
@@ -1922,9 +1929,9 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 The matrix $\dot{Q}_t$ plays the same role for the discrete forward process as $f_t$ plays for the continuous one. In Continuous Diffusion, the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$ says that, over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $\Delta t\,[\dot{Q}_t(x_t)]_y$ to first order.
 
 <figure>
-  <MaskedDiffusionForward initialShowDiscrete={false} initialShowContinuous={true} client:load />
+  <MaskedDiffusion initialShowDiscrete={false} initialShowContinuous={true} client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:masked-forward-continuous" />:</strong> Euler simulation of the infinitesimal forward transition @eq:forward-rate. Top: the next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y \mid x_t) = \mathbb{I}(y=x_t) + \Delta t[\dot{Q}_t(x_t)]_y + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. Bottom: as in Figure <Ref label="fig:masked-forward-discrete" />, we aggregate sampled trajectories and report the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
+    <strong>Figure <Counter label="fig:masked-forward-continuous" />:</strong> Euler simulation of the infinitesimal forward transition @eq:forward-rate. Top: the next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y | x_t) = \mathbb{I}(y=x_t) + \Delta t[\dot{Q}_t(x_t)]_y + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. Bottom: as in Figure <Ref label="fig:masked-forward-discrete" />, we aggregate sampled trajectories and report the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
   </figcaption>
 </figure>
 
@@ -1971,6 +1978,12 @@ For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a v
 </div>
 </details>
 
+<figure>
+  <MaskedDiffusion initialShowDiscrete={false} initialShowContinuous={true} initialDirection="reverse" client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:masked-reverse-continuous" />:</strong> Euler simulation of the infinitesimal reverse transition @eq:reverse-rate, conditioned on the clean token as in @eq:reverse-kernel-mask. Top: the previous state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t-\Delta t}=y | x_t, x_0) = \mathbb{I}(y=x_t) + \Delta t[\dot{R}_t(x_t | x_0)]_y + o(\Delta t)$, giving a discretized continuous-time reverse process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-reverse-discrete" />. Bottom: as in Figure <Ref label="fig:masked-forward-continuous" />.
+  </figcaption>
+</figure>
 
 **Concrete score.** In Continuous Diffusion, the score function $\nabla \log p_t(x)$ governs the reverse SDE $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $. Thus, to sample from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
 
@@ -2053,7 +2066,7 @@ We start from @eq:discrete-elbo-1. In the continuous-time limit $T \to \infty$, 
 $$
 \begin{equation}
 \label{eq:reverse-kernel}
-q(y \mid x_t, x_0) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{R}_t(x_t | x_0)]_y + o(\Delta t), \quad y \in \mathcal{V}
+q(y | x_t, x_0) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{R}_t(x_t | x_0)]_y + o(\Delta t), \quad y \in \mathcal{V}
 \end{equation}
 $$
 
@@ -2110,7 +2123,7 @@ Taking the first-order Taylor expansion (noting that $\alpha_{t - \Delta t} - \a
 
 $$
 \begin{align}
-R_{t - \Delta t \mid t}^{x_0} &= I + \frac{-\dot{\alpha}_t \Delta t}{1 - \alpha_t} \mathbf{e}_m(x_0 - \mathbf{e}_m)^\top + o(\Delta t)  \label{eq:bridge-rate-1} \\
+R_{t - \Delta t | t}^{x_0} &= I + \frac{-\dot{\alpha}_t \Delta t}{1 - \alpha_t} \mathbf{e}_m(x_0 - \mathbf{e}_m)^\top + o(\Delta t)  \label{eq:bridge-rate-1} \\
 &= I + \Delta t\, \dot{R}_t(x_t | x_0) + o(\Delta t) \label{eq:bridge-rate-2}
 \end{align}
 $$
