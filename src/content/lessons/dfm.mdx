@@ -52,8 +52,37 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
     margin-bottom: 0.8rem;
   }
 
+  .dfm-note-entry {
+    margin-bottom: 0.8rem;
+  }
+
   .ref-main strong {
     font-weight: 700;
+  }
+
+  .dfm-note-ref {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25em;
+    height: 1.25em;
+    margin-left: 0.12em;
+    color: #2563eb;
+    cursor: help;
+    font-size: 0.72em;
+    font-weight: 700;
+    line-height: 1;
+    text-decoration-line: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 0.12em;
+    vertical-align: super;
+    white-space: nowrap;
+  }
+
+  .dfm-note-ref:focus {
+    outline: 2px solid #93c5fd;
+    outline-offset: 2px;
+    border-radius: 3px;
   }
 
   .dfm-local-example {
@@ -174,8 +203,8 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
       if (!href.startsWith('#')) return '';
       const refAnchor = document.getElementById(href.slice(1));
       if (!refAnchor) return '';
-      const refEntry = refAnchor.closest('.ref-entry');
-      const refMain = refEntry ? refEntry.querySelector('.ref-main') : null;
+      const entry = refAnchor.closest('.ref-entry, .dfm-note-entry');
+      const refMain = entry ? entry.querySelector('.ref-main, .dfm-note-main') : null;
       return refMain ? refMain.innerHTML : '';
     };
 
@@ -211,7 +240,7 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
     };
 
     const bindCitations = () => {
-      document.querySelectorAll('a.cite-ref').forEach((link) => {
+      document.querySelectorAll('a.cite-ref, .dfm-note-ref').forEach((link) => {
         if (link.dataset.citeBound === '1') return;
         link.dataset.citeBound = '1';
         link.addEventListener('mouseenter', () => showTooltip(link));
@@ -263,10 +292,7 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 
 Flow Matching (FM) and diffusion are the state-of-the-art frameworks for continuous data generation, particularly images. This blog post is a pedagogical introduction to their adaptation to discrete data.
 
-[The first section](#discrete-flow-matching) contains an introduction to Discrete Flow Matching while the [second section](#discrete-diffusion) introduces Discrete Diffusion. Both can be read independently and the reader already familiar with one or the other method can skip the associated section.
-The connection between Discrete Diffusion and Flow Matching is made explicit in [the last section](#equivalence-with-discrete-flow-matching).
-
-
+The [first section](#discrete-flow-matching) contains an introduction to Discrete Flow Matching. We then present Discrete Diffusion through its two common perspectives: the [variational perspective](#discrete-diffusion-variational-perspective) and the [score-based perspective](#discrete-diffusion-score-based-perspective). The connection between all these viewpoints is made explicit in the [last section](#equivalence-between-viewpoints).
 
 ### Generating discrete data
 
@@ -345,17 +371,6 @@ $$
 \end{equation}
 $$
 
-where $\mathbf{e}_{\mathbf{x}}$ is the one-hot vector corresponding to the current state $\mathbf{x}$.
-
-Intuitively, $u_t(\mathbf{x})_{\mathbf{y}}$ is the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
-Much like the ODE TODO cite ODE can be discretized with Euler's method, the sampling process @eq:prob-velocity can be discretized as
-$$
-\begin{equation}
-\label{eq:euler-sampling}
-\mathbf{x}_{t + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_t} + h u_\tau(\mathbf{x}_t)\right)
-\end{equation}
-$$
-
 As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
 We reach a fundamental point: unlike Continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in Discrete Flow Matching is inherently stochastic at each step**. This explains why we are allowed to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
 
@@ -401,7 +416,7 @@ $$
 
 
 We can interpret $u_t(\mathbf{x})_{\mathbf{y}}$ as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
-Much like the ODE TODO cite ODE can be discretized with Euler's method, the sampling process @eq:prob-velocity can be discretized as
+Much like the ODE @eq:flow-ode can be discretized with Euler's method, the sampling process @eq:prob-velocity can be discretized as
 $$
 \begin{equation}
 \label{eq:euler-sampling}
@@ -412,9 +427,6 @@ where $\mathbf{e}_{\mathbf{x}} \in \mathbb{R}^{|\mathcal{S}|}$ is the one-hot ve
 As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u_t(\mathbf{x})_{\mathbf{y}}$.
 We reach a fundamental point: unlike Continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in Discrete Flow Matching is inherently stochastic at each step**.
 This explains why we are able to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
-
-
-
 
 In Continuous Flow Matching, we have the guarantee that a velocity field $u_t$ generates a probability path $(p_t)$ if the pair $(p_t, u_t)$ satisfies the continuity equation $\partial_t p_t + \nabla \cdot (u_t p_t) = 0$.
 The equivalent in the discrete setting is called the Kolmogorov Equation:
@@ -429,8 +441,6 @@ $$
 \end{equation}
 $$
 </Statement>
-
-<span style="color: red"> XXX interpretation </span>
 
 <details>
 <summary>Proof</summary>
@@ -1273,22 +1283,16 @@ $$
 
 <br />
 
-### Discrete Diffusion
+### Discrete Diffusion: Variational Perspective
 
 Continuous Diffusion models learn to generate data like images by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
 In Discrete Diffusion, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
-There are two commonly equivalent perspectives on Continuous Diffusion:
 
-- **Variational perspective** (example: Denoising Diffusion Probabilistic Models (DDPM)): predict, given a noisy sequence $\mathbf{x}_t$ at time $t$, the cleaned sample $\mathbf{x}_0$ that generated $\mathbf{x}_t$ through the forward noising process (or equivalently the noise $\varepsilon$ that was added to $\mathbf{x}_0$ to get $\mathbf{x}_t$), then use this prediction to take one denoising step.
-- **Score-based perspective** (example: Score SDE): predict a score function, i.e. the direction pointing toward more likely samples at noise level $\t$, and follow it to move from noise back to data.
+We start with the variational perspective (example: Denoising Diffusion Probabilistic Models (DDPM)): predict, given a noisy sequence $\mathbf{x}_t$ at time $t$, the cleaned sample $\mathbf{x}_0$ that generated $\mathbf{x}_t$ through the forward noising process (or equivalently the noise $\varepsilon$ that was added to $\mathbf{x}_0$ to get $\mathbf{x}_t$), then use this prediction to take one denoising step.
 
-For each perspective, we will establish the analog in the discrete setting, and we will then show that the two viewpoints lead to the same training objective.
+#### Forward Process
 
-#### Variational Perspective
-
-We start with the variational perspective: we model the forward (noising) process explicitly, and learn the reverse (denoising) process by maximizing a variational lower bound on the likelihood of the data, exactly as in DDPM.
-
-**Forward process.** We first consider the forward process: we start from a clean sequence $\mathbf{x_0}$, and we progressively replace each token by the mask token, transforming the sequence into $\mathbf{x_1} = mm...m$.
+We first consider the forward process: we start from a clean sequence $\mathbf{x_0}$, and we progressively replace each token by the mask token, transforming the sequence into $\mathbf{x_1} = mm...m$.
 Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token in the following.
 
 In Continuous Denoising Diffusion Probabilistic Models (DDPM), we start by defining a local noising process over $T$ steps, where each step slightly corrupts the signal by adding Gaussian noise:
@@ -1421,11 +1425,13 @@ $$
 <figure>
   <MaskedDiffusion initialShowDiscrete={true} initialShowContinuous={false} client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Discrete masked forward with T steps as in @eq:mdm-step (or equivalently in @eq:forward-transition with $s = t - 1/T$) Top: 1) At step $k$, an unmasked token stays at $x_0$ with probability $\alpha_{(k+1)/T}/\alpha_{k/T}$; after masking, this probability is zero. 2) The blue bar shows the one-step forward probability $q(x_t=x_0 | x_{t-1/T}=x_0)=\alpha_t/\alpha_{t-1/T}$ (@eq:forward-transition), and the grey bar shows $q(x_t=x_0 | x_0)=\alpha_t$. 3) The trajectories are stochastic: changing the seed will change the time at which the clean token transitions to the mask token. Bottom: 1) We sample $N$ independent trajectories using the same transition rule. For each time step $i/T$, we report the proportion of trajectories that are still unmasked (blue dots) 2) As both $T$ and $N$ grow, this empirical curve (aggregation of blue dots) should approach the noise schedule $\alpha_t$ (white curve).
+    <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Discrete masked forward with T steps as in @eq:mdm-step (or equivalently in @eq:forward-transition with $s = t - 1/T$). At step $k$, an unmasked token stays at $x_0$ with probability $\alpha_{(k+1)/T}/\alpha_{k/T}$; after masking, this probability is zero. The blue bar shows the one-step forward probability $q(x_t=x_0 | x_{t-1/T}=x_0)=\alpha_t/\alpha_{t-1/T}$ (@eq:forward-transition), and the grey bar shows $q(x_t=x_0 | x_0)=\alpha_t$. The trajectories are stochastic: changing the seed changes the time at which the clean token transitions to the mask token. The “Show N trajectories: empirical $\alpha_t$” button switches to an aggregate view that samples $N$ independent trajectories with the same transition rule; at each time $i/T$, the plotted proportion of still-unmasked trajectories should approach the schedule $\alpha_t$ as $T$ and $N$ grow.
   </figcaption>
 </figure>
 
-**Training.** Generating data requires a reverse process that progressively unmasks tokens to produce a clean sequence. We learn it by training a neural network whose generated trajectories align with those of the forward process. In practice, this is done by minimizing the KL divergence between the distribution induced by the forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
+#### Training
+
+Generating data requires a reverse process that progressively unmasks tokens to produce a clean sequence. We learn it by training a neural network whose generated trajectories align with those of the forward process. In practice, this is done by minimizing the KL divergence between the distribution induced by the forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
 
 $$
 \begin{equation}
@@ -1720,7 +1726,7 @@ When a token is already unmasked, the masked process simply keeps it fixed.
 <figure>
   <MaskedDiffusion initialShowDiscrete={true} initialShowContinuous={false} initialDirection="reverse" client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:masked-reverse-discrete" />:</strong> Discrete masked reverse with T steps as in @eq:masked-diffusion-denoiser-sampling (or equivalently @eq:bridge-mask when the denoiser puts all mass on the true $x_0$). Top: 1) At step $k$, a masked token is unmasked with probability $(\alpha_{(k-1)/T}-\alpha_{k/T})/(1-\alpha_{k/T})$; after unmasking, it stays fixed at $x_0$. 2) The blue bar shows $q(x_{t-1/T}=x_0 | x_t=m, x_0)$ (@eq:bridge-mask), and the grey bar shows $q(x_t=x_0 | x_0)=\alpha_t$. Bottom: Similar to <Ref label="fig:masked-forward-discrete" />, but we simulate $N$ trajectories with the reverse process instead.
+    <strong>Figure <Counter label="fig:masked-reverse-discrete" />:</strong> Discrete masked reverse with T steps as in @eq:masked-diffusion-denoiser-sampling (or equivalently @eq:bridge-mask when the denoiser puts all mass on the true $x_0$). At step $k$, a masked token is unmasked with probability $(\alpha_{(k-1)/T}-\alpha_{k/T})/(1-\alpha_{k/T})$; after unmasking, it stays fixed at $x_0$. The blue bar shows $q(x_{t-1/T}=x_0 | x_t=m, x_0)$ (@eq:bridge-mask), and the grey bar shows $q(x_t=x_0 | x_0)=\alpha_t$. The “Show N trajectories: empirical $\alpha_t$” button switches to the same empirical aggregation as in Figure <Ref label="fig:masked-forward-discrete" />, but with the reverse process.
   </figcaption>
 </figure>
 
@@ -1820,13 +1826,15 @@ which matches the sequence-level training loss defined previously.
 </details>
 
 
-#### Score-based Perspective
+### Discrete Diffusion: Score-Based Perspective
 
-We now turn to the score-based viewpoint. In Continuous Diffusion, the forward process is given by an SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, from which one derives the reverse SDE; the score $\nabla \log p_t(x)$ is then the only quantity that we need to learn to sample from this SDE.
+We now turn to the score-based viewpoint: predict a score function, i.e. the direction pointing toward more likely samples at noise level $t$, and follow it to move from noise back to data. In Continuous Diffusion, the forward process is given by an SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, from which one derives the reverse SDE; the score $\nabla \log p_t(x)$ is then the only quantity that we need to learn to sample from this SDE.
 
 We follow the same path in the discrete setting. Since there is no SDE here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$. We then reverse it to obtain $p(x_{t-\Delta t} | x_t)$, and identify the discrete object analogous to the score $\nabla \log p_t(x)$ that the model needs to learn.
 
-**Forward process.** We collect the transition probabilities into a matrix $\bar{Q}_{t|s} \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$ satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$:
+#### Forward Process
+
+We collect the transition probabilities into a matrix $\bar{Q}_{t|s} \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$ satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$:
 $$
 \begin{align}
 \bar{Q}_{t|s}
@@ -1926,16 +1934,20 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 </div>
 </details>
 
-The matrix $\dot{Q}_t$ plays the same role for the discrete forward process as $f_t$ plays for the continuous one. In Continuous Diffusion, the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$ says that, over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $\Delta t\,[\dot{Q}_t(x_t)]_y$ to first order.
+The matrix $\dot{Q}_t$ plays the same role for the discrete forward process as $f_t$ plays for the continuous one. In Continuous Diffusion, the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$ says that, over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $\Delta t\,[\dot{Q}_t(x_t)]_y$ to first order.<a href="#dfm-note-1" class="dfm-note-ref">1</a>
 
+{/*
 <figure>
   <MaskedDiffusion initialShowDiscrete={false} initialShowContinuous={true} client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:masked-forward-continuous" />:</strong> Euler simulation of the infinitesimal forward transition @eq:forward-rate. Top: the next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y | x_t) = \mathbb{I}(y=x_t) + \Delta t[\dot{Q}_t(x_t)]_y + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. Bottom: as in Figure <Ref label="fig:masked-forward-discrete" />, we aggregate sampled trajectories and report the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
+    <strong>Figure <Counter label="fig:masked-forward-continuous" />:</strong> Euler simulation of the infinitesimal forward transition @eq:forward-rate. The next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y | x_t) = \mathbb{I}(y=x_t) + \Delta t[\dot{Q}_t(x_t)]_y + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. The aggregate view reports the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
   </figcaption>
 </figure>
+*/}
 
-**Reverse process.** In Continuous Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In the discrete setting, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
+#### Reverse Process
+
+In Continuous Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In the discrete setting, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.<a href="#dfm-note-2" class="dfm-note-ref">2</a>
 
 <Statement kind="Proposition" label="reverse-rate" title="Reverse rate">
 The reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
@@ -1978,14 +1990,18 @@ For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a v
 </div>
 </details>
 
+{/*
 <figure>
   <MaskedDiffusion initialShowDiscrete={false} initialShowContinuous={true} initialDirection="reverse" client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:masked-reverse-continuous" />:</strong> Euler simulation of the infinitesimal reverse transition @eq:reverse-rate, conditioned on the clean token as in @eq:reverse-kernel-mask. Top: the previous state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t-\Delta t}=y | x_t, x_0) = \mathbb{I}(y=x_t) + \Delta t[\dot{R}_t(x_t | x_0)]_y + o(\Delta t)$, giving a discretized continuous-time reverse process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-reverse-discrete" />. Bottom: as in Figure <Ref label="fig:masked-forward-continuous" />.
+    <strong>Figure <Counter label="fig:masked-reverse-continuous" />:</strong> Euler simulation of the infinitesimal reverse transition @eq:reverse-rate, conditioned on the clean token as in @eq:reverse-kernel-mask. The previous state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t-\Delta t}=y | x_t, x_0) = \mathbb{I}(y=x_t) + \Delta t[\dot{R}_t(x_t | x_0)]_y + o(\Delta t)$, giving a discretized continuous-time reverse process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-reverse-discrete" />. The aggregate view is analogous to the continuous-time forward case.
   </figcaption>
 </figure>
+*/}
 
-**Concrete score.** In Continuous Diffusion, the score function $\nabla \log p_t(x)$ governs the reverse SDE $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $. Thus, to sample from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
+#### Concrete Score and Training
+
+In Continuous Diffusion, the score function $\nabla \log p_t(x)$ governs the reverse SDE $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $. Thus, to sample from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
 
 The natural discrete analog is the **concrete score**, defined as the ratio of marginal probabilities at neighboring states:
 $$
@@ -2057,7 +2073,11 @@ where $C$ is a constant independent of $\theta$.
 </Statement>
 
 
-#### Equivalence between the two viewpoints
+### Equivalence Between Viewpoints
+
+#### Equivalence Between the Two Discrete Diffusion Perspectives
+
+We first connect the two views of Discrete Diffusion by showing that the variational loss and the score-based loss optimize the same objective.
 
 We have arrived at two losses: the variational (ELBO) loss @eq:discrete-elbo-1 derived in Part 1 (that can be rewritten as @eq:mdm-loss for masked diffusion), and the concrete score matching loss @eq:score-loss-prop derived in Part 2. We now show that they are in fact one and the same: taking the continuous-time limit of the variational ELBO produces, after a change of variable, exactly @eq:score-loss-prop.
 
@@ -2609,7 +2629,9 @@ with the same $f(k, \mathbf{x}_0)$ defined in Step 1.
 </details>
 */}
 
-### Equivalence with Discrete Flow Matching
+#### Equivalence with Discrete Flow Matching
+
+We now connect Discrete Diffusion to Discrete Flow Matching by aligning their time conventions.
 
 While Discrete Diffusion and Discrete Flow Matching share similar mathematical foundations, their primary difference lies in the time convention. In Discrete Diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. Discrete Flow Matching uses the exact opposite convention.
 
@@ -2927,6 +2949,26 @@ $$
   <div class="ref-main">
     7. <strong>Planner Aware Path Learning in Diffusion Language Models Training</strong> <strong><a href="https://arxiv.org/pdf/2509.23405">[PDF]</a></strong><br />
     Fred Zhangzhi Peng, Zachary Bezemek, Jarrid Rector-Brooks, Shuibai Zhang, Anru R. Zhang, Michael Bronstein, Avishek Joey Bose, Alexander Tong. ICLR 2026.
+  </div>
+</div>
+
+</div>
+
+### Notes
+
+<div style={{ fontSize: '0.92rem', lineHeight: '1.55' }}>
+
+<div class="dfm-note-entry">
+  <span id="dfm-note-1"></span>
+  <div class="dfm-note-main">
+    1. If you click on continuous in Figure <Ref label="fig:masked-forward-discrete" />, you can see the corresponding continuous-time forward process. It shows the Euler simulation of the infinitesimal forward transition @eq:forward-rate. The next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y | x_t) = \mathbb{I}(y=x_t) + \Delta t[\dot{Q}_t(x_t)]_y + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. The aggregate view reports the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
+  </div>
+</div>
+
+<div class="dfm-note-entry">
+  <span id="dfm-note-2"></span>
+  <div class="dfm-note-main">
+    2. If you click on continuous in Figure <Ref label="fig:masked-reverse-discrete" />, you can see the corresponding continuous-time reverse process. It shows the Euler simulation of the infinitesimal reverse transition @eq:reverse-rate, conditioned on the clean token as in @eq:reverse-kernel-mask. The previous state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t-\Delta t}=y | x_t, x_0) = \mathbb{I}(y=x_t) + \Delta t[\dot{R}_t(x_t | x_0)]_y + o(\Delta t)$, giving a discretized continuous-time reverse process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-reverse-discrete" />.
   </div>
 </div>
 

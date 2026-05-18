@@ -580,6 +580,7 @@ export default function MaskedDiffusionForward({
   const [N, setN] = useState(10000);
   const [aggSeed, setAggSeed] = useState(0);
   const [direction, setDirection] = useState(initialDirection);
+  const [showAggregate, setShowAggregate] = useState(false);
 
   // Ghost: the other-direction trajectory, displayed faintly behind the current run.
   // We only show it once the user has actually advanced (Next or Play) at least one
@@ -675,6 +676,10 @@ export default function MaskedDiffusionForward({
     setPlaying(false);
     setSeenForward(false);
     setSeenReverse(false);
+  }
+  function changeAggregateView(nextShowAggregate) {
+    setShowAggregate(nextShowAggregate);
+    if (nextShowAggregate) setPlaying(false);
   }
 
   const btnBase = {
@@ -785,184 +790,197 @@ export default function MaskedDiffusionForward({
           onChange={setShowContinuous} color={COLOR_CONTINUOUS} />
       </div>
 
-      <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
-        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: "#a78bfa", fontWeight: 500 }}>
-          {isFinished ? "Done!" : step === 0 ? "Start" : `Step ${step}/${T}`}
-        </span>
-        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: "#82b4ff" }}>
-          t = {currentT.toFixed(2)}
-        </span>
-        {ghost && (
-          <span style={{
-            fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)",
-            fontStyle: "italic",
+      {!showAggregate && (
+        <>
+          <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
+            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: "#a78bfa", fontWeight: 500 }}>
+              {isFinished ? "Done!" : step === 0 ? "Start" : `Step ${step}/${T}`}
+            </span>
+            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: "#82b4ff" }}>
+              t = {currentT.toFixed(2)}
+            </span>
+            {ghost && (
+              <span style={{
+                fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)",
+                fontStyle: "italic",
+              }}>
+                {ghost.direction} run shown in background
+              </span>
+            )}
+          </div>
+
+          {/* Top: single trajectory */}
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+            padding: "14px 14px 8px",
+            background: "rgba(167,139,250,0.04)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: 12, width: "100%", maxWidth: 600,
           }}>
-            {ghost.direction} run shown in background
-          </span>
-        )}
-      </div>
-
-      {/* Top: single trajectory */}
-      <div style={{
-        display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-        padding: "14px 14px 8px",
-        background: "rgba(167,139,250,0.04)",
-        border: "1px solid rgba(255,255,255,0.06)",
-        borderRadius: 12, width: "100%", maxWidth: 600,
-      }}>
-        <div style={{
-          display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "center",
-          marginBottom: 4,
-        }}>
-          <span style={{
-            fontFamily: "'DM Mono', monospace", fontSize: 12, color: "#a78bfa", fontWeight: 500,
-          }}>
-            single trajectory
-          </span>
-          <NumberInput label="T" value={T} onApply={applyT} min={2} max={200} color="#a78bfa" width={56} />
-          <NumberInput label="seed" value={seed} onApply={applySeed} color="#82b4ff" width={72} />
-        </div>
-        <TrajectoryFigure
-          T={T} alpha={sched.alpha} alphaDot={sched.alphaDot}
-          seed={seed} showDiscrete={showDiscrete} showContinuous={showContinuous}
-          step={step} direction={direction} ghost={ghost}
-        />
-
-        {/* Playback controls */}
-        <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
-          <button
-            onClick={() => setStep((s) => Math.max(0, s - 1))}
-            disabled={step === 0}
-            style={{
-              ...btnBase,
-              color: step === 0 ? "rgba(255,255,255,0.2)" : "#fff",
-              cursor: step === 0 ? "default" : "pointer",
-            }}
-          >
-            &larr; Prev
-          </button>
-          <button
-            onClick={() => setPlaying((p) => !p)}
-            disabled={isFinished}
-            style={{
-              ...btnBase,
-              border: playing ? "1px solid rgba(221,132,82,0.4)" : "1px solid rgba(125,239,160,0.3)",
-              background: playing ? "rgba(221,132,82,0.12)" : "rgba(125,239,160,0.08)",
-              color: playing ? "#DD8452" : "#7defa0",
-              fontWeight: 600, minWidth: 72,
-            }}
-          >
-            {playing ? "⏸ Pause" : "▶ Play"}
-          </button>
-          <button
-            onClick={advance}
-            disabled={isFinished}
-            style={{
-              ...btnBase,
-              border: isFinished ? "1px solid rgba(125,239,160,0.3)" : "1px solid rgba(167,139,250,0.3)",
-              background: isFinished ? "rgba(125,239,160,0.1)" : "rgba(167,139,250,0.1)",
-              color: isFinished ? "#7defa0" : "#a78bfa",
-              fontWeight: 600,
-            }}
-          >
-            {isFinished ? "✓ Done" : "Next →"}
-          </button>
-          <button onClick={reset} style={{ ...btnBase, color: "rgba(255,255,255,0.5)" }}>Reset</button>
-          <button
-            onClick={newSample}
-            style={{
-              ...btnBase,
-              border: "1px solid rgba(130,180,255,0.3)",
-              background: "rgba(130,180,255,0.08)",
-              color: "#82b4ff", fontWeight: 600,
-            }}
-          >
-            🎲 New seed
-          </button>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>fast</span>
-          <input
-            type="range"
-            min={150} max={1500} step={50}
-            value={speed}
-            onChange={(e) => setSpeed(Number(e.target.value))}
-            style={{ width: 100, accentColor: "#a78bfa" }}
-          />
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>slow</span>
-        </div>
-
-        {/* Step progress dots */}
-        {(() => {
-          const dots = Array.from({ length: T + 1 }, (_, i) => (
-            <div
-              key={i}
-              onClick={() => { setPlaying(false); setStep(i); }}
-              style={{
-                width: i === step ? 10 : 6,
-                height: i === step ? 10 : 6,
-                borderRadius: "50%",
-                background: i < step ? "#7defa0" : i === step ? "#a78bfa" : "rgba(255,255,255,0.15)",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-              }}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "center",
+              marginBottom: 4,
+            }}>
+              <span style={{
+                fontFamily: "'DM Mono', monospace", fontSize: 12, color: "#a78bfa", fontWeight: 500,
+              }}>
+                single trajectory
+              </span>
+              <NumberInput label="T" value={T} onApply={applyT} min={2} max={200} color="#a78bfa" width={56} />
+              <NumberInput label="seed" value={seed} onApply={applySeed} color="#82b4ff" width={72} />
+            </div>
+            <TrajectoryFigure
+              T={T} alpha={sched.alpha} alphaDot={sched.alphaDot}
+              seed={seed} showDiscrete={showDiscrete} showContinuous={showContinuous}
+              step={step} direction={direction} ghost={ghost}
             />
-          ));
-          const perRow = 50;
-          if (T + 1 <= perRow) {
-            return <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6 }}>{dots}</div>;
-          }
-          const rows = [];
-          for (let r = 0; r < dots.length; r += perRow) {
-            rows.push(
-              <div key={r} style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                {dots.slice(r, r + perRow)}
-              </div>
-            );
-          }
-          return <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center", marginTop: 6 }}>{rows}</div>;
-        })()}
-      </div>
 
-      {/* Bottom: aggregate */}
-      <div style={{
-        display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-        padding: "14px 14px 8px",
-        background: "rgba(130,180,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.06)",
-        borderRadius: 12, width: "100%", maxWidth: 600,
-      }}>
+            {/* Playback controls */}
+            <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+              <button
+                onClick={() => setStep((s) => Math.max(0, s - 1))}
+                disabled={step === 0}
+                style={{
+                  ...btnBase,
+                  color: step === 0 ? "rgba(255,255,255,0.2)" : "#fff",
+                  cursor: step === 0 ? "default" : "pointer",
+                }}
+              >
+                &larr; Prev
+              </button>
+              <button
+                onClick={() => setPlaying((p) => !p)}
+                disabled={isFinished}
+                style={{
+                  ...btnBase,
+                  border: playing ? "1px solid rgba(221,132,82,0.4)" : "1px solid rgba(125,239,160,0.3)",
+                  background: playing ? "rgba(221,132,82,0.12)" : "rgba(125,239,160,0.08)",
+                  color: playing ? "#DD8452" : "#7defa0",
+                  fontWeight: 600, minWidth: 72,
+                }}
+              >
+                {playing ? "⏸ Pause" : "▶ Play"}
+              </button>
+              <button
+                onClick={advance}
+                disabled={isFinished}
+                style={{
+                  ...btnBase,
+                  border: isFinished ? "1px solid rgba(125,239,160,0.3)" : "1px solid rgba(167,139,250,0.3)",
+                  background: isFinished ? "rgba(125,239,160,0.1)" : "rgba(167,139,250,0.1)",
+                  color: isFinished ? "#7defa0" : "#a78bfa",
+                  fontWeight: 600,
+                }}
+              >
+                {isFinished ? "✓ Done" : "Next →"}
+              </button>
+              <button onClick={reset} style={{ ...btnBase, color: "rgba(255,255,255,0.5)" }}>Reset</button>
+              <button
+                onClick={newSample}
+                style={{
+                  ...btnBase,
+                  border: "1px solid rgba(130,180,255,0.3)",
+                  background: "rgba(130,180,255,0.08)",
+                  color: "#82b4ff", fontWeight: 600,
+                }}
+              >
+                🎲 New seed
+              </button>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>fast</span>
+              <input
+                type="range"
+                min={150} max={1500} step={50}
+                value={speed}
+                onChange={(e) => setSpeed(Number(e.target.value))}
+                style={{ width: 100, accentColor: "#a78bfa" }}
+              />
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>slow</span>
+            </div>
+
+            {/* Step progress dots */}
+            {(() => {
+              const dots = Array.from({ length: T + 1 }, (_, i) => (
+                <div
+                  key={i}
+                  onClick={() => { setPlaying(false); setStep(i); }}
+                  style={{
+                    width: i === step ? 10 : 6,
+                    height: i === step ? 10 : 6,
+                    borderRadius: "50%",
+                    background: i < step ? "#7defa0" : i === step ? "#a78bfa" : "rgba(255,255,255,0.15)",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                />
+              ));
+              const perRow = 50;
+              if (T + 1 <= perRow) {
+                return <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6 }}>{dots}</div>;
+              }
+              const rows = [];
+              for (let r = 0; r < dots.length; r += perRow) {
+                rows.push(
+                  <div key={r} style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    {dots.slice(r, r + perRow)}
+                  </div>
+                );
+              }
+              return <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center", marginTop: 6 }}>{rows}</div>;
+            })()}
+          </div>
+        </>
+      )}
+
+      <ToggleCheck
+        label="Show N trajectories: empirical αₜ"
+        checked={showAggregate}
+        onChange={changeAggregateView}
+        color={COLOR_DISCRETE}
+      />
+
+      {/* Aggregate trajectories */}
+      {showAggregate && (
         <div style={{
-          display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "center",
-          marginBottom: 4,
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+          padding: "14px 14px 8px",
+          background: "rgba(130,180,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: 12, width: "100%", maxWidth: 600,
         }}>
-          <span style={{
-            fontFamily: "'DM Mono', monospace", fontSize: 12, color: "#82b4ff", fontWeight: 500,
+          <div style={{
+            display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "center",
+            marginBottom: 4,
           }}>
-            N trajectories: empirical αₜ
-          </span>
-          <NumberInput label="N" value={N} onApply={applyN} min={10} max={200000} color="#82b4ff" width={84} />
-          <NumberInput label="seed" value={aggSeed} onApply={applyAggSeed} color="#82b4ff" width={72} />
-          <button
-            onClick={() => setAggSeed((Date.now() ^ 0x9e3779b9) | 0)}
-            style={{
-              padding: "5px 12px", borderRadius: 6,
-              border: "1px solid rgba(255,255,255,0.15)",
-              background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.7)",
-              cursor: "pointer", fontFamily: "'DM Mono', monospace", fontSize: 11,
-            }}
-          >
-            ↻ resample
-          </button>
+            <span style={{
+              fontFamily: "'DM Mono', monospace", fontSize: 12, color: "#82b4ff", fontWeight: 500,
+            }}>
+              N trajectories: empirical αₜ
+            </span>
+            <NumberInput label="N" value={N} onApply={applyN} min={10} max={200000} color="#82b4ff" width={84} />
+            <NumberInput label="seed" value={aggSeed} onApply={applyAggSeed} color="#82b4ff" width={72} />
+            <button
+              onClick={() => setAggSeed((Date.now() ^ 0x9e3779b9) | 0)}
+              style={{
+                padding: "5px 12px", borderRadius: 6,
+                border: "1px solid rgba(255,255,255,0.15)",
+                background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.7)",
+                cursor: "pointer", fontFamily: "'DM Mono', monospace", fontSize: 11,
+              }}
+            >
+              ↻ resample
+            </button>
+          </div>
+          <AggregateFigure
+            T={T} alpha={sched.alpha} alphaDot={sched.alphaDot}
+            N={N} seed={aggSeed}
+            showDiscrete={showDiscrete} showContinuous={showContinuous}
+            direction={direction}
+          />
         </div>
-        <AggregateFigure
-          T={T} alpha={sched.alpha} alphaDot={sched.alphaDot}
-          N={N} seed={aggSeed}
-          showDiscrete={showDiscrete} showContinuous={showContinuous}
-          direction={direction}
-        />
-      </div>
+      )}
     </div>
   );
 }

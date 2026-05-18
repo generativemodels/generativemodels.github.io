@@ -296,9 +296,6 @@ figure {
 		margin-top: 0.5em;
 		font-style: italic;
 	}
-	&:has(:target) {
-		border: 1px solid rgb(var(--gray-dark));
-	}
 }
 
 .glossary {
