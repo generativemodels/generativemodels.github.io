@@ -21,6 +21,7 @@ import SudokuFlowMatching from '../../components/sudoku_flow_matching_generative
 import DFMSampling from '../../components/DFMSampling.jsx';
 import MaskedDiffusion from '../../components/MaskedDiffusion.jsx';
 import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
+import ddpmMaskedDiffusion from '../../components/ddpm_masked_diffusion.gif';
 
 <T defines='
 #let anno(t) = $text(#luma(100), size: #10pt, (#t))$;
@@ -1290,6 +1291,17 @@ In Discrete Diffusion, an analogous approach generates sequences by reversing a 
 
 We start with the variational perspective (example: Denoising Diffusion Probabilistic Models (DDPM)): predict, given a noisy sequence $\mathbf{x}_t$ at time $t$, the cleaned sample $\mathbf{x}_0$ that generated $\mathbf{x}_t$ through the forward noising process (or equivalently the noise $\varepsilon$ that was added to $\mathbf{x}_0$ to get $\mathbf{x}_t$), then use this prediction to take one denoising step.
 
+<figure>
+  <img
+    src={ddpmMaskedDiffusion.src}
+    width={ddpmMaskedDiffusion.width}
+    height={ddpmMaskedDiffusion.height}
+    alt="DDPM masked diffusion denoising process"
+    loading="lazy"
+  />
+  <figcaption><strong>Figure <Counter label="fig:ddpm-masked-diffusion" />:</strong> Illustration of the analogy between DDPM and Masked diffusion on a simple example.</figcaption>
+</figure>
+
 #### Forward Process
 
 We first consider the forward process: we start from a clean sequence $\mathbf{x_0}$, and we progressively replace each token by the mask token, transforming the sequence into $\mathbf{x_1} = mm...m$.
@@ -1825,6 +1837,110 @@ which matches the sequence-level training loss defined previously.
 </div>
 </details>
 
+<table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+  <colgroup>
+    <col style={{ width: '50%' }} />
+    <col style={{ width: '50%' }} />
+  </colgroup>
+  <thead>
+    <tr>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous Diffusion</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Masked Discrete Diffusion</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>1. Final target distribution after noising</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $x_1 \sim \mathcal{N}(0, I)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $x_1 \sim p_{\mathrm{mask}}$
+      </td>
+    </tr>
+
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>2. Local view of the forward process</strong>
+
+        Markov Chain with $T$ steps, $t \in [0,1]$, and $\delta t = 1/T$, variance/noise schedule $\beta_t$.
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $q(x_{t+\delta t} | x_t) = \mathcal{N}\!\left(\sqrt{1-\beta_t}\,x_t,\; \beta_t I\right)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $q(x_{t+\delta t} | x_t) = \mathrm{Cat}\!\left(x_{t+\delta t};\, (1-\beta_t)e_{x_t} + \beta_t e_m\right)$
+      </td>
+    </tr>
+
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>3. Big jump view of the forward process</strong>
+
+        Survival probability $\alpha_t = \displaystyle\prod_{s=1}^{t} (1 - \beta_s) \;\xrightarrow{T\to\infty}\; \exp\!\left(-\int_0^t \beta_s\,ds\right)$
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $q(x_t | x_0) = \mathcal{N}\!\left(\sqrt{\alpha_t}\,x_0,\; (1-\alpha_t)I\right)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\, \alpha_t e_{x_0} + (1-\alpha_t)e_m\right)$
+      </td>
+    </tr>
+
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>4. Sandwich view</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $q(x_{t-\delta t} | x_t, x_0) = \mathcal{N}\!\left(\tilde{\mu}(x_0,t,x_t),\; \tilde{\beta}_t I\right)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $q(x_{t-\delta t} | x_t, x_0) = \mathrm{Cat}\!\left(x_{t-\delta t};\; \dfrac{\alpha_{t-\delta t} - \alpha_t}{1 - \alpha_t}\, e_{x_0} + \dfrac{1 - \alpha_{t-\delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
+      </td>
+    </tr>
+
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>5. Learnable backward process</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $x_1 \sim \mathcal{N}(0, I)$ <br />
+        $p_{\theta,t}(x_{t-\delta t} | x_t) = \mathcal{N}\!\left(\mu_{\theta,t}(x_t),\; \sigma_t^2 I\right)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $x_1 \sim p_{\mathrm{mask}}$ <br />
+        $p_{\theta,t}(x_{t-\delta t} | x_t) = \mathrm{Cat}\!\left(x_{t-\delta t};\; \dfrac{\alpha_{t-\delta t} - \alpha_t}{1 - \alpha_t}\, D_{\theta,t}(x_t) + \dfrac{1 - \alpha_{t-\delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
+      </td>
+    </tr>
+
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>6. Training loss $\mathcal{L} = \mathrm{KL}\!\left(q(x_{0:T}),\, p_\theta(x_{0:T})\right)$</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '2px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $\mathcal{L} = \dfrac{\beta_t}{2(1-\alpha_t)}\,\left\| \varepsilon - \varepsilon_{\theta,t}(x_t) \right\|^2$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '2px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $\mathcal{L} = -\sum_{i=1}^S \mathbf{1}(x_t^i = m)\,\dfrac{1}{t}\,\log \big[D_{\theta,t}^i(x_t)\big]_{x_0^i}$
+      </td>
+    </tr>
+  </tbody>
+</table>
+
 
 ### Score-based Discrete Diffusion
 
@@ -2279,135 +2395,6 @@ which is exactly the loss @eq:score-loss-prop of the concrete score matching pro
   </thead>
   <tbody>
 
-    {/* PART A HEADER */}
-    <tr>
-      <td colSpan={2} style={{ padding: '14px', backgroundColor: '#f2f2f2', borderTop: '2px solid #999', borderBottom: '2px solid #999', textAlign: 'center', fontSize: '1.05em' }}>
-        <strong>A. Variational perspective</strong>
-      </td>
-    </tr>
-
-    {/* A.1 Final target */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>1. Final target distribution after noising</strong>
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $x_1 \sim \mathcal{N}(0, I)$
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $x_1 \sim p_{\mathrm{mask}}$
-      </td>
-    </tr>
-
-    {/* A.2 Local view of forward */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>2. Local view of the forward process</strong>
-
-        Markov Chain with $T$ steps, $t \in [0,1]$, and $\delta t = 1/T$, variance/noise schedule $\beta_t$.
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_{t+\delta t} | x_t) = \mathcal{N}\!\left(\sqrt{1-\beta_t}\,x_t,\; \beta_t I\right)$
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_{t+\delta t} | x_t) = \mathrm{Cat}\!\left(x_{t+\delta t};\, (1-\beta_t)e_{x_t} + \beta_t e_m\right)$
-      </td>
-    </tr>
-
-    {/* A.3 Big jump view of forward */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>3. Big jump view of the forward process</strong>
-
-        Survival probability $\alpha_t = \displaystyle\prod_{s=1}^{t} (1 - \beta_s) \;\xrightarrow{T\to\infty}\; \exp\!\left(-\int_0^t \beta_s\,ds\right)$
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_t | x_0) = \mathcal{N}\!\left(\sqrt{\alpha_t}\,x_0,\; (1-\alpha_t)I\right)$
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\, \alpha_t e_{x_0} + (1-\alpha_t)e_m\right)$
-      </td>
-    </tr>
-
-    {/* A.4 From local to global */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>4. From local to global: integrated transition</strong>
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_t | x_0) = \mathcal{N}\!\left(m_t\, x_0,\; \sigma_t^2 I\right)$ <br />
-        $m_t = \exp\!\left(\int_0^t f_s\,ds\right), \quad \sigma_t^2 = \int_0^t g_s^2\,\exp\!\left(2\int_s^t f_r\,dr\right)ds$ <br />
-        DDPM: $m_t = \sqrt{\alpha_t},\quad \sigma_t^2 = 1 - \alpha_t$
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\, Q_t\, e_{x_0}\right)$ <br />
-        $Q_t = \mathcal{T}\!\exp\!\left(\int_0^t \dot{Q}_s\,ds\right)$ <br />
-        Masked diffusion: $Q_t = \alpha_t I + (1-\alpha_t)\, e_m \mathbf{1}^\top$
-      </td>
-    </tr>
-
-    {/* A.5 Sandwich view */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>5. Sandwich view</strong>
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_{t-\delta t} | x_t, x_0) = \mathcal{N}\!\left(\tilde{\mu}(x_0,t,x_t),\; \tilde{\beta}_t I\right)$
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_{t-\delta t} | x_t, x_0) = \mathrm{Cat}\!\left(x_{t-\delta t};\; \dfrac{\alpha_{t-\delta t} - \alpha_t}{1 - \alpha_t}\, e_{x_0} + \dfrac{1 - \alpha_{t-\delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
-      </td>
-    </tr>
-
-    {/* A.6 Learnable backward */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>6. Learnable backward process</strong>
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $x_1 \sim \mathcal{N}(0, I)$ <br />
-        $p_{\theta,t}(x_{t-\delta t} | x_t) = \mathcal{N}\!\left(\mu_{\theta,t}(x_t),\; \sigma_t^2 I\right)$
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $x_1 \sim p_{\mathrm{mask}}$ <br />
-        $p_{\theta,t}(x_{t-\delta t} | x_t) = \mathrm{Cat}\!\left(x_{t-\delta t};\; \dfrac{\alpha_{t-\delta t} - \alpha_t}{1 - \alpha_t}\, D_{\theta,t}(x_t) + \dfrac{1 - \alpha_{t-\delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
-      </td>
-    </tr>
-
-    {/* A.7 Variational training loss */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>7. Training loss $\mathcal{L} = \mathrm{KL}\!\left(q(x_{0:T}),\, p_\theta(x_{0:T})\right)$</strong>
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $\mathcal{L} = \dfrac{\beta_t}{2(1-\alpha_t)}\,\left\| \varepsilon - \varepsilon_{\theta,t}(x_t) \right\|^2$
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $\mathcal{L} = -\sum_{i=1}^S \mathbf{1}(x_t^i = m)\,\dfrac{1}{t}\,\log \big[D_{\theta,t}^i(x_t)\big]_{x_0^i}$
-      </td>
-    </tr>
-
-    {/* PART B HEADER */}
-    <tr>
-      <td colSpan={2} style={{ padding: '14px', backgroundColor: '#f2f2f2', borderTop: '2px solid #999', borderBottom: '2px solid #999', textAlign: 'center', fontSize: '1.05em' }}>
-        <strong>B. Score-based perspective</strong>
-      </td>
-    </tr>
-
     {/* B.1 Forward noising equation */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
@@ -2424,10 +2411,29 @@ which is exactly the loss @eq:score-loss-prop of the concrete score matching pro
       </td>
     </tr>
 
-    {/* B.2 Reverse sampling equation */}
+    {/* B.2 From local to global */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>2. Reverse sampling equation</strong>
+        <strong>2. From local to global: integrated transition</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $q(x_t | x_0) = \mathcal{N}\!\left(m_t\, x_0,\; \sigma_t^2 I\right)$ <br />
+        $m_t = \exp\!\left(\int_0^t f_s\,ds\right), \quad \sigma_t^2 = \int_0^t g_s^2\,\exp\!\left(2\int_s^t f_r\,dr\right)ds$ <br />
+        DDPM: $m_t = \sqrt{\alpha_t},\quad \sigma_t^2 = 1 - \alpha_t$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\, Q_t\, e_{x_0}\right)$ <br />
+        $Q_t = \mathcal{T}\!\exp\!\left(\int_0^t \dot{Q}_s\,ds\right)$ <br />
+        Masked diffusion: $Q_t = \alpha_t I + (1-\alpha_t)\, e_m \mathbf{1}^\top$
+      </td>
+    </tr>
+
+    {/* B.3 Reverse sampling equation */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>3. Reverse sampling equation</strong>
       </td>
     </tr>
     <tr>
@@ -2441,10 +2447,10 @@ which is exactly the loss @eq:score-loss-prop of the concrete score matching pro
       </td>
     </tr>
 
-    {/* B.3 Concrete score */}
+    {/* B.4 Concrete score */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>3. Concrete score</strong>
+        <strong>4. Concrete score</strong>
       </td>
     </tr>
     <tr>
@@ -2456,10 +2462,10 @@ which is exactly the loss @eq:score-loss-prop of the concrete score matching pro
       </td>
     </tr>
 
-    {/* B.4 Score matching training loss */}
+    {/* B.5 Score matching training loss */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>4. Training loss (score matching)</strong>
+        <strong>5. Training loss (score matching)</strong>
       </td>
     </tr>
     <tr>

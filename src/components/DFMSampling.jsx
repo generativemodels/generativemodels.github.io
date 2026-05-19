@@ -423,6 +423,26 @@ function BarChart({ values, labels, colors, title, height = 110, highlightIdx = 
   );
 }
 
+function ChartStrip({ children }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "flex-start",
+        justifyContent: "center",
+        gap: 12,
+        width: "100%",
+        overflowX: "auto",
+        overflowY: "hidden",
+        padding: "2px 2px 8px",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function ToggleButton({ options, value, onChange }) {
   return (
     <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,255,255,0.12)" }}>
@@ -722,12 +742,12 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
         ))}
       </div>
 
-      {/* Panels grid */}
+      {/* Panels stack */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 24, marginTop: 8, width: "100%", maxWidth: 660,
+          gridTemplateColumns: "minmax(0, 1fr)",
+          gap: 16, marginTop: 8, width: "100%", maxWidth: 660,
         }}
       >
         {/* Left panel: velocity or denoiser */}
@@ -746,30 +766,38 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
               : <span>P(x<sub>1</sub>|x<sub>t</sub>)</span>}
           </span>
           {leftView === "velocity"
-            ? data.velocity && data.velocity.map((v, i) => (
-                <BarChart
-                  key={i}
-                  values={v}
-                  labels={TOKEN_LABELS}
-                  colors={BAR_COLORS}
-                  title={`pos ${i + 1}`}
-                  height={90}
-                  diverging={true}
-                  dimmed={selectedPositions && !selectedPositions[i]}
-                />
-              ))
-            : data.denoiser && data.denoiser.map((d, i) => (
-                <BarChart
-                  key={i}
-                  values={d}
-                  labels={TOKEN_LABELS}
-                  colors={BAR_COLORS}
-                  title={`pos ${i + 1}`}
-                  height={90}
-                  diverging={false}
-                  dimmed={selectedPositions && !selectedPositions[i]}
-                />
-              ))}
+            ? data.velocity && (
+                <ChartStrip>
+                  {data.velocity.map((v, i) => (
+                    <BarChart
+                      key={i}
+                      values={v}
+                      labels={TOKEN_LABELS}
+                      colors={BAR_COLORS}
+                      title={`pos ${i + 1}`}
+                      height={90}
+                      diverging={true}
+                      dimmed={selectedPositions && !selectedPositions[i]}
+                    />
+                  ))}
+                </ChartStrip>
+              )
+            : data.denoiser && (
+                <ChartStrip>
+                  {data.denoiser.map((d, i) => (
+                    <BarChart
+                      key={i}
+                      values={d}
+                      labels={TOKEN_LABELS}
+                      colors={BAR_COLORS}
+                      title={`pos ${i + 1}`}
+                      height={90}
+                      diverging={false}
+                      dimmed={selectedPositions && !selectedPositions[i]}
+                    />
+                  ))}
+                </ChartStrip>
+              )}
         </div>
 
         {/* Right panel: sampling dist or planner */}
@@ -854,22 +882,26 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
               >
                 e<sub>x<sub>t</sub><sup>i</sup></sub> + h&nbsp;u<sub>t</sub><sup>i</sup>(x<sub>t</sub>)
               </span>
-              {data.sampling_dist && data.sampling_dist.map((d, i) => {
-                const sampledIdx = TOKEN_LABELS.indexOf(nextXt[i]);
-                return (
-                  <BarChart
-                    key={i}
-                    values={d}
-                    labels={TOKEN_LABELS}
-                    colors={BAR_COLORS}
-                    title={`pos ${i + 1}`}
-                    height={90}
-                    diverging={false}
-                    maxValue={1}
-                    highlightIdx={phase === 1 ? sampledIdx : null}
-                  />
-                );
-              })}
+              {data.sampling_dist && (
+                <ChartStrip>
+                  {data.sampling_dist.map((d, i) => {
+                    const sampledIdx = TOKEN_LABELS.indexOf(nextXt[i]);
+                    return (
+                      <BarChart
+                        key={i}
+                        values={d}
+                        labels={TOKEN_LABELS}
+                        colors={BAR_COLORS}
+                        title={`pos ${i + 1}`}
+                        height={90}
+                        diverging={false}
+                        maxValue={1}
+                        highlightIdx={phase === 1 ? sampledIdx : null}
+                      />
+                    );
+                  })}
+                </ChartStrip>
+              )}
             </>
           )}
         </div>
