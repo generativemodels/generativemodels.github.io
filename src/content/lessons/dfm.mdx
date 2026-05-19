@@ -22,6 +22,7 @@ import DFMSampling from '../../components/DFMSampling.jsx';
 import MaskedDiffusion from '../../components/MaskedDiffusion.jsx';
 import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 import ddpmMaskedDiffusion from '../../components/ddpm_masked_diffusion.gif';
+import scoreBasedCatSde from '../../components/score_based_cat_sde.svg';
 
 <T defines='
 #let anno(t) = $text(#luma(100), size: #10pt, (#t))$;
@@ -84,6 +85,56 @@ import ddpmMaskedDiffusion from '../../components/ddpm_masked_diffusion.gif';
     outline: 2px solid #93c5fd;
     outline-offset: 2px;
     border-radius: 3px;
+  }
+
+  .dfm-zoomable-image {
+    cursor: zoom-in;
+  }
+
+  .dfm-zoomable-image:focus {
+    outline: 2px solid #93c5fd;
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+
+  .dfm-image-lightbox {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    padding: 2rem;
+    background: rgba(15, 23, 42, 0.86);
+    cursor: zoom-out;
+  }
+
+  .dfm-image-lightbox.is-open {
+    display: flex;
+  }
+
+  .dfm-image-lightbox img {
+    max-width: 96vw;
+    max-height: 92vh;
+    object-fit: contain;
+    background: #ffffff;
+    box-shadow: 0 22px 60px rgba(0, 0, 0, 0.32);
+    cursor: default;
+  }
+
+  .dfm-image-lightbox__close {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.72);
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 1.25rem;
+    line-height: 1;
   }
 
   .dfm-local-example {
@@ -240,6 +291,76 @@ import ddpmMaskedDiffusion from '../../components/ddpm_masked_diffusion.gif';
       tooltip.style.display = 'none';
     };
 
+    let lightbox;
+    let lightboxImage;
+    let previousFocus;
+
+    const ensureLightbox = () => {
+      if (lightbox) return lightbox;
+
+      lightbox = document.createElement('div');
+      lightbox.className = 'dfm-image-lightbox';
+      lightbox.setAttribute('role', 'dialog');
+      lightbox.setAttribute('aria-modal', 'true');
+
+      const closeButton = document.createElement('button');
+      closeButton.type = 'button';
+      closeButton.className = 'dfm-image-lightbox__close';
+      closeButton.setAttribute('aria-label', 'Close zoomed image');
+      closeButton.textContent = 'x';
+
+      lightboxImage = document.createElement('img');
+      lightboxImage.alt = '';
+
+      lightbox.appendChild(closeButton);
+      lightbox.appendChild(lightboxImage);
+      document.body.appendChild(lightbox);
+
+      const closeLightbox = () => {
+        lightbox.classList.remove('is-open');
+        document.body.style.overflow = '';
+        if (previousFocus) previousFocus.focus();
+      };
+
+      lightbox.addEventListener('click', (event) => {
+        if (event.target === lightbox) closeLightbox();
+      });
+      closeButton.addEventListener('click', closeLightbox);
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && lightbox.classList.contains('is-open')) {
+          closeLightbox();
+        }
+      });
+
+      return lightbox;
+    };
+
+    const openLightbox = (image) => {
+      const box = ensureLightbox();
+      previousFocus = document.activeElement;
+      lightboxImage.src = image.currentSrc || image.src;
+      lightboxImage.alt = image.alt || '';
+      box.classList.add('is-open');
+      document.body.style.overflow = 'hidden';
+      box.querySelector('button').focus();
+    };
+
+    const bindZoomableImages = () => {
+      document.querySelectorAll('.dfm-zoomable-image').forEach((image) => {
+        if (image.dataset.zoomBound === '1') return;
+        image.dataset.zoomBound = '1';
+        image.setAttribute('tabindex', '0');
+        image.setAttribute('role', 'button');
+        image.addEventListener('click', () => openLightbox(image));
+        image.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openLightbox(image);
+          }
+        });
+      });
+    };
+
     const bindCitations = () => {
       document.querySelectorAll('a.cite-ref, .dfm-note-ref').forEach((link) => {
         if (link.dataset.citeBound === '1') return;
@@ -252,9 +373,13 @@ import ddpmMaskedDiffusion from '../../components/ddpm_masked_diffusion.gif';
     };
 
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', bindCitations);
+      document.addEventListener('DOMContentLoaded', () => {
+        bindCitations();
+        bindZoomableImages();
+      });
     } else {
       bindCitations();
+      bindZoomableImages();
     }
   })();
 `}</script>
@@ -1948,6 +2073,16 @@ which matches the sequence-level training loss defined previously.
 We now turn to the score-based viewpoint: predict a score function, i.e. the direction pointing toward more likely samples at noise level $t$, and follow it to move from noise back to data. In Continuous Diffusion, the forward process is given by an SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, from which one derives the reverse SDE; the score $\nabla \log p_t(x)$ is then the only quantity that we need to learn to sample from this SDE.
 
 We follow the same path in the discrete setting. Since there is no SDE here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$. We then reverse it to obtain $p(x_{t-\Delta t} | x_t)$, and identify the discrete object analogous to the score $\nabla \log p_t(x)$ that the model needs to learn.
+
+<figure>
+  <img
+    class="dfm-zoomable-image"
+    src={scoreBasedCatSde.src}
+    alt="Score-based categorical SDE diagram"
+    loading="lazy"
+  />
+  <figcaption><strong>Figure <Counter label="fig:score-based-cat-sde" />:</strong></figcaption>
+</figure>
 
 #### Forward Process
 
