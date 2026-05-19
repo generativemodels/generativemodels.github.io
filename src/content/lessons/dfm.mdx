@@ -292,7 +292,7 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 
 Flow Matching (FM) and diffusion are the state-of-the-art frameworks for continuous data generation, particularly images. This blog post is a pedagogical introduction to their adaptation to discrete data.
 
-The [first section](#discrete-flow-matching) contains an introduction to Discrete Flow Matching. We then present Discrete Diffusion through its two common perspectives: the [variational perspective](#discrete-diffusion-variational-perspective) and the [score-based perspective](#discrete-diffusion-score-based-perspective). The connection between all these viewpoints is made explicit in the [last section](#equivalence-between-viewpoints).
+The [first section](#discrete-flow-matching) contains an introduction to Discrete Flow Matching. We then present Discrete Diffusion through its two common perspectives: the [variational perspective](#variational-discrete-diffusion) and the [score-based perspective](#score-based-discrete-diffusion). The connection between all these viewpoints is made explicit in the [last section](#equivalence-between-viewpoints).
 
 ### Generating discrete data
 
@@ -320,7 +320,7 @@ The model then iteratively fills this grid, step-by-step, finally reaching a sam
   </figcaption>
 </figure>
 
-We first introduce Discrete Flow Matching; the reader already familiar with this technique can jump directly to the [Discrete Diffusion section](#discrete-diffusion).
+We first introduce Discrete Flow Matching; the reader already familiar with this technique can jump directly to the [Discrete Diffusion section](#variational-discrete-diffusion).
 
 ### Discrete Flow Matching
 
@@ -1283,7 +1283,7 @@ $$
 
 <br />
 
-### Discrete Diffusion: Variational Perspective
+### Variational Discrete Diffusion
 
 Continuous Diffusion models learn to generate data like images by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
 In Discrete Diffusion, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
@@ -1826,7 +1826,7 @@ which matches the sequence-level training loss defined previously.
 </details>
 
 
-### Discrete Diffusion: Score-Based Perspective
+### Score-based Discrete Diffusion
 
 We now turn to the score-based viewpoint: predict a score function, i.e. the direction pointing toward more likely samples at noise level $t$, and follow it to move from noise back to data. In Continuous Diffusion, the forward process is given by an SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, from which one derives the reverse SDE; the score $\nabla \log p_t(x)$ is then the only quantity that we need to learn to sample from this SDE.
 
