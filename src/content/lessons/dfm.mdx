@@ -468,7 +468,7 @@ and if $p_t$ is defined as the law of the ODE solution $x(t)$ at time $t$ when $
 
 Here comes the first distinction between discrete and Continuous FM: as solving an ODE when the state space is discrete is not possible, discrete FM relies on a different type of object: the *probability velocity*.
 
-<Statement kind="Definition" label="probability-velocity" title="Probability Velocity">
+<Statement kind="Definition" label="probability-velocity" title="Probability velocity $u_t$">
 Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, and $(X_t)_{t\in[0,1]}$ be random variables of laws $(p_t)_{t \in [0, 1]}$.
 Denote $u_t := u(\cdot, t)$.
 In the discrete case, we say that $u$ *generates* the probability path $(p_t)_{t \in [0, 1]}$ if
@@ -557,7 +557,7 @@ This explains why we are able to take $p_0 = \delta_{m\ldots m}$ and still produ
 In Continuous Flow Matching, we have the guarantee that a velocity field $u_t$ generates a probability path $(p_t)$ if the pair $(p_t, u_t)$ satisfies the continuity equation $\partial_t p_t + \nabla \cdot (u_t p_t) = 0$.
 The equivalent in the discrete setting is called the Kolmogorov Equation:
 
-<Statement kind="Proposition" label="kolmogorov-equation" title="Kolmogorov Equation">
+<Statement kind="Proposition" label="kolmogorov-equation" title="Kolmogorov equation">
 The probability velocity $u_t$ generates $(p_t)$ in the sense of @eq:prob-velocity if and only if the pair $(u_t, p_t)$ satisfies the Kolmogorov equation:
 $$
 \begin{equation}
@@ -616,7 +616,7 @@ Learning probability velocities taking values in the full sequence space $\mathc
 To make computations tractable, Discrete Flow Matching makes a **factorization assumption**: the probability path it builds updates each token in the sequence independently.
 As the next proposition shows, this has a fundamental consequence: the probability velocity that generates it can be written as a sum of token-wise contributions.
 
-<Statement kind="Proposition" label="factorization" title="Factorization">
+<Statement kind="Proposition" label="factorization" title="Factorized velocity">
 Let $(X_t)$ be random variables of laws $p_t$, and assume that the transition probabilities factorize over tokens, namely for $\mathbf{x}, \mathbf{y} \in \mathcal{S}$:
 $$
 \begin{align}
@@ -780,7 +780,7 @@ $p_0(\cdot | \mathbf{x}_0)$ is a Dirac at the all-masked sequence, while $p_1(\c
 The interest of this conditional probability path is that we can derive the associated probability velocity.
 
 <span style='color: red'> clarification needed here, the velocity is scalar, it generates $q_t$ not $p_t$ </span>
-<Statement kind="Proposition" label="conditional-velocity" title="Conditional velocity">
+<Statement kind="Proposition" label="conditional-velocity" title="Conditional velocity $u_t(x^i \mid x_1^i)$">
 The conditional velocity generating the conditional path @eq:mask-path-1 is:
 $$
 \begin{equation}
@@ -983,7 +983,8 @@ $$
 
 We now arrive to the heart of Discrete Flow Matching: building a velocity that transports $p_0$ to $p_1$.
 
-**Fundamental Theorem of Discrete FM.** The probability velocity obtained by taking the conditional expectation of the conditional velocities,
+<Statement kind="Theorem" label="fundamental-theorem-discrete-fm" title="Fundamental Theorem of Discrete FM">
+The probability velocity obtained by taking the conditional expectation of the conditional velocities,
 $$
 \begin{align}
 u_t(\mathbf{x})_{\mathbf{y}}
@@ -992,6 +993,7 @@ u_t(\mathbf{x})_{\mathbf{y}}
 \end{align}
 $$
 generates the probability path $p_t(\mathbf{x}) = \sum_{\mathbf{z}} p_t(\mathbf{x}|\mathbf{z})\,\pi(\mathbf{z})$.
+</Statement>
 
 <details>
 <summary>Proof</summary>
@@ -1652,7 +1654,7 @@ immediately, with equality iff the reverse trajectories perfectly recover the fo
 </details>
 */}
 
-<Statement kind="Theorem" label="discrete-diffusion-elbo" title="ELBO of discrete diffusion">
+<Statement kind="Theorem" label="discrete-diffusion-elbo" title="Discrete diffusion ELBO">
 The ELBO for a discrete diffusion process is given by:
 
 $$
@@ -1764,7 +1766,7 @@ where the first KL term is a constant independent of $\theta$, since $p_\theta(x
 
 The sum of KL terms corresponds to a forward trajectory where $x_0, x_{1/T}, \ldots, x_1$ is sampled from the noising process, and at each step the learned reverse transition $p_\theta(x_{(j-1)/T} | x_{j/T})$ is trained to match the true posterior reverse transition $q(x_{(j-1)/T} | x_{j/T}, x_0)$. Now that we want to specialize this loss to the case of masked diffusion, we first need to calculate $q(x_{(j-1)/T} | x_{j/T}, x_0)$.
 
-<Statement kind="Lemma" label="masked-diffusion-bridge">
+<Statement kind="Lemma" label="masked-diffusion-bridge" title="Masked bridge $q(x_s \mid x_t,x_0)$">
 For masked diffusion, $x_t = m$ and $s<t$, we have:
 $$
 \begin{equation}
@@ -1802,7 +1804,7 @@ $$
 This definition naturally extends to each position $i$: $[D_{\theta,t}^i(\mathbf{x}_t)]_v \approx \mathbb{P}(X_0^i = v | \mathbf{X}_t = \mathbf{x}_t)$.
 Our goal is to rewrite the ELBO term entirely in terms of this denoiser; the next lemma shows how it induces the reverse transition used in the loss.
 
-<Statement kind="Lemma" label="masked-diffusion-denoiser-bridge">
+<Statement kind="Lemma" label="masked-diffusion-denoiser-bridge" title="Denoiser bridge $p_{\theta}(x_s \mid x_t)$">
 For masked diffusion, $s<t$ :
 $$
 \begin{align}
@@ -1868,7 +1870,7 @@ When a token is already unmasked, the masked process simply keeps it fixed.
   </figcaption>
 </figure>
 
-<Statement kind="Proposition" label="masked-diffusion-training-loss" title="Training Loss Proof for Masked Diffusion">
+<Statement kind="Proposition" label="masked-diffusion-training-loss" title="Masked diffusion training loss">
 In the specific case of masked diffusion, we can express the loss in terms of the denoiser output $D_{\theta,t}(\mathbf{x}_t) = (D_{\theta,t}^1(\mathbf{x}_t), \ldots, D_{\theta,t}^S(\mathbf{x}_t)) \in \Delta(\mathcal{V})^S$:
 
 $$
@@ -2108,7 +2110,7 @@ Rq: j'ai un peu du mal à justifier pk j'introduis la matrice Q barre à ce mome
 
 Taking the first-order Taylor expansion of $\bar{Q}_{t+\Delta t | t}$ in $\Delta t$ then yields the *forward rate matrix* $\dot{Q}_t$.
 
-<Statement kind="Proposition" label="forward-rate-matrix" title="Forward rate matrix">
+<Statement kind="Proposition" label="forward-rate-matrix" title="Forward rate matrix $\dot{Q}_t$">
 The transition matrix $\bar{Q}_{t|s}$ induces a continuous-time Markov chain characterized by a forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$:
 
 $$
@@ -2201,7 +2203,7 @@ The matrix $\dot{Q}_t$ plays the same role for the discrete forward process as $
 
 In Continuous Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In the discrete setting, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.<a href="#dfm-note-2" class="dfm-note-ref">2</a>
 
-<Statement kind="Proposition" label="reverse-rate" title="Reverse rate">
+<Statement kind="Proposition" label="reverse-rate" title="Reverse rate $\dot{R}_t$">
 The reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
 $$
 \begin{equation}
@@ -2313,7 +2315,7 @@ $$
 
 Expanding the KL and dropping $\theta$-independent terms gives the equivalent explicit form:
 
-<Statement kind="Proposition" label="concrete-score-matching" title="Concrete score matching">
+<Statement kind="Proposition" label="concrete-score-matching" title="Concrete score matching $s_t$">
 The concrete score $s_t$ is the minimizer (over $s_{\theta,t}$) of
 $$
 \begin{equation}
@@ -2405,7 +2407,7 @@ which identifies the conditional reverse rate as $\dot{R}_t(x_t | x_0) = r_t\, \
 </div>
 </details>
 
-<Statement kind="Proposition" label="continuous-time-elbo" title="Continuous-time ELBO">
+<Statement kind="Proposition" label="continuous-time-elbo" title="Continuous-time ELBO $\mathrm{ELBO}_{\theta}$">
 In the continuous-time limit, the ELBO becomes:
 
 $$
@@ -2843,7 +2845,7 @@ We can parallelize the sampling of all tokens at each step, so the number of for
 
 To make generation tractable, the standard approach used in the industry for large masked diffusion models is **planner-guided sampling**. Instead of relying on infinitesimal continuous-time steps, we fix the total generation steps $N$ and directly use the denoiser to reveal tokens at each step.
 
-<Statement kind="Definition" label="planner" title="Planner">
+<Statement kind="Definition" label="planner" title="Planner $G_\phi$">
 A planner $G_\phi$ maps a candidate sequence $\mathbf{z}$ sampled from the denoiser and the current noisy sequence $\mathbf{x}_t$ to a distribution over sets of currently masked positions to reveal. At step $k$, with $\mathcal{M}_k = \{i : x_k^i = m\}$, we write:
 $$
 \begin{equation}
@@ -2863,7 +2865,7 @@ $$
     * **Denoise:** Create $\mathbf{x}_{k+1}$ by setting $x_{k+1}^i = z^i$ for all $i \in \mathcal{I}$, keeping the rest as masks
 3. **Return** fully generated sequence $\mathbf{x}_N$
 
-<Statement kind="Proposition" label="sampling-scheme-equivalence" title="Sampling-Scheme equivalence">
+<Statement kind="Proposition" label="sampling-scheme-equivalence" title="Sampling-scheme equivalence with $G_\phi$">
 Suppose that the denoiser does not need to know the current time in its predictions, i.e. for any step $k$ and any given sequence $\mathbf{x}$, $D_{\theta,k}(\mathbf{x}) = D_{\theta}(\mathbf{x})$. If we choose the uniform random planner that selects positions uniformly at random among the masked tokens, i.e. $G_\phi(\mathbf{z}, \mathbf{x}_t)_i = \frac{1}{|\mathcal{M}_t|}$ for each $i \in \mathcal{M}_t$, then planner-guided sampling with $N = S$ steps and $f(k) = 1$ token per step is exactly equivalent to the sampling procedure given @eq:reverse-rate as $\Delta t \to 0$.
 </Statement>
 

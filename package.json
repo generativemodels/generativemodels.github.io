@@ -26,6 +26,7 @@
     "astro": "^5.13.5",
     "astro-typst": "^0.12.3",
     "jsdom": "^27.0.0",
+    "katex": "0.16.25",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "rehype-katex": "^7.0.1",
