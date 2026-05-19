@@ -935,7 +935,7 @@ export default function MaskedDiffusionForward({
       )}
 
       <ToggleCheck
-        label="Show N trajectories: empirical αₜ"
+        label="Show N trajectories"
         checked={showAggregate}
         onChange={changeAggregateView}
         color={COLOR_DISCRETE}
@@ -957,7 +957,7 @@ export default function MaskedDiffusionForward({
             <span style={{
               fontFamily: "'DM Mono', monospace", fontSize: 12, color: "#82b4ff", fontWeight: 500,
             }}>
-              N trajectories: empirical αₜ
+              N trajectories
             </span>
             <NumberInput label="N" value={N} onApply={applyN} min={10} max={200000} color="#82b4ff" width={84} />
             <NumberInput label="seed" value={aggSeed} onApply={applyAggSeed} color="#82b4ff" width={72} />
