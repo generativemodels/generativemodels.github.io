@@ -574,10 +574,10 @@ export default function MaskedDiffusionForward({
 }) {
   const [scheduleKey, setScheduleKey] = useState("linear");
   const [T, setT] = useState(10);
-  const [seed, setSeed] = useState(0);
+  const [seed, setSeed] = useState(51);
   const [showDiscrete, setShowDiscrete] = useState(initialShowDiscrete);
   const [showContinuous, setShowContinuous] = useState(initialShowContinuous);
-  const [N, setN] = useState(10000);
+  const [N, setN] = useState(1000);
   const [aggSeed, setAggSeed] = useState(0);
   const [direction, setDirection] = useState(initialDirection);
   const [showAggregate, setShowAggregate] = useState(false);

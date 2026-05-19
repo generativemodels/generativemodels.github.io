@@ -508,7 +508,7 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
   const data = isFinished ? FINAL_DATA : trajectory[step];
   const currentXt = isFinished ? FINAL_XT : data.xt;
   const nextXt = isFinished ? FINAL_XT : data.next_xt;
-  const displayXt = phase === 1 && !isFinished ? nextXt : currentXt;
+  const displayXt = currentXt;
 
   const changed = isFinished
     ? new Set()

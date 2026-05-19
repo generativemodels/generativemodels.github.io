@@ -1306,7 +1306,7 @@ In the variational perspective (example: Denoising Diffusion Probabilistic Model
 
 We first consider the forward process: we start from a clean sequence $\mathbf{x_0}$, and we progressively replace each token by the mask token, transforming the sequence into $\mathbf{x_1} = mm...m$.
 Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token in the following.
-We build the framework first in discrete time, with $T$ noising steps indexed by $j/T$, and then take the continuous-time limit $T \to \infty$ to obtain time-continuous discrete diffusion models. This avoids tying the model to a fixed number of noise steps.
+We build the framework first in discrete time, with $T$ noising steps, and then take the continuous-time limit $T \to \infty$ to obtain time-continuous discrete diffusion models. This avoids tying the model to a fixed number of noise steps.
 
 In Continuous Denoising Diffusion Probabilistic Models (DDPM), we start by defining a local noising process over $T$ steps, where each step slightly corrupts the signal by adding Gaussian noise:
 
