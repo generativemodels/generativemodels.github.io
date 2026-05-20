@@ -2120,7 +2120,7 @@ g_t = \sqrt{\beta(t)}
 \end{equation}
 $$
 
-where $\beta(t)$ is a local noise schedule. In the masked discrete setting, we make an analogous local choice by specifying the rate at which unmasked tokens jump to the mask state:
+where $\beta(t)$ is a local noise schedule. In the masked discrete setting, we make an analogous choice by specifying the rate at which unmasked tokens jump to the mask state:
 
 $$
 \begin{equation}
@@ -2170,12 +2170,20 @@ $$
 &= \exp\!\left(\int_0^t \dot{Q}_s\,ds\right) \\
 &= \exp\!\left(\left(\int_0^t \sigma(s)\,ds\right)A\right) \\
 &= \exp(-\Lambda_t)I + \left(1-\exp(-\Lambda_t)\right)\mathbf{1}\mathbf{e}_m^\top \\
-&= \alpha_t I + (1-\alpha_t)\mathbf{1}\mathbf{e}_m^\top,
+&= \alpha_t I + (1-\alpha_t)\mathbf{1}\mathbf{e}_m^\top \\
+&=
+\begin{pmatrix}
+\alpha_t & 0 & \dots & 0 & 1-\alpha_t \\
+0 & \alpha_t & \dots & 0 & 1-\alpha_t \\
+\vdots & \vdots & \ddots & \vdots & \vdots \\
+0 & 0 & \dots & \alpha_t & 1-\alpha_t \\
+0 & 0 & \dots & 0 & 1
+\end{pmatrix},
 \label{eq:integrated-forward-transition}
 \end{align}
 $$
 
-where $\Lambda_t = \int_0^t \sigma(s)\,ds$. The third line follows from $(\mathbf{1}\mathbf{e}_m^\top)^2 = \mathbf{1}\mathbf{e}_m^\top$. We then define the global masking schedule:
+where $\Lambda_t = \int_0^t \sigma(s)\,ds$. We then define the global masking schedule:
 
 $$
 \begin{equation}
@@ -2194,7 +2202,7 @@ q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\ \bar{Q}_{t|0}^\top x_0\right)
 \end{equation}
 $$
 
-Equivalently, once the global schedule $\alpha_t$ is chosen, the local masking rate is:
+Finally, once the global schedule $\alpha_t$ is chosen, the local masking rate is:
 
 $$
 \begin{equation}
@@ -2402,13 +2410,7 @@ s_t(x_t)_y \;=\; \frac{p_t(y)}{p_t(x_t)}
 \end{align}
 $$
 
-using Bayes' rule $q(x_0 | x_t) = p_t(x_t | x_0)\,p(x_0)/p_t(x_t)$ in the last line.
-
-
-<div style={{ fontStyle: 'italic', fontSize: '0.9em', opacity: 0.7 }}>
-C'est le même trick que pour flow matching mais les deux parties sont censées être indépendantes, je répète l'argument ou je cite uniquement l'équation du flow matching ?
-We then use the same trick as in denoising score matching: since the target field is identified as a conditional expectation, it can be learned through a regression problem. Etc ...
-</div>
+using Bayes' rule $q(x_0 | x_t) = p_t(x_t | x_0)\,p(x_0)/p_t(x_t)$ in the last line.<a href="#dfm-note-3" class="dfm-note-ref">3</a>
 
 This gives the characterization:
 
@@ -3228,6 +3230,13 @@ $$
   <span id="dfm-note-2"></span>
   <div class="dfm-note-main">
     2. If you click on continuous in Figure <Ref label="fig:masked-reverse-discrete" />, you can see the corresponding continuous-time reverse process. It shows the Euler simulation of the infinitesimal reverse transition @eq:reverse-rate, conditioned on the clean token as in @eq:reverse-kernel-mask. The previous state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t-\Delta t}=y | x_t, x_0) = \mathbb{I}(y=x_t) + \Delta t[\dot{R}_t(x_t | x_0)]_y + o(\Delta t)$, giving a discretized continuous-time reverse process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-reverse-discrete" />.
+  </div>
+</div>
+
+<div class="dfm-note-entry">
+  <span id="dfm-note-3"></span>
+  <div class="dfm-note-main">
+    3. This is the same conditional-expectation-to-projection argument as in Theorem <Ref label="thm:fundamental-theorem-discrete-fm" /> and @eq:kl-proj.
   </div>
 </div>
 
