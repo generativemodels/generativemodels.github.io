@@ -346,9 +346,10 @@ import scoreBasedCatSde from '../../components/score_based_cat_sde.svg';
     };
 
     const bindZoomableImages = () => {
-      document.querySelectorAll('.dfm-zoomable-image').forEach((image) => {
+      document.querySelectorAll('.dfm-zoomable-image, img[src*=".svg"], img[src*=".gif"]').forEach((image) => {
         if (image.dataset.zoomBound === '1') return;
         image.dataset.zoomBound = '1';
+        image.classList.add('dfm-zoomable-image');
         image.setAttribute('tabindex', '0');
         image.setAttribute('role', 'button');
         image.addEventListener('click', () => openLightbox(image));
@@ -2391,7 +2392,10 @@ $$
 s_t(x_t)_y \;=\; \frac{[\dot{R}_t(x_t)]_y}{[\dot{Q}_t(x_t)]_y}.
 \end{equation}
 $$
-In particular, learning the concrete score is sufficient to sample from the reverse process:
+
+Here, the forward rate $\dot{Q}_t$ is known because we choose the noising process. The concrete score $s_t$ (or equivalently the reverse rate $\dot{R}_t$), however, depends on the noisy-data marginals $q(X_t=\cdot)$ which are unknown. This is why, in practice, we learn the concrete score.
+
+With a learned concrete score, we can then use it to sample from the reverse process:
 $$
 \begin{equation}
 \label{eq:score-sampling}
@@ -2443,6 +2447,103 @@ $$
 where $C$ is a constant independent of $\theta$.
 </Statement>
 
+<table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+  <colgroup>
+    <col style={{ width: '50%' }} />
+    <col style={{ width: '50%' }} />
+  </colgroup>
+  <thead>
+    <tr>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous Diffusion</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Masked Discrete Diffusion</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    {/* B.1 Forward noising equation */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>1. Forward noising equation</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $dX_t = f_t(X_t)\,dt + g_t\,dW_t$ <br />
+        Euler-Maruyama: $x_{t+\delta t} = x_t + f_t(x_t)\delta t + g_t\sqrt{\delta t}\,\varepsilon_t,\quad \varepsilon_t \sim \mathcal{N}(0,I)$ <br />
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $x_{t+\delta t} \sim \mathrm{Cat}\!\left(e_{x_t} + \delta t\, \dot{Q}_t(x_t) + o(\delta t)\right)$ <br />
+      </td>
+    </tr>
+
+    {/* B.2 From local to global */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>2. From local to global: integrated transition</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $q(x_t | x_0) = \mathcal{N}\!\left(m_t\, x_0,\; \sigma_t^2 I\right)$ <br />
+        $m_t = \exp\!\left(\int_0^t f_s\,ds\right), \quad \sigma_t^2 = \int_0^t g_s^2\,\exp\!\left(2\int_s^t f_r\,dr\right)ds$ <br />
+        DDPM: $m_t = \sqrt{\alpha_t},\quad \sigma_t^2 = 1 - \alpha_t$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\, Q_t\, e_{x_0}\right)$ <br />
+        $Q_t = \mathcal{T}\!\exp\!\left(\int_0^t \dot{Q}_s\,ds\right)$ <br />
+        Masked diffusion: $Q_t = \alpha_t I + (1-\alpha_t)\, e_m \mathbf{1}^\top$
+      </td>
+    </tr>
+
+    {/* B.3 Reverse sampling equation */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>3. Reverse sampling equation</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $dX_t = \left(f_t(X_t) - g_t^2 \nabla \log p_{\theta,t}(X_t)\right)dt + g_t\,d\bar{W}_t$ <br />
+        Euler-Maruyama: $x_{t-\delta t} = x_t - \delta t \left(f_t(x_t) - g_t^2 \nabla \log p_{\theta,t}(x_t)\right) + g_t\sqrt{\delta t}\,\bar{\varepsilon}_t,\quad \bar{\varepsilon}_t \sim \mathcal{N}(0,I)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $x_{t-\delta t} \sim \mathrm{Cat}\!\left(x_{t-\delta t};\, e_{x_t} + \delta t\, \dot{R}_{\theta,t}(x_t) + o(\delta t)\right)$ <br />
+        $[\dot{R}_{\theta,t}(x_t)]_y = [\dot{Q}_t(x_t)]_y\,\dfrac{p_{\theta,t}(y)}{p_{\theta,t}(x_t)} \quad (y \neq x_t)$
+      </td>
+    </tr>
+
+    {/* B.4 Concrete score */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>4. Concrete score</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $s_{\theta,t}(x_t) = \nabla \log p_{\theta,t}(x_t) = -\dfrac{\varepsilon_{\theta,t}(x_t)}{\sqrt{1-\alpha_t}}$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $s_{\theta,t}(x_t)_y = \dfrac{p_{\theta,t}(y)}{p_{\theta,t}(x_t)} = \dfrac{[\dot{R}_{\theta,t}(x_t)]_y}{[\dot{Q}_t(x_t)]_y}$
+      </td>
+    </tr>
+
+    {/* B.5 Score matching training loss */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>5. Training loss (score matching)</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '2px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $\mathcal{L} = \dfrac{g_t^2}{2}\,\left\| s_{\theta,t}(x_t) - \nabla \log p_t(x_t | x_0) \right\|^2$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '2px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $\mathcal{L} = \dot{Q}_t(x_t)\, \mathrm{KL}\!\left(s_t(x_t | x_0),\, s_{\theta,t}(x_t)\right)$
+      </td>
+    </tr>
+
+  </tbody>
+</table>
 
 ### Equivalence Between Viewpoints
 
@@ -2450,9 +2551,9 @@ where $C$ is a constant independent of $\theta$.
 
 We first connect the two views of Discrete Diffusion by showing that the variational loss and the score-based loss optimize the same objective.
 
-We have arrived at two losses: the variational (ELBO) loss @eq:discrete-elbo-1 derived in Part 1 (that can be rewritten as @eq:mdm-loss for masked diffusion), and the concrete score matching loss @eq:score-loss-prop derived in Part 2. We now show that they are in fact one and the same: taking the continuous-time limit of the variational ELBO produces, after a change of variable, exactly @eq:score-loss-prop.
+The [variational perspective](#variational-discrete-diffusion) gives the ELBO loss @eq:discrete-elbo-1 (which can be rewritten as @eq:mdm-loss for masked diffusion), while the [score-based perspective](#score-based-discrete-diffusion) gives the concrete score matching loss @eq:score-loss-prop. We now show that these two objectives are in fact the same: taking the continuous-time limit of the variational ELBO produces, after a change of variable, exactly @eq:score-loss-prop.
 
-We start from @eq:discrete-elbo-1. In the continuous-time limit $T \to \infty$, each discrete transition $q(x_s | x_t)$ is replaced by an instantaneous rate $\dot{R}_t(x_t)$. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
+We start from the variational loss @eq:discrete-elbo-1. In the continuous-time limit $T \to \infty$, each discrete transition $q(x_s | x_t)$ is replaced by an instantaneous rate $\dot{R}_t(x_t)$. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
 
 $$
 \begin{equation}
@@ -2601,7 +2702,7 @@ L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_{\text{data}} \\ x_t \sim q( \cdo
 \end{equation}
 $$
 
-It remains to re-express @eq:ratio-loss in terms of the concrete score. Writing the reverse rates as $[\dot{R}_{t}(x_t)]_y = [\dot{Q}_t(x_t)]_y\,s_{t}(x_t)_y$ we recover, up to a $\theta$-independent constant, the concrete score matching loss @eq:score-loss-prop established in Part 2. The two viewpoints therefore minimize the same objective.
+It remains to re-express @eq:ratio-loss in terms of the concrete score. Writing the reverse rates as $[\dot{R}_{t}(x_t)]_y = [\dot{Q}_t(x_t)]_y\,s_{t}(x_t)_y$ we recover, up to a $\theta$-independent constant, the concrete score matching loss @eq:score-loss-prop established in the [score-based perspective](#score-based-discrete-diffusion). The two viewpoints therefore minimize the same objective.
 
 <details>
 <summary>Equivalence derivation</summary>
@@ -2636,104 +2737,6 @@ $$
 which is exactly the loss @eq:score-loss-prop of the concrete score matching proposition.
 </div>
 </details>
-
-<table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-  <colgroup>
-    <col style={{ width: '50%' }} />
-    <col style={{ width: '50%' }} />
-  </colgroup>
-  <thead>
-    <tr>
-      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous Diffusion</th>
-      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Masked Discrete Diffusion</th>
-    </tr>
-  </thead>
-  <tbody>
-
-    {/* B.1 Forward noising equation */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>1. Forward noising equation</strong>
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $dX_t = f_t(X_t)\,dt + g_t\,dW_t$ <br />
-        Euler-Maruyama: $x_{t+\delta t} = x_t + f_t(x_t)\delta t + g_t\sqrt{\delta t}\,\varepsilon_t,\quad \varepsilon_t \sim \mathcal{N}(0,I)$ <br />
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $x_{t+\delta t} \sim \mathrm{Cat}\!\left(e_{x_t} + \delta t\, \dot{Q}_t(x_t) + o(\delta t)\right)$ <br />
-      </td>
-    </tr>
-
-    {/* B.2 From local to global */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>2. From local to global: integrated transition</strong>
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_t | x_0) = \mathcal{N}\!\left(m_t\, x_0,\; \sigma_t^2 I\right)$ <br />
-        $m_t = \exp\!\left(\int_0^t f_s\,ds\right), \quad \sigma_t^2 = \int_0^t g_s^2\,\exp\!\left(2\int_s^t f_r\,dr\right)ds$ <br />
-        DDPM: $m_t = \sqrt{\alpha_t},\quad \sigma_t^2 = 1 - \alpha_t$
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\, Q_t\, e_{x_0}\right)$ <br />
-        $Q_t = \mathcal{T}\!\exp\!\left(\int_0^t \dot{Q}_s\,ds\right)$ <br />
-        Masked diffusion: $Q_t = \alpha_t I + (1-\alpha_t)\, e_m \mathbf{1}^\top$
-      </td>
-    </tr>
-
-    {/* B.3 Reverse sampling equation */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>3. Reverse sampling equation</strong>
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $dX_t = \left(f_t(X_t) - g_t^2 \nabla \log p_{\theta,t}(X_t)\right)dt + g_t\,d\bar{W}_t$ <br />
-        Euler-Maruyama: $x_{t-\delta t} = x_t - \delta t \left(f_t(x_t) - g_t^2 \nabla \log p_{\theta,t}(x_t)\right) + g_t\sqrt{\delta t}\,\bar{\varepsilon}_t,\quad \bar{\varepsilon}_t \sim \mathcal{N}(0,I)$
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $x_{t-\delta t} \sim \mathrm{Cat}\!\left(x_{t-\delta t};\, e_{x_t} + \delta t\, \dot{R}_{\theta,t}(x_t) + o(\delta t)\right)$ <br />
-        $[\dot{R}_{\theta,t}(x_t)]_y = [\dot{Q}_t(x_t)]_y\,\dfrac{p_{\theta,t}(y)}{p_{\theta,t}(x_t)} \quad (y \neq x_t)$
-      </td>
-    </tr>
-
-    {/* B.4 Concrete score */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>4. Concrete score</strong>
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $s_{\theta,t}(x_t) = \nabla \log p_{\theta,t}(x_t) = -\dfrac{\varepsilon_{\theta,t}(x_t)}{\sqrt{1-\alpha_t}}$
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $s_{\theta,t}(x_t)_y = \dfrac{p_{\theta,t}(y)}{p_{\theta,t}(x_t)} = \dfrac{[\dot{R}_{\theta,t}(x_t)]_y}{[\dot{Q}_t(x_t)]_y}$
-      </td>
-    </tr>
-
-    {/* B.5 Score matching training loss */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>5. Training loss (score matching)</strong>
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '2px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $\mathcal{L} = \dfrac{g_t^2}{2}\,\left\| s_{\theta,t}(x_t) - \nabla \log p_t(x_t | x_0) \right\|^2$
-      </td>
-      <td style={{ padding: '12px', borderBottom: '2px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $\mathcal{L} = \dot{Q}_t(x_t)\, \mathrm{KL}\!\left(s_t(x_t | x_0),\, s_{\theta,t}(x_t)\right)$
-      </td>
-    </tr>
-
-  </tbody>
-</table>
 
 {/*
 #### Complement: Equivalence Between Masked Diffusion Models and Any-Order Autoregressive Models
