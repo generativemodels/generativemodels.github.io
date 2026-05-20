@@ -1426,7 +1426,9 @@ In the variational perspective (example: Denoising Diffusion Probabilistic Model
     alt="DDPM masked diffusion denoising process"
     loading="lazy"
   />
-  <figcaption><strong>Figure <Counter label="fig:ddpm-masked-diffusion" />:</strong> Illustration of the analogy between DDPM and Masked diffusion on a simple example.</figcaption>
+  <figcaption>
+    <strong>Figure <Counter label="fig:ddpm-masked-diffusion" />:</strong> Analogy between DDPM for images and masked diffusion for sequences. In the DDPM forward process, step $k$ corrupts a clean image by adding Gaussian noise, so the image gradually becomes pure noise. Given the current noisy image, the reverse model predicts the clean image that could have generated it, and uses this prediction to take one denoising step; after $N-k$ reverse steps, generated images should lie at the same scheduled noise level as forward images at step $k$. In masked diffusion, the forward process instead masks tokens in a clean sentence. Given the current partially masked sentence, the reverse model predicts a probability distribution over the clean sentences that could have generated it, and uses this prediction to unmask some tokens; after $N-k$ reverse steps, generated sentences should have a similar fraction of masked tokens as forward sentences at step $k$.
+  </figcaption>
 </figure>
 
 #### Forward Process
@@ -2083,7 +2085,9 @@ We follow the same path in the discrete setting. Since there is no SDE here, we 
     alt="Score-based categorical SDE diagram"
     loading="lazy"
   />
-  <figcaption><strong>Figure <Counter label="fig:score-based-cat-sde" />:</strong></figcaption>
+  <figcaption>
+    <strong>Figure <Counter label="fig:score-based-cat-sde" />:</strong> Analogy between continuous-space and discrete-space score-based diffusion. In continuous space, Euler sampling with five steps discretizes the local continuous-time SDE: in the forward direction, the drift and Gaussian increments add noise to the sample; in the reverse direction, the learned score changes the drift so that noise is removed. In discrete space, the same idea becomes an Euler sampler built from the local continuous-time transition rates: the forward rates move probability mass toward noisier categorical states, while the learned reverse rates move probability mass back toward cleaner states.
+  </figcaption>
 </figure>
 
 #### Forward Process
