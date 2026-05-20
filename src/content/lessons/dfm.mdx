@@ -2110,18 +2110,7 @@ where $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and col
 
 The matrix $\dot{Q}_t$ plays the same role for the discrete forward process as $f_t$ plays for the continuous one. In Continuous Diffusion, the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$ says that, over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $\Delta t\,[\dot{Q}_t(x_t)]_y$ to first order.<a href="#dfm-note-1" class="dfm-note-ref">1</a>
 
-For example, in the variance-preserving Gaussian diffusion, the local coefficients are often chosen as:
-
-$$
-\begin{equation}
-\label{eq:gaussian-local-drift}
-f_t(x_t) = -\frac{1}{2}\beta(t)x_t,
-\qquad
-g_t = \sqrt{\beta(t)}
-\end{equation}
-$$
-
-where $\beta(t)$ is a local noise schedule. In the masked discrete setting, we make an analogous choice by specifying the rate at which unmasked tokens jump to the mask state:
+For example, in the variance-preserving Gaussian diffusion, the local coefficients are often chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a local noise schedule. In the masked discrete setting, we make an analogous choice by specifying the rate at which unmasked tokens jump to the mask state:
 
 $$
 \begin{equation}
@@ -2141,18 +2130,53 @@ $$
 
 where $\sigma(t) > 0$ is the instantaneous masking rate. Thus, each unmasked token jumps to $m$ at rate $\sigma(t)$, while the mask state is absorbing (i.e it never comes back again to a clean token).
 
-In continuous-space, the local Gaussian coefficients integrate into the global Gaussian marginal:
+In continuous-space, the local Gaussian coefficients integrate into the global Gaussian marginal $q(x_t | x_0) = \mathcal{N}\!\left(x_t;\ \sqrt{\alpha_t}\,x_0,\ (1-\alpha_t)I\right)$, with $\alpha_t = \exp\!\left(-\int_0^t \beta(s)\,ds\right)$.
+
+We can do the same for the discrete rate matrix. Denote by $\bar{Q}_{t|0}$ the transition matrix from time $0$ to time $t$, so that $q(x_t | x_0)=\mathrm{Cat}(x_t;\ \bar{Q}_{t|0}^\top x_0)$. With the global masking schedule $\alpha_t = \exp\!\left(-\int_0^t \sigma(s)\,ds\right)$, its closed form is:
+
+$$
+\begin{align}
+\bar{Q}_{t|0}
+&= \alpha_t I + (1-\alpha_t)\mathbf{1}\mathbf{e}_m^\top \\
+&=
+\begin{pmatrix}
+\alpha_t & 0 & \dots & 0 & 1-\alpha_t \\
+0 & \alpha_t & \dots & 0 & 1-\alpha_t \\
+\vdots & \vdots & \ddots & \vdots & \vdots \\
+0 & 0 & \dots & \alpha_t & 1-\alpha_t \\
+0 & 0 & \dots & 0 & 1
+\end{pmatrix},
+\label{eq:integrated-forward-transition}
+\end{align}
+$$
+
+Therefore, for a clean token $x_0$, the forward marginal is simply:
 
 $$
 \begin{equation}
-\label{eq:gaussian-global-marginal}
-q(x_t | x_0) = \mathcal{N}\!\left(x_t;\ \sqrt{\alpha_t}\,x_0,\ (1-\alpha_t)I\right),
-\qquad
-\alpha_t = \exp\!\left(-\int_0^t \beta(s)\,ds\right).
+\label{eq:ctmc-forward-marginal}
+x_t =
+\begin{cases}
+x_0, & \text{with probability } \alpha_t, \\
+m, & \text{with probability } 1-\alpha_t.
+\end{cases}
 \end{equation}
 $$
 
-We can do the same for the discrete rate matrix. Denote by $\bar{Q}_{t|0}$ the finite-time transition matrix from time $0$ to time $t$, so that $q(x_t | x_0)=\mathrm{Cat}(x_t;\ \bar{Q}_{t|0}^\top x_0)$. It is obtained by composing local transitions. For a partition $0=t_0<t_1<\dots<t_n=t$:
+Finally, once the global schedule $\alpha_t$ is chosen, the local masking rate is:
+
+$$
+\begin{equation}
+\label{eq:sigma-from-alpha}
+\sigma(t) = -\frac{\dot{\alpha}_t}{\alpha_t}.
+\end{equation}
+$$
+
+<details>
+<summary>Justification of $\bar{Q}_{t|0}$</summary>
+<div>
+
+Start by composing local transitions over a partition $0=t_0<t_1<\dots<t_n=t$:
 
 $$
 \begin{align}
@@ -2170,47 +2194,14 @@ $$
 \bar{Q}_{t|0}
 &= \exp\!\left(\int_0^t \dot{Q}_s\,ds\right) \\
 &= \exp\!\left(\left(\int_0^t \sigma(s)\,ds\right)A\right) \\
-&= \exp(-\Lambda_t)I + \left(1-\exp(-\Lambda_t)\right)\mathbf{1}\mathbf{e}_m^\top \\
-&= \alpha_t I + (1-\alpha_t)\mathbf{1}\mathbf{e}_m^\top \\
-&=
-\begin{pmatrix}
-\alpha_t & 0 & \dots & 0 & 1-\alpha_t \\
-0 & \alpha_t & \dots & 0 & 1-\alpha_t \\
-\vdots & \vdots & \ddots & \vdots & \vdots \\
-0 & 0 & \dots & \alpha_t & 1-\alpha_t \\
-0 & 0 & \dots & 0 & 1
-\end{pmatrix},
-\label{eq:integrated-forward-transition}
+&= \exp(-\Lambda_t)I + \left(1-\exp(-\Lambda_t)\right)\mathbf{1}\mathbf{e}_m^\top,
 \end{align}
 $$
 
-where $\Lambda_t = \int_0^t \sigma(s)\,ds$. We then define the global masking schedule:
+where $\Lambda_t = \int_0^t \sigma(s)\,ds$, hence $\alpha_t = \exp(-\Lambda_t)$.
 
-$$
-\begin{equation}
-\label{eq:alpha-from-sigma}
-\alpha_t = \exp\!\left(-\int_0^t \sigma(s)\,ds\right).
-\end{equation}
-$$
-
-Therefore, for a clean token $x_0$, the forward marginal is:
-
-$$
-\begin{equation}
-\label{eq:ctmc-forward-marginal}
-q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\ \bar{Q}_{t|0}^\top x_0\right)
-= \mathrm{Cat}\!\left(x_t;\ \alpha_t x_0 + (1-\alpha_t)\mathbf{e}_m\right).
-\end{equation}
-$$
-
-Finally, once the global schedule $\alpha_t$ is chosen, the local masking rate is:
-
-$$
-\begin{equation}
-\label{eq:sigma-from-alpha}
-\sigma(t) = -\frac{\dot{\alpha}_t}{\alpha_t}.
-\end{equation}
-$$
+</div>
+</details>
 
 {/*
 We collect the transition probabilities into a matrix $\bar{Q}_{t|s} \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$ satisfying $q(x_t | x_s) = \text{Cat}(x_t; \ \bar{Q}_{t|s}^\top x_s)$:
@@ -2325,7 +2316,7 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 
 #### Reverse Process
 
-In Continuous Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In the discrete setting, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.<a href="#dfm-note-2" class="dfm-note-ref">2</a>
+In Continuous Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In the discrete setting, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
 
 <Statement kind="Proposition" label="reverse-rate" title="Reverse rate $\dot{R}_t$">
 The reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
@@ -2336,7 +2327,7 @@ p(x_{t-\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t)]
 \end{equation}
 $$
 
-Moreover, the matrix $\dot{R}_t$ is defined as:
+Moreover, the generator matrix $\dot{R}_t$ is defined as:
 $$
 \begin{equation}
 \label{eq:reverse-rate-mask}
@@ -2348,6 +2339,8 @@ $$
 \end{equation}
 $$
 </Statement>
+
+<a href="#dfm-note-2" class="dfm-note-ref">2</a>
 
 <details>
 <summary>Proof</summary>
@@ -2381,7 +2374,7 @@ For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a v
 
 In Continuous Diffusion, the score function $\nabla \log p_t(x)$ governs the reverse SDE $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $. Thus, to sample from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
 
-The natural discrete analog is the **concrete score**, defined as the ratio of marginal probabilities at neighboring states:
+We define the discrete analog as the **concrete score**, that is the ratio of marginal probabilities at neighboring states:
 $$
 s_t(x_t)_y \;=\; \frac{q(X_t = y)}{q(X_t = x_t)} \quad (y \neq x_t).
 $$
