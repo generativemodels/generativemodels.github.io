@@ -1607,8 +1607,7 @@ $$
 <summary>Equivalence of KL minimization and ELBO maximization</summary>
 <div>
 
-Expand the KL over the full joint by factoring $q(x_{0:T}) = q(x_0)\, q(x_{1:T}|x_0)$
-and $p_\theta(x_{0:T}) = p_\theta(x_0)\, p_\theta(x_{1:T}|x_0)$:
+Expand the KL by factoring $q(x_{0:T}) = q(x_0)\, q(x_{1:T}|x_0)$:
 
 $$
 \begin{align}
@@ -1669,7 +1668,7 @@ $$
 </Statement>
 
 <details>
-<summary>Training Loss Proof</summary>
+<summary>Proof</summary>
 <div>
 
 The forward process follows a Markovian structure:
@@ -1767,7 +1766,7 @@ where the first KL term is a constant independent of $\theta$, since $p_\theta(x
 </div>
 </details>
 
-The sum of KL terms corresponds to a forward trajectory where $x_0, x_{1/T}, \ldots, x_1$ is sampled from the noising process, and at each step the learned reverse transition $p_\theta(x_{(j-1)/T} | x_{j/T})$ is trained to match the true posterior reverse transition $q(x_{(j-1)/T} | x_{j/T}, x_0)$. Now that we want to specialize this loss to the case of masked diffusion, we first need to calculate $q(x_{(j-1)/T} | x_{j/T}, x_0)$.
+The sum of KL terms corresponds to a forward trajectory where $x_0, x_{1/T}, \ldots, x_1$ is sampled from the noising process, and at each step the learned reverse transition $p_\theta(x_{(j-1)/T} | x_{j/T})$ is trained to match the reverse transition conditioned on the initial clean token $x_0$: $q(x_{(j-1)/T} | x_{j/T}, x_0)$. Now that we want to specialize this loss to the case of masked diffusion, we first need to calculate $q(x_{(j-1)/T} | x_{j/T}, x_0)$.
 
 <Statement kind="Lemma" label="masked-diffusion-bridge" title="Masked bridge $q(x_s \mid x_t,x_0)$">
 For masked diffusion, $x_t = m$ and $s<t$, we have:
@@ -1783,7 +1782,7 @@ $$
 <summary>Proof</summary>
 <div>
 
-We start using Bayes' theorem to compute the probability that a masked token at time $t$ reverts to the clean token $x_0$ by time $s < t$:
+We use Bayes' theorem to compute the probability that a masked token at time $t$ reverts to the clean token $x_0$ by time $s < t$:
 $$
 \begin{align}
 \mathbb{P}(x_s = x_0 | x_0, x_t = m) &= \frac{\mathbb{P}(x_t = m | x_s = x_0)\, \mathbb{P}(x_s = x_0 | x_0)}{\mathbb{P}(x_t = m | x_0)}  \label{eq:bridge-bayes-1} \\
@@ -1801,17 +1800,18 @@ For one token, we write $D_{\theta,t}(x_t) \in \Delta(\mathcal{V})$ for the mode
 $$
 \begin{equation}
 \label{eq:masked-diffusion-denoiser}
-[D_{\theta,t}(x_t)]_v \approx \mathbb{P}(X_0 = v | X_t = x_t), \qquad v \in \mathcal{V}.
+[D_{\theta,t}(x_t)]_v \approx \mathbb{P}(X_0 = v | X_t = x_t), \qquad v \in \mathcal{V}\setminus\{m\}.
 \end{equation}
 $$
-This definition naturally extends to each position $i$: $[D_{\theta,t}^i(\mathbf{x}_t)]_v \approx \mathbb{P}(X_0^i = v | \mathbf{X}_t = \mathbf{x}_t)$.
+(For simplicity, we consider $[D_{\theta,t}(x_t)]_m = 0$.)
+This definition naturally extends to each position $i$ if we consider sequences: $[D_{\theta,t}^i(\mathbf{x}_t)]_v \approx \mathbb{P}(X_0^i = v | \mathbf{X}_t = \mathbf{x}_t)$.
 Our goal is to rewrite the ELBO term entirely in terms of this denoiser; the next lemma shows how it induces the reverse transition used in the loss.
 
 <Statement kind="Lemma" label="masked-diffusion-denoiser-bridge" title="Denoiser bridge $p_{\theta}(x_s \mid x_t)$">
 For masked diffusion, $s<t$ :
 $$
 \begin{align}
-    p_\theta(x_s=v| x_t=m) &= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,[D_{\theta,t}(x_t)]_v\quad (v\in\mathcal{V}),  \label{eq:bridge-model-1} \\
+    p_\theta(x_s=v| x_t=m) &= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,[D_{\theta,t}(x_t)]_v\quad (v\in\mathcal{V}\setminus\{m\}),  \label{eq:bridge-model-1} \\
     p_\theta(x_s=m| x_t=m) &= \frac{1-\alpha_s}{1-\alpha_t}. \label{eq:bridge-model-2}
 \end{align}
 $$
@@ -1891,19 +1891,17 @@ $$
 We write the proof only for one token, starting from @eq:discrete-elbo-1. Since $x_1 = m$ (fully masked at $t=1$), we have $\mathrm{KL}(q(x_1|x_0) , p_\theta(x_1)) = 0$. Therefore:
 $$
 \begin{align}
-\text{ELBO}_{\theta}(x_0) = - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right] \label{eq:mdm-elbo-no-source}
+&\text{ELBO}_{\theta}(x_0) = {} \label{eq:mdm-elbo-no-source} \\
+&- \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \right] \notag
 \end{align}
 $$
 
 The KL divergence can be expanded as a sum over all possible values of $x_{(j-1)/T} \in \mathcal{V}$:
 $$
-\begin{equation}
-\label{eq:bridge-kl}
-\begin{aligned}
-& \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \\
-& \quad = \sum_{x_{(j-1)/T} \in \mathcal{V}} q(x_{(j-1)/T} | x_{j/T}, x_0) \log \frac{q(x_{(j-1)/T} | x_{j/T}, x_0)}{p_\theta(x_{(j-1)/T} | x_{j/T})}
-\end{aligned}
-\end{equation}
+\begin{align}
+& \mathrm{KL}\left(q(x_{(j-1)/T} | x_{j/T}, x_0) , p_\theta(x_{(j-1)/T} | x_{j/T})\right) \label{eq:bridge-kl} \\
+& \quad = \sum_{x_{(j-1)/T} \in \mathcal{V}} q(x_{(j-1)/T} | x_{j/T}, x_0) \log \frac{q(x_{(j-1)/T} | x_{j/T}, x_0)}{p_\theta(x_{(j-1)/T} | x_{j/T})} \notag
+\end{align}
 $$
 
 When $x_t\neq m$, both $q(x_s| x_t,x_0)$ and $p_\theta(x_s| x_t)$ put all their mass on $x_s=x_t=x_0$, so the KL term is zero.
@@ -1912,7 +1910,7 @@ Hence only the case $x_t=m$ contributes. Therefore, using Lemma <Ref label="lemm
 
 $$
 \begin{align}
-    &\mathrm{KL}\!\left(q(\cdot| x_t,x_0)\,\|\,p_\theta(\cdot| x_t)\right) \label{eq:bridge-kl-proof-1} \\
+    &\mathrm{KL}\!\left(q(\cdot| x_t,x_0)\,\|\,p_\theta(\cdot| x_t)\right) \notag \\
     &= \mathbb{I}(x_t=m)
     \sum_{x_s \in \mathcal{V}\cup\{m\}}
     q(x_s| x_t,x_0)\,
@@ -1947,10 +1945,10 @@ $$
 Plugging this into the ELBO yields:
 $$
 \begin{align}
-    \text{ELBO}_{\theta}(x_0) \label{eq:mdm-elbo-sum-1}
-    = \sum_{j=1}^T \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \label{eq:mdm-elbo-sum-2}
-    \left[ \mathbb{I}(x_{j/T}=m)\,\frac{\alpha_{(j-1)/T}-\alpha_{j/T}}{1-\alpha_{j/T}} \label{eq:mdm-elbo-sum-3}
-    \,x_0^\top \log D_{\theta, j/T}(x_{j/T})\right]. \label{eq:mdm-elbo-sum-4}
+&\text{ELBO}_{\theta}(x_0) = {} \label{eq:mdm-elbo-sum-1} \\
+&\sum_{j=1}^T \mathbb{E}_{\substack{x_{j/T} \sim q( \cdot | x_0)}} \left[
+    \mathbb{I}(x_{j/T}=m)\,\frac{\alpha_{(j-1)/T}-\alpha_{j/T}}{1-\alpha_{j/T}}
+    \,x_0^\top \log D_{\theta, j/T}(x_{j/T})\right]. \notag
 \end{align}
 $$
 
@@ -1998,15 +1996,15 @@ which matches the sequence-level training loss defined previously.
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
         <strong>2. Local view of the forward process</strong>
 
-        Markov Chain with $T$ steps, $t \in [0,1]$, and $\delta t = 1/T$, variance/noise schedule $\beta_t$.
+        Markov Chain with $T$ steps, $t \in [0,1]$, and $\Delta t = 1/T$, variance/noise schedule $\beta_t$.
       </td>
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_{t+\delta t} | x_t) = \mathcal{N}\!\left(\sqrt{1-\beta_t}\,x_t,\; \beta_t I\right)$
+        $q(x_{t+\Delta t} | x_t) = \mathcal{N}\!\left(\sqrt{1-\beta_t}\,x_t,\; \beta_t I\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_{t+\delta t} | x_t) = \mathrm{Cat}\!\left(x_{t+\delta t};\, (1-\beta_t)e_{x_t} + \beta_t e_m\right)$
+        $q(x_{t+\Delta t} | x_t) = \mathrm{Cat}\!\left(x_{t+\Delta t};\, (1-\beta_t)e_{x_t} + \beta_t e_m\right)$
       </td>
     </tr>
 
@@ -2033,10 +2031,10 @@ which matches the sequence-level training loss defined previously.
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_{t-\delta t} | x_t, x_0) = \mathcal{N}\!\left(\tilde{\mu}(x_0,t,x_t),\; \tilde{\beta}_t I\right)$
+        $q(x_{t-\Delta t} | x_t, x_0) = \mathcal{N}\!\left(\tilde{\mu}(x_0,t,x_t),\; \tilde{\beta}_t I\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_{t-\delta t} | x_t, x_0) = \mathrm{Cat}\!\left(x_{t-\delta t};\; \dfrac{\alpha_{t-\delta t} - \alpha_t}{1 - \alpha_t}\, e_{x_0} + \dfrac{1 - \alpha_{t-\delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
+        $q(x_{t-\Delta t} | x_t, x_0) = \mathrm{Cat}\!\left(x_{t-\Delta t};\; \dfrac{\alpha_{t-\Delta t} - \alpha_t}{1 - \alpha_t}\, e_{x_0} + \dfrac{1 - \alpha_{t-\Delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
       </td>
     </tr>
 
@@ -2048,11 +2046,11 @@ which matches the sequence-level training loss defined previously.
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
         $x_1 \sim \mathcal{N}(0, I)$ <br />
-        $p_{\theta,t}(x_{t-\delta t} | x_t) = \mathcal{N}\!\left(\mu_{\theta,t}(x_t),\; \sigma_t^2 I\right)$
+        $p_{\theta,t}(x_{t-\Delta t} | x_t) = \mathcal{N}\!\left(\mu_{\theta,t}(x_t),\; \sigma_t^2 I\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
         $x_1 \sim p_{\mathrm{mask}}$ <br />
-        $p_{\theta,t}(x_{t-\delta t} | x_t) = \mathrm{Cat}\!\left(x_{t-\delta t};\; \dfrac{\alpha_{t-\delta t} - \alpha_t}{1 - \alpha_t}\, D_{\theta,t}(x_t) + \dfrac{1 - \alpha_{t-\delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
+        $p_{\theta,t}(x_{t-\Delta t} | x_t) = \mathrm{Cat}\!\left(x_{t-\Delta t};\; \dfrac{\alpha_{t-\Delta t} - \alpha_t}{1 - \alpha_t}\, D_{\theta,t}(x_t) + \dfrac{1 - \alpha_{t-\Delta t}}{1 - \alpha_t}\, e_m\right)$ <br />
       </td>
     </tr>
 
@@ -2462,10 +2460,10 @@ where $C$ is a constant independent of $\theta$.
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
         $dX_t = f_t(X_t)\,dt + g_t\,dW_t$ <br />
-        Euler-Maruyama: $x_{t+\delta t} = x_t + f_t(x_t)\delta t + g_t\sqrt{\delta t}\,\varepsilon_t,\quad \varepsilon_t \sim \mathcal{N}(0,I)$ <br />
+        Euler-Maruyama: $x_{t+\Delta t} = x_t + f_t(x_t)\Delta t + g_t\sqrt{\Delta t}\,\varepsilon_t,\quad \varepsilon_t \sim \mathcal{N}(0,I)$ <br />
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $x_{t+\delta t} \sim \mathrm{Cat}\!\left(e_{x_t} + \delta t\, \dot{Q}_t(x_t) + o(\delta t)\right)$ <br />
+        $x_{t+\Delta t} \sim \mathrm{Cat}\!\left(e_{x_t} + \Delta t\, \dot{Q}_t(x_t) + o(\Delta t)\right)$ <br />
       </td>
     </tr>
 
@@ -2497,10 +2495,10 @@ where $C$ is a constant independent of $\theta$.
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
         $dX_t = \left(f_t(X_t) - g_t^2 \nabla \log p_{\theta,t}(X_t)\right)dt + g_t\,d\bar{W}_t$ <br />
-        Euler-Maruyama: $x_{t-\delta t} = x_t - \delta t \left(f_t(x_t) - g_t^2 \nabla \log p_{\theta,t}(x_t)\right) + g_t\sqrt{\delta t}\,\bar{\varepsilon}_t,\quad \bar{\varepsilon}_t \sim \mathcal{N}(0,I)$
+        Euler-Maruyama: $x_{t-\Delta t} = x_t - \Delta t \left(f_t(x_t) - g_t^2 \nabla \log p_{\theta,t}(x_t)\right) + g_t\sqrt{\Delta t}\,\bar{\varepsilon}_t,\quad \bar{\varepsilon}_t \sim \mathcal{N}(0,I)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $x_{t-\delta t} \sim \mathrm{Cat}\!\left(x_{t-\delta t};\, e_{x_t} + \delta t\, \dot{R}_{\theta,t}(x_t) + o(\delta t)\right)$ <br />
+        $x_{t-\Delta t} \sim \mathrm{Cat}\!\left(x_{t-\Delta t};\, e_{x_t} + \Delta t\, \dot{R}_{\theta,t}(x_t) + o(\Delta t)\right)$ <br />
         $[\dot{R}_{\theta,t}(x_t)]_y = [\dot{Q}_t(x_t)]_y\,\dfrac{p_{\theta,t}(y)}{p_{\theta,t}(x_t)} \quad (y \neq x_t)$
       </td>
     </tr>
@@ -2567,7 +2565,7 @@ $$
  & & & 0 \\
 0 & \dots \, r_t \, \dots & 0 & -r_t
 \end{pmatrix}
-= r_t\, \mathbf{e}_m (x_0 - \mathbf{e}_m)^\top
+= r_t\, \mathbf{e}_m (\mathbf{e}_{x_0} - \mathbf{e}_m)^\top
 \end{equation}
 $$
 
