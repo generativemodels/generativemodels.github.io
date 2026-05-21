@@ -501,7 +501,7 @@ $$
 As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
 We reach a fundamental point: unlike Continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in Discrete Flow Matching is inherently stochastic at each step**. This explains why we are allowed to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
 
-**Remark (Mass conservation for probability velocities).**
+<Statement kind="Proposition" label="probability-velocity-mass-conservation" title="Mass conservation for probability velocities">
 The probability velocity $u$ must preserve probability mass: for @eq:prob-velocity to define a valid probability, for every $t\in [0, 1]$ $u_t$ must satisfy:
 1. **Positivity:** $u_t(\mathbf{x})_{\mathbf{y}} \ge 0$ for all $\mathbf{y} \neq \mathbf{x}$.
 $$
@@ -517,7 +517,7 @@ $$
 \sum_{\mathbf{y} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} = 0.
 \end{equation}
 $$
-
+</Statement>
 
 
 <details>
@@ -1046,7 +1046,7 @@ u_t(\mathbf{x}) = \underset{u \text{ measurable}}{\operatorname{argmin}}\ \mathb
 $$
 In discrete spaces, since we compare nonneg­ative rate vectors that behave like local probabilities, a Kullback-Leibler style objective is more natural.
 More generally, this conditional expectation is the minimizer
-for any Bregman divergence, and KL is the Bregman choice adapted to our setting:
+for any Bregman divergence, and KL<a href="#dfm-note-4" class="dfm-note-ref">4</a> is the Bregman choice adapted to our setting:
 $$
 \begin{equation}
 \label{eq:kl-proj}
@@ -1054,7 +1054,6 @@ u_t(\mathbf{x}) ={} \underset{u}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\
 \end{equation}
 $$
 
-Here $\mathrm{KL}$ denotes the generalized KL divergence between two positive vectors $a,b \in \mathbb{R}_+^d$, $\mathrm{KL}(a,b) = \sum_{j=1}^d a_j \log(a_j/b_j) - a_j + b_j$.
 When applying it to probability velocities, we only compare the off-diagonal entries of $u_t(\mathbf{x})$, i.e. the rates $u_t(\mathbf{x})_{\mathbf{y}}$ for $\mathbf{y}\neq\mathbf{x}$.
 These vectors are indeed positive (cf. @eq:velocity-positivity), and we can skip the diagonal entry since it is fixed by the other values, cf. @eq:velocity-normalization.
 
@@ -1438,7 +1437,7 @@ We first consider the forward process: we start from a clean sequence $\mathbf{x
 Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token in the following.
 We build the framework first in discrete time, with $T$ noising steps, and then take the continuous-time limit $T \to \infty$ to obtain time-continuous discrete space diffusion models. This avoids tying the model to a fixed number of noise steps.
 
-In Continuous Denoising Diffusion Probabilistic Models (DDPM), we start by defining a local noising process over $T$ steps, where each step slightly corrupts the signal by adding Gaussian noise:
+In Continuous Denoising Diffusion Probabilistic Models (DDPM), we start by defining a noising process over $T$ steps, where each step slightly corrupts the signal by adding Gaussian noise:
 
 $$
 \begin{equation}
@@ -1574,7 +1573,7 @@ $$
 
 #### Training
 
-Generating data requires a reverse process that progressively unmasks tokens to produce a clean sequence. We learn it by training a neural network whose generated trajectories align with those of the forward process. In practice, this is done by minimizing the KL divergence between the distribution induced by the (known) forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
+Generating data requires a reverse process that progressively unmasks tokens to produce a clean sequence. We learn it by training a neural network whose generated trajectories align with those of the forward process. In Varational Diffusion, this is done by minimizing the KL divergence between the distribution induced by the (known) forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
 
 $$
 \begin{equation}
@@ -2407,7 +2406,7 @@ s_t(x_t)_y \;=\; \frac{p_t(y)}{p_t(x_t)}
 $$
 <a href="#dfm-note-3" class="dfm-note-ref">3</a>
 
-This gives the characterization:
+This gives the characterization:<a href="#dfm-note-4" class="dfm-note-ref">4</a>
 
 $$
 \begin{equation}
@@ -2416,7 +2415,6 @@ s_t \;=\; \underset{s}{\operatorname{argmin}}\ \mathbb{E}_{\substack{x_0 \sim p_
 \end{equation}
 $$
 
-Here $\mathrm{KL}$ denotes the generalized KL divergence between two positive vectors $a,b \in \mathbb{R}_+^d$, $\mathrm{KL}(a,b) = \sum_{j=1}^d a_j \log(a_j/b_j) - a_j + b_j$.
 Approximating $s_t$ by a neural network $s_{\theta,t}$ and weighting each term by the forward rate $[\dot{Q}_t(x_t)]_y$ (which leaves the minimizer unchanged) yields the loss:
 
 $$
@@ -3224,6 +3222,13 @@ $$
   <span id="dfm-note-3"></span>
   <div class="dfm-note-main">
     3. This is the same conditional-expectation-to-projection argument as in Theorem <Ref label="thm:fundamental-theorem-discrete-fm" /> and @eq:kl-proj.
+  </div>
+</div>
+
+<div class="dfm-note-entry">
+  <span id="dfm-note-4"></span>
+  <div class="dfm-note-main">
+    4. Here $\mathrm{KL}$ denotes the generalized KL divergence between two positive vectors $a,b \in \mathbb{R}_+^d$, $\mathrm{KL}(a,b) = \sum_{j=1}^d a_j \log(a_j/b_j) - a_j + b_j$.
   </div>
 </div>
 
