@@ -781,7 +781,7 @@ $p_0(\cdot | \mathbf{x}_0)$ is a Dirac at the all-masked sequence, while $p_1(\c
 The interest of this conditional probability path is that we can derive the associated probability velocity.
 
 <span style='color: red'> clarification needed here, the velocity is scalar, it generates $q_t$ not $p_t$ </span>
-<Statement kind="Proposition" label="conditional-velocity" title="Conditional velocity $u_t(x^i \mid x_1^i)$">
+<Statement kind="Proposition" label="conditional-velocity" title="Conditional velocity $u_t(x^i | x_1^i)$">
 The conditional velocity generating the conditional path @eq:mask-path-1 is:
 $$
 \begin{equation}
@@ -1569,9 +1569,118 @@ $$
   </figcaption>
 </figure>
 
+#### Reverse Process
+
+Generating data requires a reverse process that progressively unmasks tokens to produce a clean sequence. We first derive the exact reverse transition conditioned on the initial clean token $x_0$.
+
+<Statement kind="Lemma" label="masked-diffusion-bridge" title="Conditional reverse transitions $q(x_s | x_t,x_0)$">
+For masked diffusion, $x_t = m$ and $s<t$, we have:
+$$
+\begin{equation}
+\label{eq:bridge-mask}
+q(x_s | x_t, x_0) = \left[ \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \mathbb{I}(x_s = x_0) + \frac{1 - \alpha_s}{1 - \alpha_t} \mathbb{I}(x_s = m) \right]
+\end{equation}
+$$
+Equivalently:
+$$
+\begin{equation}
+\label{eq:bridge-mask-sampling}
+x_s = \begin{cases}
+x_0, & \text{with probability } \dfrac{\alpha_s - \alpha_t}{1 - \alpha_t} \\
+m, & \text{with probability } \dfrac{1 - \alpha_s}{1 - \alpha_t}
+\end{cases}
+\end{equation}
+$$
+</Statement>
+
+<details>
+<summary>Proof</summary>
+<div>
+
+We use Bayes' theorem to compute the probability that a masked token at time $t$ reverts to the clean token $x_0$ by time $s < t$:
+$$
+\begin{align}
+\mathbb{P}(x_s = x_0 | x_0, x_t = m) &= \frac{\mathbb{P}(x_t = m | x_s = x_0)\, \mathbb{P}(x_s = x_0 | x_0)}{\mathbb{P}(x_t = m | x_0)}  \label{eq:bridge-bayes-1} \\
+&= \frac{\left(1 - \dfrac{\alpha_t}{\alpha_s}\right) \alpha_s}{1 - \alpha_t}  \label{eq:bridge-bayes-2} \\
+&= \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \label{eq:bridge-bayes-3}
+\end{align}
+$$
+We conclude using that $x_s$ is either at state $x_0$ or at state $m$ with probabilities that sum to 1.
+
+</div>
+</details>
+
+<figure>
+  <MaskedDiffusion initialShowDiscrete={true} initialShowContinuous={false} initialDirection="reverse" client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:masked-reverse-discrete" />:</strong> Discrete masked reverse with T steps as in @eq:masked-diffusion-denoiser-sampling (or equivalently @eq:bridge-mask when the denoiser puts all mass on the true $x_0$). At step $k$, a masked token is unmasked with probability $(\alpha_{(k-1)/T}-\alpha_{k/T})/(1-\alpha_{k/T})$; after unmasking, it stays fixed at $x_0$. The blue bar shows $q(x_{t-1/T}=x_0 | x_t=m, x_0)$ (@eq:bridge-mask), and the grey bar shows $q(x_t=x_0 | x_0)=\alpha_t$. The “Show N trajectories” button switches to the same empirical aggregation as in Figure <Ref label="fig:masked-forward-discrete" />, but with the reverse process.
+  </figcaption>
+</figure>
+
+However, during generation, the clean token $x_0$ is unknown: the quantity we actually need in order to sample backward is the reverse transition $q(x_s | x_t)$. We obtain it by marginalizing $q(x_s | x_t,x_0)$ over all possible clean tokens, weighted by the true denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$.
+
+<Statement kind="Lemma" label="masked-diffusion-denoiser-bridge" title="Reverse transitions $q(x_s | x_t)$">
+For masked diffusion, $s<t$:
+$$
+\begin{align}
+    q(x_s=v| x_t=m) &= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,\mathbb{P}(X_0=v | X_t=x_t)\quad (v\in\mathcal{V}\setminus\{m\}),  \label{eq:bridge-denoiser-1} \\
+    q(x_s=m| x_t=m) &= \frac{1-\alpha_s}{1-\alpha_t}. \label{eq:bridge-denoiser-2}
+\end{align}
+$$
+</Statement>
+
+<details>
+<summary>Proof</summary>
+<div>
+
+By the law of total probability:
+$$
+\begin{align}
+q(x_s=y | x_t=m)
+&= \sum_{v\in\mathcal{V}} q(x_s=y | x_t=m, x_0=v)\,\mathbb{P}(X_0=v | X_t=x_t). \label{eq:denoiser-bridge-proof-1}
+\end{align}
+$$
+
+If $y\in\mathcal{V}$, @eq:bridge-mask gives:
+$$
+\begin{align}
+q(x_s=y | x_t=m)
+&= \sum_{v\in\mathcal{V}}
+\frac{\alpha_s-\alpha_t}{1-\alpha_t}\mathbb{I}(y=v)\,\mathbb{P}(X_0=v | X_t=x_t) \label{eq:denoiser-bridge-proof-token-1} \\
+&= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,\mathbb{P}(X_0=y | X_t=x_t). \label{eq:denoiser-bridge-proof-token-2}
+\end{align}
+$$
+
+For the mask token, @eq:bridge-mask gives a term independent of $v$, hence:
+$$
+\begin{align}
+q(x_s=m | x_t=m)
+&= \sum_{v\in\mathcal{V}}
+\frac{1-\alpha_s}{1-\alpha_t}\,\mathbb{P}(X_0=v | X_t=x_t) \label{eq:denoiser-bridge-proof-mask-1} \\
+&= \frac{1-\alpha_s}{1-\alpha_t}, \label{eq:denoiser-bridge-proof-mask-2}
+\end{align}
+$$
+because $\mathbb{P}(X_0=\cdot | X_t=x_t)$ is a probability distribution over $\mathcal{V}$.
+
+</div>
+</details>
+
+This directly gives the sampling process from a fully masked sequence toward a clean sequence: for $s<t$, we sample each still masked position $i$ as
+$$
+\begin{equation}
+\label{eq:masked-diffusion-denoiser-sampling}
+x_s^i \sim \mathrm{Cat}\left(
+\frac{\alpha_s-\alpha_t}{1-\alpha_t}\mathbb{P}(X_0^i=\cdot | \mathbf{X}_t=\mathbf{x}_t)
++ \frac{1-\alpha_s}{1-\alpha_t}\mathbf{e}_m
+\right).
+\end{equation}
+$$
+When a token is already unmasked, the reverse process simply keeps it fixed.
+Note that this is very similar to the approach followed in DDPM: in continuous space, given a noisy image at time $t$, we predict the clean image (or the added noise) that could have generated it and use it to take one denoising step from time $t$ to $s$; while in discrete space, for each masked token in the sentence, we predict the distribution of clean tokens that are likely to be at this position and use these predictions to sample one denoising step from time $t$ to $s$.
+
 #### Training
 
-Generating data requires a reverse process that progressively unmasks tokens to produce a clean sequence. We learn it by training a neural network whose generated trajectories align with those of the forward process. In Varational Diffusion, this is done by minimizing the KL divergence between the distribution induced by the (known) forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
+We learn the reverse process by training a neural network whose generated trajectories align with those of the forward process. In Variational Diffusion, this is done by minimizing the KL divergence between the distribution induced by the (known) forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
 
 $$
 \begin{equation}
@@ -1724,9 +1833,8 @@ Since $\log q(x_0 | x_0) = \log(1) = 0$:
 
 $$
 \begin{align}
-    \text{ELBO}_{\theta}(x_0) &= - \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right]  \label{eq:elbo-rewrite-1} \\
-    &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \big[ \log q(x_{(j-1)/T} | x_{j/T}, x_0)  \label{eq:elbo-rewrite-2} \\
-    &\quad - \log p_\theta(x_{(j-1)/T} | x_{j/T}) \big] \label{eq:elbo-rewrite-3}
+    \text{ELBO}_{\theta}(x_0) &= - \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right] \notag \\
+    &\quad - \sum_{j=1}^{T} \mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \big[ \log q(x_{(j-1)/T} | x_{j/T}, x_0) - \log p_\theta(x_{(j-1)/T} | x_{j/T}) \big] \label{eq:elbo-rewrite}
 \end{align}
 $$
 
@@ -1734,8 +1842,8 @@ We simplify by marginalizing over all intermediate variables. For the first term
 
 $$
 \begin{align}
-    &\mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right] \notag \\
-    &= \mathbb{E}_{\substack{x_1 \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right] \label{eq:elbo-continuous}
+    &\mathbb{E}_{\substack{x_{1:T} \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right] \label{eq:elbo-continuous} \\
+    &= \mathbb{E}_{\substack{x_1 \sim q( \cdot | x_0)}} \left[ \log q(x_1 | x_0) - \log p_\theta(x_1) \right] \notag
 \end{align}
 $$
 
@@ -1763,112 +1871,21 @@ where the first KL term is a constant independent of $\theta$, since $p_\theta(x
 </div>
 </details>
 
-The sum of KL terms corresponds to a forward trajectory where $x_0, x_{1/T}, \ldots, x_1$ is sampled from the noising process, and at each step the learned reverse transition $p_\theta(x_{(j-1)/T} | x_{j/T})$ is trained to match the reverse transition conditioned on the initial clean token $x_0$: $q(x_{(j-1)/T} | x_{j/T}, x_0)$. Now that we want to specialize this loss to the case of masked diffusion, we first need to calculate $q(x_{(j-1)/T} | x_{j/T}, x_0)$.
+The sum of KL terms corresponds to a forward trajectory where $x_0, x_{1/T}, \ldots, x_1$ is sampled from the noising process, and at each step the learned reverse transition $p_\theta(x_{(j-1)/T} | x_{j/T})$ is trained to match the reverse transition conditioned on the initial clean token $x_0$: $q(x_{(j-1)/T} | x_{j/T}, x_0)$.
+Using this ELBO for training therefore requires learning the transitions $p_\theta(x_s | x_t)$ for all times $s<t$.
 
-<Statement kind="Lemma" label="masked-diffusion-bridge" title="Masked bridge $q(x_s \mid x_t,x_0)$">
-For masked diffusion, $x_t = m$ and $s<t$, we have:
-$$
-\begin{equation}
-\label{eq:bridge-mask}
-q(x_s | x_t, x_0) = \left[ \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \mathbb{I}(x_s = x_0) + \frac{1 - \alpha_s}{1 - \alpha_t} \mathbb{I}(x_s = m) \right]
-\end{equation}
-$$
-</Statement>
-
-<details>
-<summary>Proof</summary>
-<div>
-
-We use Bayes' theorem to compute the probability that a masked token at time $t$ reverts to the clean token $x_0$ by time $s < t$:
-$$
-\begin{align}
-\mathbb{P}(x_s = x_0 | x_0, x_t = m) &= \frac{\mathbb{P}(x_t = m | x_s = x_0)\, \mathbb{P}(x_s = x_0 | x_0)}{\mathbb{P}(x_t = m | x_0)}  \label{eq:bridge-bayes-1} \\
-&= \frac{\left(1 - \dfrac{\alpha_t}{\alpha_s}\right) \alpha_s}{1 - \alpha_t}  \label{eq:bridge-bayes-2} \\
-&= \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \label{eq:bridge-bayes-3}
-\end{align}
-$$
-We conclude using that $x_s$ is either at state $x_0$ or at state $m$ with probabilities that sum to 1.
-
-</div>
-</details>
-
-We can avoid learning the reverse transitions $p_\theta(x_s | x_t)$ directly (as it is a complicated function of two variables) by introducing a learned denoiser.
-For one token, we write $D_{\theta,t}(x_t) \in \Delta(\mathcal{V})$ for the model prediction of the clean-token posterior:
-$$
-\begin{equation}
-\label{eq:masked-diffusion-denoiser}
-[D_{\theta,t}(x_t)]_v \approx \mathbb{P}(X_0 = v | X_t = x_t), \qquad v \in \mathcal{V}\setminus\{m\}.
-\end{equation}
-$$
+However, because this is a complicated function of two variables, we use @eq:bridge-denoiser-1 to rewrite these transitions in terms of the denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$. Since this denoiser is also intractable, we approximate it by a learned denoiser $D_{\theta,t}(x_t) \in \Delta(\mathcal{V})$.
 (For simplicity, we consider $[D_{\theta,t}(x_t)]_m = 0$.)
 This definition naturally extends to each position $i$ if we consider sequences: $[D_{\theta,t}^i(\mathbf{x}_t)]_v \approx \mathbb{P}(X_0^i = v | \mathbf{X}_t = \mathbf{x}_t)$.
-Our goal is to rewrite the ELBO term entirely in terms of this denoiser; the next lemma shows how it induces the reverse transition used in the loss.
 
-<Statement kind="Lemma" label="masked-diffusion-denoiser-bridge" title="Denoiser bridge $p_{\theta}(x_s \mid x_t)$">
-For masked diffusion, $s<t$ :
+Equivalently, the learned reverse transition is obtained by replacing the true denoiser in @eq:bridge-denoiser-1 with the learned one $D_{\theta,t}$:
 $$
 \begin{align}
     p_\theta(x_s=v| x_t=m) &= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,[D_{\theta,t}(x_t)]_v\quad (v\in\mathcal{V}\setminus\{m\}),  \label{eq:bridge-model-1} \\
     p_\theta(x_s=m| x_t=m) &= \frac{1-\alpha_s}{1-\alpha_t}. \label{eq:bridge-model-2}
 \end{align}
 $$
-</Statement>
-
-<details>
-<summary>Proof</summary>
-<div>
-
-By the law of total probability over the clean token $X_0$, and by the definition of the learned denoiser in @eq:masked-diffusion-denoiser:
-$$
-\begin{align}
-p_\theta(x_s=y | x_t=m)
-&= \sum_{v\in\mathcal{V}} q(x_s=y | x_t=m, x_0=v)\,p_\theta(x_0=v | x_t=m) \label{eq:denoiser-bridge-proof-1} \\
-&= \sum_{v\in\mathcal{V}} q(x_s=y | x_t=m, x_0=v)\,[D_{\theta,t}(x_t)]_v. \label{eq:denoiser-bridge-proof-2}
-\end{align}
-$$
-
-If $y\in\mathcal{V}$, @eq:bridge-mask gives:
-$$
-\begin{align}
-p_\theta(x_s=y | x_t=m)
-&= \sum_{v\in\mathcal{V}}
-\frac{\alpha_s-\alpha_t}{1-\alpha_t}\mathbb{I}(y=v)\,[D_{\theta,t}(x_t)]_v \label{eq:denoiser-bridge-proof-token-1} \\
-&= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,[D_{\theta,t}(x_t)]_y. \label{eq:denoiser-bridge-proof-token-2}
-\end{align}
-$$
-
-For the mask token, @eq:bridge-mask gives a term independent of $v$, hence:
-$$
-\begin{align}
-p_\theta(x_s=m | x_t=m)
-&= \sum_{v\in\mathcal{V}}
-\frac{1-\alpha_s}{1-\alpha_t}\,[D_{\theta,t}(x_t)]_v \label{eq:denoiser-bridge-proof-mask-1} \\
-&= \frac{1-\alpha_s}{1-\alpha_t}, \label{eq:denoiser-bridge-proof-mask-2}
-\end{align}
-$$
-because $D_{\theta,t}(x_t)$ is a probability distribution over $\mathcal{V}$.
-
-</div>
-</details>
-
-Lemma <Ref label="lemma:masked-diffusion-denoiser-bridge" /> directly gives the sampling process from a fully masked sequence toward a clean sequence: for $s<t$, we sample each still masked position $i$ as
-$$
-\begin{equation}
-\label{eq:masked-diffusion-denoiser-sampling}
-x_s^i \sim \mathrm{Cat}\left(
-\frac{\alpha_s-\alpha_t}{1-\alpha_t}D_{\theta,t}^i(\mathbf{x}_t)
-+ \frac{1-\alpha_s}{1-\alpha_t}\mathbf{e}_m
-\right).
-\end{equation}
-$$
-When a token is already unmasked, the masked process simply keeps it fixed.
-
-<figure>
-  <MaskedDiffusion initialShowDiscrete={true} initialShowContinuous={false} initialDirection="reverse" client:load />
-  <figcaption>
-    <strong>Figure <Counter label="fig:masked-reverse-discrete" />:</strong> Discrete masked reverse with T steps as in @eq:masked-diffusion-denoiser-sampling (or equivalently @eq:bridge-mask when the denoiser puts all mass on the true $x_0$). At step $k$, a masked token is unmasked with probability $(\alpha_{(k-1)/T}-\alpha_{k/T})/(1-\alpha_{k/T})$; after unmasking, it stays fixed at $x_0$. The blue bar shows $q(x_{t-1/T}=x_0 | x_t=m, x_0)$ (@eq:bridge-mask), and the grey bar shows $q(x_t=x_0 | x_0)=\alpha_t$. The “Show N trajectories” button switches to the same empirical aggregation as in Figure <Ref label="fig:masked-forward-discrete" />, but with the reverse process.
-  </figcaption>
-</figure>
+The following proposition rewrites the ELBO term entirely in terms of this denoiser.
 
 <Statement kind="Proposition" label="masked-diffusion-training-loss" title="Masked diffusion training loss">
 In the specific case of masked diffusion, we can express the loss in terms of the denoiser output $D_{\theta,t}(\mathbf{x}_t) = (D_{\theta,t}^1(\mathbf{x}_t), \ldots, D_{\theta,t}^S(\mathbf{x}_t)) \in \Delta(\mathcal{V})^S$:
@@ -1903,7 +1920,7 @@ $$
 
 When $x_t\neq m$, both $q(x_s| x_t,x_0)$ and $p_\theta(x_s| x_t)$ put all their mass on $x_s=x_t=x_0$, so the KL term is zero.
 
-Hence only the case $x_t=m$ contributes. Therefore, using Lemma <Ref label="lemma:masked-diffusion-denoiser-bridge" />,
+Hence only the case $x_t=m$ contributes. Therefore, using @eq:bridge-mask together with the learned reverse transition @eq:bridge-model-1 and @eq:bridge-model-2,
 
 $$
 \begin{align}
