@@ -25,6 +25,12 @@ function softmax(arr) {
   return e.map((v) => v / s);
 }
 
+function oneHot(index, size) {
+  const values = new Array(size).fill(0);
+  values[index] = 1;
+  return values;
+}
+
 function linear(vec, W, b) {
   return W.map((row, i) => row.reduce((s, w, j) => s + w * vec[j], b[i]));
 }
@@ -192,6 +198,9 @@ function runPlannerSampling(nSteps, tau, seed) {
     const logits = convModelForward(xt, W_PLANNER);
     const denoiser = logits.map((l) => softmax(l));
     const masked = xt.map((v) => v === MASK);
+    for (let i = 0; i < S; i++) {
+      if (!masked[i]) denoiser[i] = oneHot(xt[i], V);
+    }
 
     // Plan: sample z for masked positions
     const z = [...xt];
@@ -273,8 +282,7 @@ function runPlannerSampling(nSteps, tau, seed) {
   }
 
   // Final evaluation: run model on the fully-denoised sequence at t=1
-  const finalLogits = convModelForward(xt, W_PLANNER);
-  const finalDenoiser = finalLogits.map((l) => softmax(l));
+  const finalDenoiser = xt.map((token) => oneHot(token, V));
   const finalData = {
     step: nSteps, t: 1.0,
     xt: xt.map((v) => TOKEN_LABELS[v]),
@@ -736,7 +744,7 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
             key={i}
             token={tok}
             highlight={phase === 1 && changed.has(i)}
-            selected={selectedPositions && phase === 0 && selectedPositions[i]}
+            selected={selectedPositions && phase === 1 && selectedPositions[i]}
             label={`pos ${i + 1}`}
           />
         ))}
@@ -777,7 +785,7 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
                       title={`pos ${i + 1}`}
                       height={90}
                       diverging={true}
-                      dimmed={selectedPositions && !selectedPositions[i]}
+                      dimmed={selectedPositions && phase === 1 && !selectedPositions[i]}
                     />
                   ))}
                 </ChartStrip>
@@ -793,7 +801,7 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
                       title={`pos ${i + 1}`}
                       height={90}
                       diverging={false}
-                      dimmed={selectedPositions && !selectedPositions[i]}
+                      dimmed={selectedPositions && phase === 1 && !selectedPositions[i]}
                     />
                   ))}
                 </ChartStrip>
@@ -837,7 +845,7 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
                         fontSize: 14, fontWeight: 600,
                         fontFamily: "'DM Mono', monospace",
                         color: plannerData.masked[i] ? "#fff" : "rgba(255,255,255,0.25)",
-                        border: plannerData.selected[i]
+                        border: phase === 1 && plannerData.selected[i]
                           ? "2px solid rgba(255,200,50,0.8)"
                           : "1px solid rgba(255,255,255,0.1)",
                         opacity: plannerData.masked[i] ? 1 : 0.4,
@@ -857,7 +865,7 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
                   <BarChart
                     values={plannerData.plannerDist}
                     labels={Array.from({ length: S }, (_, i) => `p${i+1}`)}
-                    colors={plannerData.selected.map((s) => s ? "#f5c542" : "rgba(255,255,255,0.2)")}
+                    colors={plannerData.selected.map((s) => phase === 1 && s ? "#f5c542" : "rgba(255,255,255,0.2)")}
                     title={"G\u03C6(\u03C4=" + tau + ")  selection prob."}
                     height={90}
                     diverging={false}
