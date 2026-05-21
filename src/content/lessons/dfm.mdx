@@ -1414,7 +1414,7 @@ $$
 
 ### Variational Discrete Diffusion
 
-Continuous Diffusion models learn to generate data like images by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
+Continuous space Diffusion models learn to generate data like images by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
 In Discrete Diffusion, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
 
 In the variational perspective (example: Denoising Diffusion Probabilistic Models (DDPM)): predict, given a noisy sequence $\mathbf{x}_t$ at time $t$, the cleaned sample $\mathbf{x}_0$ that generated $\mathbf{x}_t$ through the forward noising process (or equivalently the noise $\varepsilon$ that was added to $\mathbf{x}_0$ to get $\mathbf{x}_t$), then use this prediction to take one denoising step.
@@ -1436,7 +1436,7 @@ In the variational perspective (example: Denoising Diffusion Probabilistic Model
 
 We first consider the forward process: we start from a clean sequence $\mathbf{x_0}$, and we progressively replace each token by the mask token, transforming the sequence into $\mathbf{x_1} = mm...m$.
 Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token in the following.
-We build the framework first in discrete time, with $T$ noising steps, and then take the continuous-time limit $T \to \infty$ to obtain time-continuous discrete diffusion models. This avoids tying the model to a fixed number of noise steps.
+We build the framework first in discrete time, with $T$ noising steps, and then take the continuous-time limit $T \to \infty$ to obtain time-continuous discrete space diffusion models. This avoids tying the model to a fixed number of noise steps.
 
 In Continuous Denoising Diffusion Probabilistic Models (DDPM), we start by defining a local noising process over $T$ steps, where each step slightly corrupts the signal by adding Gaussian noise:
 
@@ -1447,7 +1447,7 @@ x_{j/T} = \sqrt{1 - \beta_j}\, x_{(j-1)/T} + \sqrt{\beta_j}\,\varepsilon, \qquad
 \end{equation}
 $$
 
-where $\beta_j \in [0,1]$ controls the amount of noise injected at step $j$. In the discrete setting, the corruption takes a simpler binary form: at each step, a token either survives unchanged with probability $1 - \beta_j$, or is irreversibly replaced by the mask token $m$ with probability $\beta_j$:
+where $\beta_j \in [0,1]$ controls the amount of noise injected at step $j$. In discrete space, the corruption takes a simpler binary form: at each step, a token either survives unchanged with probability $1 - \beta_j$, or is irreversibly replaced by the mask token $m$ with probability $\beta_j$:
 
 $$
 \begin{equation}
@@ -1460,10 +1460,10 @@ m, & \text{with probability } \beta_j
 $$
 
 We now consider the continuous-time limit $T \to \infty$.
-In Continuous Diffusion, applying $tT$ ($t \in [0,1]$) steps gives the cumulative schedule $\alpha_t = \prod_{i=1}^{tT}(1 - \beta_i)$, which appears in the forward marginal $q(x_t | x_0) = \mathcal{N}(x_t;\ \sqrt{\alpha_t}\, x_0,\ (1 - \alpha_t) I)$.
+In Continuous space Diffusion, applying $tT$ ($t \in [0,1]$) steps gives the cumulative schedule $\alpha_t = \prod_{i=1}^{tT}(1 - \beta_i)$, which appears in the forward marginal $q(x_t | x_0) = \mathcal{N}(x_t;\ \sqrt{\alpha_t}\, x_0,\ (1 - \alpha_t) I)$.
 It controls the signal amplitude, i.e how much of $x_0$ remains in $x_t$.
 
-In the discrete setting, the same product gives the survival probability of a token.
+In discrete space, the same product gives the survival probability of a token.
 Fix $t = j/T$ for a given $j$.
 By the Markov property, the probability that a token has survived up to time $t$ satisfies:
 
@@ -1574,7 +1574,7 @@ $$
 
 #### Training
 
-Generating data requires a reverse process that progressively unmasks tokens to produce a clean sequence. We learn it by training a neural network whose generated trajectories align with those of the forward process. In practice, this is done by minimizing the KL divergence between the distribution induced by the forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
+Generating data requires a reverse process that progressively unmasks tokens to produce a clean sequence. We learn it by training a neural network whose generated trajectories align with those of the forward process. In practice, this is done by minimizing the KL divergence between the distribution induced by the (known) forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
 
 $$
 \begin{equation}
@@ -1973,7 +1973,7 @@ which matches the sequence-level training loss defined previously.
   </colgroup>
   <thead>
     <tr>
-      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous Diffusion</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous space Diffusion</th>
       <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Masked Discrete Diffusion</th>
     </tr>
   </thead>
@@ -2073,9 +2073,9 @@ which matches the sequence-level training loss defined previously.
 
 ### Score-based Discrete Diffusion
 
-We now turn to the score-based viewpoint: predict a score function, i.e. the direction pointing toward more likely samples at noise level $t$, and follow it to move from noise back to data. In Continuous Diffusion, the forward process is given by an SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, from which one derives the reverse SDE; the score $\nabla \log p_t(x)$ is then the only quantity that we need to learn to sample from this SDE.
+We now turn to the score-based viewpoint: predict a score function, i.e. the direction pointing toward more likely samples at noise level $t$, and follow it to move from noise back to data. In Continuous space Diffusion, the forward process is given by an SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, from which one derives the reverse SDE; the score $\nabla \log p_t(x)$ is then the only quantity that we need to learn to sample from this SDE.
 
-We follow the same path in the discrete setting. Since there is no SDE here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$. We then reverse it to obtain $p(x_{t-\Delta t} | x_t)$, and identify the discrete object analogous to the score $\nabla \log p_t(x)$ that the model needs to learn.
+We follow the same path in discrete space. Since there is no SDE here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$. We then reverse it to obtain $p(x_{t-\Delta t} | x_t)$, and identify the discrete object analogous to the score $\nabla \log p_t(x)$ that the model needs to learn.
 
 <figure>
   <img
@@ -2106,9 +2106,9 @@ $$
 where $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$.
 </Statement>
 
-The matrix $\dot{Q}_t$ plays the same role for the discrete forward process as $f_t$ plays for the continuous one. In Continuous Diffusion, the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$ says that, over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $\Delta t\,[\dot{Q}_t(x_t)]_y$ to first order.<a href="#dfm-note-1" class="dfm-note-ref">1</a>
+The matrix $\dot{Q}_t$ plays the same role for the discrete forward process as $f_t$ plays for the continuous one. In Continuous space Diffusion, the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$ says that, over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $\Delta t\,[\dot{Q}_t(x_t)]_y$ to first order.<a href="#dfm-note-1" class="dfm-note-ref">1</a>
 
-For example, in the variance-preserving Gaussian diffusion, the local coefficients are often chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a local noise schedule. In the masked discrete setting, we make an analogous choice by specifying the rate at which unmasked tokens jump to the mask state:
+For example, in the variance-preserving Gaussian diffusion, the local coefficients are often chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a local noise schedule. In the masked discrete space Diffusion, we make an analogous choice by specifying the rate at which unmasked tokens jump to the mask state:
 
 $$
 \begin{equation}
@@ -2128,7 +2128,7 @@ $$
 
 where $\sigma(t) > 0$ is the instantaneous masking rate. Thus, each unmasked token jumps to $m$ at rate $\sigma(t)$, while the mask state is absorbing (i.e it never comes back again to a clean token).
 
-In continuous-space, the local Gaussian coefficients integrate into the global Gaussian marginal $q(x_t | x_0) = \mathcal{N}\!\left(x_t;\ \sqrt{\alpha_t}\,x_0,\ (1-\alpha_t)I\right)$, with $\alpha_t = \exp\!\left(-\int_0^t \beta(s)\,ds\right)$.
+In continuous space, the local Gaussian coefficients integrate into the global Gaussian marginal $q(x_t | x_0) = \mathcal{N}\!\left(x_t;\ \sqrt{\alpha_t}\,x_0,\ (1-\alpha_t)I\right)$, with $\alpha_t = \exp\!\left(-\int_0^t \beta(s)\,ds\right)$.
 
 We can do the same for the discrete rate matrix. Denote by $\bar{Q}_{t|0}$ the transition matrix from time $0$ to time $t$, so that $q(x_t | x_0)=\mathrm{Cat}(x_t;\ \bar{Q}_{t|0}^\top x_0)$. With the global masking schedule $\alpha_t = \exp\!\left(-\int_0^t \sigma(s)\,ds\right)$, its closed form is:
 
@@ -2314,7 +2314,7 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 
 #### Reverse Process
 
-In Continuous Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In the discrete setting, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
+In Continuous space Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In discrete space, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
 
 <Statement kind="Proposition" label="reverse-rate" title="Reverse rate $\dot{R}_t$">
 The reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
@@ -2370,9 +2370,9 @@ For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a v
 
 #### Concrete Score and Training
 
-In Continuous Diffusion, the score function $\nabla \log p_t(x)$ governs the reverse SDE $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $. Thus, to sample from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
+In Continuous space Diffusion, the score function $\nabla \log p_t(x)$ governs the reverse SDE $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $. Thus, to sample from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
 
-We define the discrete analog as the **concrete score**, that is the ratio of marginal probabilities at neighboring states:
+We define the discrete space analog as the **concrete score**, that is the ratio of marginal probabilities between a candidate destination state and the current state:
 $$
 s_t(x_t)_y \;=\; \frac{q(X_t = y)}{q(X_t = x_t)} \quad (y \neq x_t).
 $$
@@ -2394,18 +2394,18 @@ $$
 \end{equation}
 $$
 
-It remains to design a tractable training loss for the concrete score. As in Continuous Diffusion, where denoising score matching exploits that the marginal score is a conditional expectation of the (tractable) conditional score: $\nabla \log p_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}[\nabla \log p_t(x_t | x_0)]$, the same identity holds here. Defining the conditional concrete score $s_t(x_t | x_0)_y \;:=\; p_t(y | x_0)/p_t(x_t | x_0)$, we have for $y \neq x_t$:
+It remains to design a tractable training loss for the concrete score. As in Continuous space Diffusion, where denoising score matching exploits that the marginal score is a conditional expectation of the (tractable) conditional score: $\nabla \log p_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}[\nabla \log p_t(x_t | x_0)]$, the same identity holds here. Defining the (tractable) conditional concrete score $s_t(x_t | x_0)_y \;:=\; p_t(y | x_0)/p_t(x_t | x_0)$, we have for $y \neq x_t$:
 
 $$
 \begin{align}
 s_t(x_t)_y \;=\; \frac{p_t(y)}{p_t(x_t)}
 &\;=\; \frac{\sum_{x_0} p_t(y|x_0)\,p(x_0)}{p_t(x_t)} \label{eq:concrete-score-cond-exp-1} \\
-&\;=\; \sum_{x_0} \frac{p_t(y|x_0)}{p_t(x_t|x_0)}\;\frac{p_t(x_t|x_0)\,p(x_0)}{p_t(x_t)} \label{eq:concrete-score-cond-exp-2} \\
+&\;=\; \sum_{x_0} \frac{p_t(y|x_0)}{p_t(x_t|x_0)}\;
+\underbrace{\frac{p_t(x_t|x_0)\,p(x_0)}{p_t(x_t)}}_{q(x_0 | x_t)\ \text{by Bayes}} \label{eq:concrete-score-cond-exp-2} \\
 &\;=\; \mathbb{E}_{x_0 \sim q(\cdot|x_t)}\!\left[\,s_t(x_t|x_0)_y\,\right] \label{eq:concrete-score-cond-exp-3}
 \end{align}
 $$
-
-using Bayes' rule $q(x_0 | x_t) = p_t(x_t | x_0)\,p(x_0)/p_t(x_t)$ in the last line.<a href="#dfm-note-3" class="dfm-note-ref">3</a>
+<a href="#dfm-note-3" class="dfm-note-ref">3</a>
 
 This gives the characterization:
 
@@ -2416,6 +2416,7 @@ s_t \;=\; \underset{s}{\operatorname{argmin}}\ \mathbb{E}_{\substack{x_0 \sim p_
 \end{equation}
 $$
 
+Here $\mathrm{KL}$ denotes the generalized KL divergence between two positive vectors $a,b \in \mathbb{R}_+^d$, $\mathrm{KL}(a,b) = \sum_{j=1}^d a_j \log(a_j/b_j) - a_j + b_j$.
 Approximating $s_t$ by a neural network $s_{\theta,t}$ and weighting each term by the forward rate $[\dot{Q}_t(x_t)]_y$ (which leaves the minimizer unchanged) yields the loss:
 
 $$
@@ -2445,7 +2446,7 @@ where $C$ is a constant independent of $\theta$.
   </colgroup>
   <thead>
     <tr>
-      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous Diffusion</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous Space Diffusion</th>
       <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Masked Discrete Diffusion</th>
     </tr>
   </thead>
@@ -2575,7 +2576,7 @@ where $r_t = -\dot{\alpha}_t / (1 - \alpha_t)$ is the instantaneous unmasking ra
 <summary>Construction of $\dot{R}_t(x_t | x_0)$</summary>
 <div>
 
-To derive $\dot{R}_t(x_t | x_0)$, we write the reverse transition probabilities $q(x_s | x_t, x_0)$ for arbitrary $s < t$ using a matrix $R_{s|t}^{x_0}$, and then write the first-order Taylor expansion as $\Delta t = t - s \to 0$ of this matrix (analogous method that we did to find $\dot{R}_t$).
+To derive $\dot{R}_t(x_t | x_0)$, we write the reverse transition probabilities $q(x_s | x_t, x_0)$ for arbitrary $s < t$ using a matrix $R_{s|t}^{x_0}$, and then write the first-order Taylor expansion as $\Delta t = t - s \to 0$ of this matrix.
 
 Using @eq:bridge-mask, the reverse transition $q(x_s | x_t, x_0)$ can be written as a categorical distribution governed by a reverse matrix $R_{s|t}^{x_0}$:
 $$
@@ -2600,18 +2601,18 @@ R_{s|t}^{x_0} =
 \end{align}
 $$
 
-where the entry $\frac{\alpha_s - \alpha_t}{1 - \alpha_t}$ in the last row appears at the column corresponding to $x_0$, and can be compactly written as $R_{s|t}^{x_0} = I + \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \mathbf{e}_m(x_0 - \mathbf{e}_m)^\top$.
+where the entry $\frac{\alpha_s - \alpha_t}{1 - \alpha_t}$ in the last row appears at the column corresponding to $x_0$, and can be compactly written as $R_{s|t}^{x_0} = I + \frac{\alpha_s - \alpha_t}{1 - \alpha_t} \mathbf{e}_m(\mathbf{e}_{x_0} - \mathbf{e}_m)^\top$.
 
 Taking the first-order Taylor expansion (noting that $\alpha_{t - \Delta t} - \alpha_t \approx -\dot{\alpha}_t \Delta t$):
 
 $$
 \begin{align}
-R_{t - \Delta t | t}^{x_0} &= I + \frac{-\dot{\alpha}_t \Delta t}{1 - \alpha_t} \mathbf{e}_m(x_0 - \mathbf{e}_m)^\top + o(\Delta t)  \label{eq:bridge-rate-1} \\
+R_{t - \Delta t | t}^{x_0} &= I + \frac{-\dot{\alpha}_t \Delta t}{1 - \alpha_t} \mathbf{e}_m(\mathbf{e}_{x_0} - \mathbf{e}_m)^\top + o(\Delta t)  \label{eq:bridge-rate-1} \\
 &= I + \Delta t\, \dot{R}_t(x_t | x_0) + o(\Delta t) \label{eq:bridge-rate-2}
 \end{align}
 $$
 
-which identifies the conditional reverse rate as $\dot{R}_t(x_t | x_0) = r_t\, \mathbf{e}_m(x_0 - \mathbf{e}_m)^\top$ with $r_t = -\dot{\alpha}_t / (1 - \alpha_t)$.
+which identifies the conditional reverse rate as $\dot{R}_t(x_t | x_0) = r_t\, \mathbf{e}_m(\mathbf{e}_{x_0} - \mathbf{e}_m)^\top$ with $r_t = -\dot{\alpha}_t / (1 - \alpha_t)$.
 
 </div>
 </details>
@@ -2717,15 +2718,7 @@ L_t(\theta) &= \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \
 \end{aligned}
 \end{equation}
 $$
-Expanding the logarithm and grouping $\theta$-independent terms into a constant $C$ gives, up to this constant:
-$$
-\begin{equation}
-\label{eq:score-loss-final}
-L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \Bigg[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y \bigg( s_{\theta,t}(x_t)_y - \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \log s_{\theta,t}(x_t)_y \bigg) \Bigg]
-\end{equation}
-$$
-
-which is exactly the loss @eq:score-loss-prop of the concrete score matching proposition.
+Expanding the logarithm and grouping $\theta$-independent terms into a constant $C$ gives exactly the loss @eq:score-loss-prop of the concrete score matching proposition.
 </div>
 </details>
 
