@@ -780,9 +780,96 @@ This choice simply means that at time $t$, the $i$-th token $x^i_t$ equals the t
 $p_0(\cdot | \mathbf{x}_0)$ is a Dirac at the all-masked sequence, while $p_1(\cdot | \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_1$.
 The interest of this conditional probability path is that we can derive the associated probability velocity.
 
-<span style='color: red'> clarification needed here, the velocity is scalar, it generates $q_t$ not $p_t$ </span>
+Since we've made the factorization assumption, we can derive the conditional velocity only token-wise $u_t(x^i | x_1^i)$. We say it generates the token-wise conditional path $q_t(x^i | x_1^i)$ if it satisfies token-wise Kolmogorov equation:
+$$
+\begin{equation}
+\label{eq:token-kolmogorov}
+\frac{d}{dt} q_t(y^{i} | x_1^{i}) = \sum_{v \in \mathcal{V} } u_{t}(v | x_1^{i})_{y^{i}} \, q_t(v | x_1^{i})
+\end{equation}
+$$
+Then, if @eq:token-kolmogorov holds for all tokens $x_i \in \mathcal{V}$ and all $i \in \{1, \dots, S\}$, we can show that the conditional velocity defined as $u_t(\mathbf{x} | \mathbf{x}_1)_{\mathbf{y}} := \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t(x^i | x_1^i)_{y^i}$ generates the conditional path $p_t(\mathbf{x} | \mathbf{x}_1)$, as per @eq:kolmogorov-equation.
+
+<details>
+<summary>Proof</summary>
+<div>
+
+We verify that the global path and the global velocity satisfy the Kolmogorov equation. Since the conditional path is factorized, we have:
+$$
+\begin{equation}
+\label{eq:conditional-factorized-path}
+p_t(\mathbf{y} | \mathbf{x}_1) = \prod_{i=1}^S q_t(y^i | x_1^i).
+\end{equation}
+$$
+
+Differentiating this product gives:
+$$
+\begin{align}
+\frac{d}{dt}p_t(\mathbf{y} | \mathbf{x}_1)
+&= \frac{d}{dt}\prod_{i=1}^S q_t(y^i | x_1^i) \label{eq:global-kolmogorov-proof-1} \\
+&= \sum_{i=1}^S
+\left(\frac{d}{dt}q_t(y^i | x_1^i)\right)
+\prod_{j\neq i} q_t(y^j | x_1^j). \label{eq:global-kolmogorov-proof-2}
+\end{align}
+$$
+
+Using the token-wise Kolmogorov equation @eq:token-kolmogorov, this becomes:
+$$
+\begin{align}
+\frac{d}{dt}p_t(\mathbf{y} | \mathbf{x}_1)
+&= \sum_{i=1}^S
+\left[
+\sum_{v\in\mathcal{V}}
+u_t(v | x_1^i)_{y^i}\,q_t(v | x_1^i)
+\right]
+\prod_{j\neq i} q_t(y^j | x_1^j). \label{eq:global-kolmogorov-proof-3}
+\end{align}
+$$
+
+We now compute the right-hand side of the global Kolmogorov equation using the factorized velocity @eq:factorized-velocity:
+$$
+\begin{align}
+&\sum_{\mathbf{x}\in\mathcal{S}} u_t(\mathbf{x} | \mathbf{x}_1)_{\mathbf{y}}\,p_t(\mathbf{x} | \mathbf{x}_1) \label{eq:global-kolmogorov-proof-4} \\
+&= \sum_{\mathbf{x}\in\mathcal{S}}
+\left[
+\sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i}=\mathbf{x}^{\neq i})\,u_t(x^i | x_1^i)_{y^i}
+\right]
+\prod_{j=1}^S q_t(x^j | x_1^j) \label{eq:global-kolmogorov-proof-5} \\
+&= \sum_{i=1}^S
+\sum_{\mathbf{x}\in\mathcal{S}}
+\mathbb{I}(\mathbf{y}^{\neq i}=\mathbf{x}^{\neq i})\,u_t(x^i | x_1^i)_{y^i}
+\prod_{j=1}^S q_t(x^j | x_1^j). \label{eq:global-kolmogorov-proof-6}
+\end{align}
+$$
+
+For a fixed coordinate $i$, the indicator $\mathbb{I}(\mathbf{y}^{\neq i}=\mathbf{x}^{\neq i})$ forces $x^j=y^j$ for every $j\neq i$. Therefore, the sum over $\mathbf{x}$ reduces to a sum over the single free token $x^i=v$:
+$$
+\begin{align}
+&\sum_{\mathbf{x}\in\mathcal{S}}
+\mathbb{I}(\mathbf{y}^{\neq i}=\mathbf{x}^{\neq i})\,u_t(x^i | x_1^i)_{y^i}
+\prod_{j=1}^S q_t(x^j | x_1^j) \label{eq:global-kolmogorov-proof-7} \\
+&= \sum_{v\in\mathcal{V}}
+u_t(v | x_1^i)_{y^i}\,q_t(v | x_1^i)
+\prod_{j\neq i} q_t(y^j | x_1^j). \label{eq:global-kolmogorov-proof-8}
+\end{align}
+$$
+
+Plugging this back into @eq:global-kolmogorov-proof-6 gives exactly @eq:global-kolmogorov-proof-3. Hence:
+$$
+\begin{equation}
+\label{eq:global-kolmogorov-proof-9}
+\frac{d}{dt}p_t(\mathbf{y} | \mathbf{x}_1)
+=
+\sum_{\mathbf{x}\in\mathcal{S}} u_t(\mathbf{x} | \mathbf{x}_1)_{\mathbf{y}}\,p_t(\mathbf{x} | \mathbf{x}_1).
+\end{equation}
+$$
+
+The pair $(p_t(\cdot | \mathbf{x}_1), u_t(\cdot | \mathbf{x}_1))$ satisfies the Kolmogorov equation.
+
+</div>
+</details>
+
 <Statement kind="Proposition" label="conditional-velocity" title="Conditional velocity $u_t(x^i | x_1^i)$">
-The conditional velocity generating the conditional path @eq:mask-path-1 is:
+The token-wise $u_t(x^i | x_1^i)$ conditional velocity generating the token-wise conditional path $q_t(x^i | x_1^i)$ @eq:mask-path-1 is given by:
 $$
 \begin{equation}
 \label{eq:mask-velocity}
@@ -814,13 +901,7 @@ $$
 <summary>Proof of Proposition <Ref label="prop:conditional-velocity" /></summary>
 <div>
 
-We verify that the conditional velocity field $u_t(\cdot | \mathbf{x}_1)$ generates the conditional probability path $p_t(\cdot | \mathbf{x_1})$ by ensuring that the pair satisfies the Kolmogorov equation. For a token at position $i$, we need to check:
-$$
-\begin{equation}
-\label{eq:token-kolmogorov}
-\frac{d}{dt} q_t(y^{i} | x_1^{i}) = \sum_{v \in \mathcal{V} } u_{t}(v | x_1^{i})_{y^{i}} \, q_t(v | x_1^{i})
-\end{equation}
-$$
+We need to verify that the token-wise velocity defined in @eq:mask-velocity satisfies the token-wise Kolmogorov equation @eq:token-kolmogorov. We start with the left-hand side.
 
 Since $q_t(y^i | x_1^i) := t \mathbb{I}(y^i = x_1^i) + (1 - t) \mathbb{I}(y^i = m)$,
 $$
