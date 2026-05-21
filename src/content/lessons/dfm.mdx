@@ -1416,8 +1416,6 @@ $$
 Continuous space Diffusion models learn to generate data like images by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
 In Discrete Diffusion, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
 
-In the variational perspective (example: Denoising Diffusion Probabilistic Models (DDPM)): predict, given a noisy sequence $\mathbf{x}_t$ at time $t$, the cleaned sample $\mathbf{x}_0$ that generated $\mathbf{x}_t$ through the forward noising process (or equivalently the noise $\varepsilon$ that was added to $\mathbf{x}_0$ to get $\mathbf{x}_t$), then use this prediction to take one denoising step.
-
 <figure>
   <img
     src={ddpmMaskedDiffusion.src}
