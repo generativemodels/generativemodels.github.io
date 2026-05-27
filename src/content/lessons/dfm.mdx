@@ -2224,7 +2224,7 @@ $$
 where $\sigma(t) > 0$ is the instantaneous masking rate. Thus, each unmasked token jumps to $m$ at rate $\sigma(t)$, while the mask state is absorbing (i.e it never comes back again to a clean token).
 
 
-For Gaussian diffusion in continuous-spaces, we can sample intermediate points $x_t$ from the forward process in a simulation-free manner by directly sampling from the closed-form expression $q(x_t | x_0) = \mathcal{N}\!\left(x_t;\ \sqrt{\alpha_t}\,x_0,\ (1-\alpha_t)I\right)$, where $\alpha_t = \exp\!\left(-\int_0^t \beta(s)\,ds\right)$ is the cumulative noise schedule. Similarly, we can define $\bar{Q}_{t|0}$ the transition matrix from time $0$ to time $t$, so that $q(x_t | x_0)=\mathrm{Cat}(x_t;\ \bar{Q}_{t|0}^\top x_0)$. We denote $\alpha_t = \exp\!\left(-\int_0^t \sigma(s)\,ds\right)$ the cumulative masking schedule, then $\bar{Q}_{t|0}$ takes the following closed form:
+For Gaussian diffusion in continuous spaces, we can sample intermediate points $x_t$ from the forward process in a simulation-free manner by directly sampling from the closed-form expression $q(x_t | x_0) = \mathcal{N}\!\left(x_t;\ \sqrt{\alpha_t}\,x_0,\ (1-\alpha_t)I\right)$, where $\alpha_t = \exp\!\left(-\int_0^t \beta(s)\,ds\right)$ is the cumulative noise schedule. Similarly, we can define $\bar{Q}_{t|0}$ the transition matrix from time $0$ to time $t$, so that $q(x_t | x_0)=\mathrm{Cat}(x_t;\ \bar{Q}_{t|0}^\top x_0)$. We denote $\alpha_t = \exp\!\left(-\int_0^t \sigma(s)\,ds\right)$ the cumulative masking schedule, then $\bar{Q}_{t|0}$ takes the following closed form:
 
 $$
 \begin{align}
@@ -2423,7 +2423,7 @@ p(x_{t-\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t)]
 \end{equation}
 $$
 
-Moreover, the generator matrix $\dot{R}_t$ is defined as:
+Where the generator matrix $\dot{R}_t$ is defined as:
 $$
 \begin{equation}
 \label{eq:reverse-rate-mask}
@@ -2466,7 +2466,6 @@ For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a v
 </figure>
 */}
 
-#### Concrete Score and Training
 
 In Continuous space Diffusion, the score function $\nabla \log p_t(x)$ governs the reverse SDE $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $. Thus, to sample from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
 
@@ -2476,21 +2475,25 @@ s_t(x_t)_y \;=\; \frac{q(X_t = y)}{q(X_t = x_t)} \quad (y \neq x_t).
 $$
 Recalling @eq:reverse-rate-mask, the concrete score is precisely the quantity that converts the (known) forward rate $\dot{Q}_t$ into the reverse rate $\dot{R}_t$:
 $$
+
 \begin{equation}
 \label{eq:concrete-score}
 s_t(x_t)_y \;=\; \frac{[\dot{R}_t(x_t)]_y}{[\dot{Q}_t(x_t)]_y}.
 \end{equation}
 $$
-
-Here, the forward rate $\dot{Q}_t$ is known because we choose the noising process. The concrete score $s_t$ (or equivalently the reverse rate $\dot{R}_t$), however, depends on the noisy-data marginals $q(X_t=\cdot)$ which are unknown. This is why, in practice, we learn the concrete score.
-
-With a learned concrete score, we can then use it to sample from the reverse process:
+Then the reverse process can be simulated using the concrete score as follows:
 $$
 \begin{equation}
 \label{eq:score-sampling}
-\mathbb{P}\!\left(X_{t-h} = y | X_t = x_t\right) = \mathbb{I}(x_t=y) + h\,[\dot{Q}_t(x_t)]_y\,s_{\theta,t}(x_t)_y + o(h).
+\mathbb{P}\!\left(X_{t-h} = y | X_t = x_t\right) = \mathbb{I}(x_t=y) + h\,[\dot{Q}_t(x_t)]_y\,s_t(x_t)_y + o(h).
 \end{equation}
 $$
+
+
+The forward rate $\dot{Q}_t$ is known because it is a design choice of the noising process. The concrete score $s_t$ (or equivalently the reverse rate $\dot{R}_t$), however, depends on the noisy-data marginals $q(X_t=\cdot)$ which are unknown. This is why, in practice, we approximate $s_t$ with a neural network $s_{\theta, t}$.
+
+
+#### Training
 
 It remains to design a tractable training loss for the concrete score. As in Continuous space Diffusion, where denoising score matching exploits that the marginal score is a conditional expectation of the (tractable) conditional score: $\nabla \log p_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}[\nabla \log p_t(x_t | x_0)]$, the same identity holds here. Defining the (tractable) conditional concrete score $s_t(x_t | x_0)_y \;:=\; p_t(y | x_0)/p_t(x_t | x_0)$, we have for $y \neq x_t$:
 
