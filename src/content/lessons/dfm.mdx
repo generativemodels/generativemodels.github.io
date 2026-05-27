@@ -22,7 +22,7 @@ import DFMSampling from '../../components/DFMSampling.jsx';
 import MaskedDiffusion from '../../components/MaskedDiffusion.jsx';
 import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 import ddpmMaskedDiffusion from '../../components/ddpm_masked_diffusion.gif';
-import scoreBasedCatSde from '../../components/score_based_cat_sde.svg';
+import DiffusionDiscreteContinuous from '../../components/diffusion_discrete_continuous.svg';
 
 <T defines='
 #let anno(t) = $text(#luma(100), size: #10pt, (#t))$;
@@ -2175,7 +2175,7 @@ We follow the same path in discrete space. Since there is no SDE here, we work w
 <figure>
   <img
     class="dfm-zoomable-image"
-    src={scoreBasedCatSde.src}
+    src={DiffusionDiscreteContinuous.src}
     alt="Score-based categorical SDE diagram"
     loading="lazy"
   />
