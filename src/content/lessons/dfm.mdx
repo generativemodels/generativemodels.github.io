@@ -3171,10 +3171,10 @@ A fix is to reweight the training loss toward the positions the planner would se
 $$
 \begin{equation}
 \label{eq:papl-loss}
-\mathcal{L}_{\text{PAPL}}(\theta) = - \mathbb{E}_{t, \mathbf{x}_0, \mathbf{x}_t} \left[ \sum_{i=1}^S \mathbb{I}(x_t^i = m) \frac{1}{t}(1 + \alpha w^i) \log D_\theta^i(\mathbf{x}_t)_{x_0^i} \right]
+\mathcal{L}_{\text{PAPL}}(\theta) = - \mathbb{E}_{t, \mathbf{x}_0, \mathbf{x}_t} \left[ \sum_{i=1}^S \mathbb{I}(x_t^i = m) \frac{1}{t}(1 + \alpha \operatorname{sg}[w^i]) \log D_\theta^i(\mathbf{x}_t)_{x_0^i} \right]
 \end{equation}
 $$
-Here, $w^i$ represents the normalized weight of position $i$ assigned by the planner, and $\alpha$ is a hyperparameter that controls the strength of this planner guidance. To maintain numerical stability, the planner weights are detached: they reweight the loss, but gradients are not propagated through the planner itself.
+Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weight for position $i$, and $\alpha$ controls the strength of this guidance. The stop-gradient $\operatorname{sg}[\cdot]$ detaches these weights: for example, soft greedy weights depend on $\theta$ through $\operatorname{softmax}_i\left(\frac{1}{\tau}\log D_\theta^i(\mathbf{x}_t)_{z^i}\right)$, but gradients are not propagated through this dependence.
 
 {/*
 #### Training Losses
