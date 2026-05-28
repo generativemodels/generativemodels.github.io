@@ -1340,7 +1340,7 @@ $$
 </details>
 
 {/*
-In the specific context of masked diffusion, we usually restrict the learning process to predict only the tokens that are currently masked. Consequently, the loss is evaluated exclusively on these masked positions and scaled by the appropriate transition rate, becoming:
+In the specific context of Masked Diffusion, we usually restrict the learning process to predict only the tokens that are currently masked. Consequently, the loss is evaluated exclusively on these masked positions and scaled by the appropriate transition rate, becoming:
 $$
 \begin{equation}
 \label{eq:cdm-mask-loss}
@@ -1502,11 +1502,11 @@ In Discrete Diffusion, an analogous approach generates sequences by reversing a 
     src={ddpmMaskedDiffusion.src}
     width={ddpmMaskedDiffusion.width}
     height={ddpmMaskedDiffusion.height}
-    alt="DDPM masked diffusion denoising process"
+    alt="DDPM Masked Diffusion denoising process"
     loading="lazy"
   />
   <figcaption>
-    <strong>Figure <Counter label="fig:ddpm-masked-diffusion" />:</strong> Analogy between DDPM for images and masked diffusion for sequences. In the DDPM forward process, step $k$ corrupts a clean image by adding Gaussian noise, so the image gradually becomes pure noise. Given the current noisy image, the reverse model predicts the clean image that could have generated it, and uses this prediction to take one denoising step; after $N-k$ reverse steps, generated images should lie at the same scheduled noise level as forward images at step $k$. In masked diffusion, the forward process instead masks tokens in a clean sentence. Given the current partially masked sentence, the reverse model predicts a probability distribution over the clean sentences that could have generated it, and uses this prediction to unmask some tokens; after $N-k$ reverse steps, generated sentences should have a similar fraction of masked tokens as forward sentences at step $k$.
+    <strong>Figure <Counter label="fig:ddpm-masked-diffusion" />:</strong> Analogy between DDPM for images and Masked Diffusion for sequences. In the DDPM forward process, step $k$ corrupts a clean image by adding Gaussian noise, so the image gradually becomes pure noise. Given the current noisy image, the reverse model predicts the clean image that could have generated it, and uses this prediction to take one denoising step; after $N-k$ reverse steps, generated images should lie at the same scheduled noise level as forward images at step $k$. In Masked Diffusion, the forward process instead masks tokens in a clean sentence. Given the current partially masked sentence, the reverse model predicts a probability distribution over the clean sentences that could have generated it, and uses this prediction to unmask some tokens; after $N-k$ reverse steps, generated sentences should have a similar fraction of masked tokens as forward sentences at step $k$.
   </figcaption>
 </figure>
 
@@ -1655,7 +1655,7 @@ $$
 Generating data requires a reverse process that progressively unmasks tokens to produce a clean sequence. We first derive the exact reverse transition conditioned on the initial clean token $x_0$.
 
 <Statement kind="Lemma" label="masked-diffusion-bridge" title="Conditional reverse transitions $q(x_s | x_t,x_0)$">
-For masked diffusion, $x_t = m$ and $s<t$, we have:
+For Masked Diffusion, $x_t = m$ and $s<t$, we have:
 $$
 \begin{equation}
 \label{eq:bridge-mask}
@@ -1698,10 +1698,15 @@ We conclude using that $x_s$ is either at state $x_0$ or at state $m$ with proba
   </figcaption>
 </figure>
 
-However, during generation, the clean token $x_0$ is unknown: the quantity we actually need in order to sample backward is the reverse transition $q(x_s | x_t)$. We obtain it by marginalizing $q(x_s | x_t,x_0)$ over all possible clean tokens, weighted by the true denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$.
+However, during generation, the clean token $x_0$ is unknown: the quantity we actually need in order to sample backward is the reverse transition $q(x_s | x_t)$. We obtain it by marginalizing $q(x_s | x_t,x_0)$ over all possible clean tokens, weighted by the true denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$. We denote this posterior by
+$$
+D_t(x_t)_v := \mathbb{P}(X_0=v | X_t=x_t),
+\qquad
+D_t^i(\mathbf{x}_t)_v := \mathbb{P}(X_0^i=v | \mathbf{X}_t=\mathbf{x}_t).
+$$
 
 <Statement kind="Lemma" label="masked-diffusion-denoiser-bridge" title="Reverse transitions $q(x_s | x_t)$">
-For masked diffusion, $s<t$:
+For Masked Diffusion, $s<t$:
 $$
 \begin{align}
     q(x_s=v| x_t=m) &= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,\mathbb{P}(X_0=v | X_t=x_t)\quad (v\in\mathcal{V}\setminus\{m\}),  \label{eq:bridge-denoiser-1} \\
@@ -1843,8 +1848,8 @@ immediately, with equality iff the reverse trajectories perfectly recover the fo
 </details>
 */}
 
-<Statement kind="Theorem" label="discrete-diffusion-elbo" title="Discrete diffusion ELBO">
-The ELBO for a discrete diffusion process is given by:
+<Statement kind="Theorem" label="discrete-diffusion-elbo" title="Discrete Diffusion ELBO">
+The ELBO for a Discrete Diffusion process is given by:
 
 $$
 \begin{align}
@@ -1968,8 +1973,8 @@ $$
 $$
 The following proposition rewrites the ELBO term entirely in terms of this denoiser.
 
-<Statement kind="Proposition" label="masked-diffusion-training-loss" title="Masked diffusion training loss">
-In the specific case of masked diffusion, we can express the loss in terms of the denoiser output $D_{\theta,t}(\mathbf{x}_t) = (D_{\theta,t}^1(\mathbf{x}_t), \ldots, D_{\theta,t}^S(\mathbf{x}_t)) \in \Delta(\mathcal{V})^S$:
+<Statement kind="Proposition" label="masked-diffusion-training-loss" title="Masked Diffusion training loss">
+In the specific case of Masked Diffusion, we can express the loss in terms of the denoiser output $D_{\theta,t}(\mathbf{x}_t) = (D_{\theta,t}^1(\mathbf{x}_t), \ldots, D_{\theta,t}^S(\mathbf{x}_t)) \in \Delta(\mathcal{V})^S$:
 
 $$
 \begin{equation}
@@ -2483,10 +2488,20 @@ s_t(x_t)_y \;=\; \frac{[\dot{R}_t(x_t)]_y}{[\dot{Q}_t(x_t)]_y}.
 $$
 Then the reverse process can be simulated using the concrete score as follows:
 $$
-\begin{equation}
+\begin{align}
 \label{eq:score-sampling}
-\mathbb{P}\!\left(X_{t-h} = y | X_t = x_t\right) = \mathbb{I}(x_t=y) + h\,[\dot{Q}_t(x_t)]_y\,s_t(x_t)_y + o(h).
-\end{equation}
+x_{t-h} &\sim \mathrm{Cat}\left(
+\mathbf{e}_{x_t}
++ h\,\dot{R}_t(x_t)
++ o(h)
+\right) \\
+&=
+\mathrm{Cat}\left(
+\mathbf{e}_{x_t}
++ h\,\big([\dot{Q}_t(x_t)]_{\cdot}\odot s_t(x_t)_{\cdot}\big)
++ o(h)
+\right). \label{eq:score-sampling-cat}
+\end{align}
 $$
 
 
@@ -2583,7 +2598,7 @@ where $C$ is a constant independent of $\theta$.
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
         $q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\, Q_t\, e_{x_0}\right)$ <br />
         $Q_t = \mathcal{T}\!\exp\!\left(\int_0^t \dot{Q}_s\,ds\right)$ <br />
-        Masked diffusion: $Q_t = \alpha_t I + (1-\alpha_t)\, e_m \mathbf{1}^\top$
+        Masked Diffusion: $Q_t = \alpha_t I + (1-\alpha_t)\, e_m \mathbf{1}^\top$
       </td>
     </tr>
 
@@ -2641,9 +2656,57 @@ where $C$ is a constant independent of $\theta$.
 
 #### Equivalence Between the Two Discrete Diffusion Perspectives
 
-We first connect the two views of Discrete Diffusion by showing that the variational loss and the score-based loss optimize the same objective.
+We first connect the two views of Discrete Diffusion at the sampling level.
 
-The [variational perspective](#variational-discrete-diffusion) gives the ELBO loss @eq:discrete-elbo-1 (which can be rewritten as @eq:mdm-loss for masked diffusion), while the [score-based perspective](#score-based-discrete-diffusion) gives the concrete score matching loss @eq:score-loss-prop. We now show that these two objectives are in fact the same: taking the continuous-time limit of the variational ELBO produces, after a change of variable, exactly @eq:score-loss-prop.
+Recall the true denoiser $D_t^i(\mathbf{x})_v=\mathbb{P}(X_0^i=v | \mathbf{X}_t=\mathbf{x})$. Similarly to the denoiser-velocity relation in Discrete Flow Matching @eq:velocity-posterior, the reverse rate can be written in terms of this denoiser:
+
+$$
+\begin{equation}
+\label{eq:denoiser-reverse-rate}
+\dot{R}_t^i(\mathbf{x})_v
+=
+\mathbb{I}(x^i=m)\,
+\frac{-\dot{\alpha}_t}{1-\alpha_t}
+\left(
+D_t^i(\mathbf{x})_v
+- \mathbb{I}(v=m)
+\right).
+\end{equation}
+$$
+
+We start from @eq:masked-diffusion-denoiser-sampling and show that it is equivalent to @eq:score-sampling-cat by taking $s=t-h$ and letting $h \to 0$. For a masked token $x_t^i=m$:
+
+$$
+\begin{align}
+x_{t-h}^i
+&\sim \mathrm{Cat}\left(
+\frac{\alpha_{t-h}-\alpha_t}{1-\alpha_t}D_t^i(\mathbf{x}_t)
++ \frac{1-\alpha_{t-h}}{1-\alpha_t}\mathbf{e}_m
+\right) \label{eq:masked-denoiser-euler-1} \\
+&= \mathrm{Cat}\left(
+\frac{-h\dot{\alpha}_t + o(h)}{1-\alpha_t}D_t^i(\mathbf{x}_t)
++ \frac{1-\alpha_t + h\dot{\alpha}_t + o(h)}{1-\alpha_t}\mathbf{e}_m
+\right) \label{eq:masked-denoiser-euler-2} \\
+&= \mathrm{Cat}\left(
+\mathbf{e}_m
++ h\,\frac{-\dot{\alpha}_t}{1-\alpha_t}
+\underbrace{\left(D_t^i(\mathbf{x}_t)-\mathbf{e}_m\right)}_{
+\frac{1-\alpha_t}{-\dot{\alpha}_t}\dot{R}_t^i(\mathbf{x}_t)
+}
++ o(h)
+\right) \label{eq:masked-denoiser-euler-3} \\
+&= \mathrm{Cat}\left(
+\mathbf{e}_{x_t^i}
++ h\,\dot{R}_t^i(\mathbf{x}_t)
++ o(h)
+\right). \label{eq:masked-denoiser-euler-4}
+\end{align}
+$$
+using $\alpha_{t-h} - \alpha_t = -h\dot{\alpha}_t + o(h)$ in the second line.
+
+If $x_t^i\neq m$, both samplers keep the token fixed. Thus @eq:masked-diffusion-denoiser-sampling is the finite-step version of the sampler @eq:score-sampling-cat.
+
+Now that the sampling schemes have been identified, we turn to the corresponding training objectives. The [variational perspective](#variational-discrete-diffusion) gives the ELBO loss @eq:discrete-elbo-1 (which can be rewritten as @eq:mdm-loss for Masked Diffusion), while the [score-based perspective](#score-based-discrete-diffusion) gives the concrete score matching loss @eq:score-loss-prop. We now show that these two objectives are in fact the same: taking the continuous-time limit of the variational ELBO produces, after a change of variable, exactly @eq:score-loss-prop.
 
 We start from the variational loss @eq:discrete-elbo-1. In the continuous-time limit $T \to \infty$, each discrete transition $q(x_s | x_t)$ is replaced by an instantaneous rate $\dot{R}_t(x_t)$. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
 
@@ -2654,7 +2717,7 @@ q(y | x_t, x_0) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{R}_t(x_t | x_0)]_y + o(
 \end{equation}
 $$
 
-For masked diffusion, this conditional reverse rate takes the explicit form:
+For Masked Diffusion, this conditional reverse rate takes the explicit form:
 
 $$
 \begin{equation}
@@ -2717,18 +2780,17 @@ which identifies the conditional reverse rate as $\dot{R}_t(x_t | x_0) = r_t\, \
 </div>
 </details>
 
-<Statement kind="Proposition" label="continuous-time-elbo" title="Continuous-time ELBO $\mathrm{ELBO}_{\theta}$">
-In the continuous-time limit, the ELBO becomes:
+<Statement kind="Proposition" label="continuous-time-elbo" title="Variational and Score-based Diffusion loss equivalence">
+In the continuous-time limit, optimizing the variational ELBO @eq:discrete-elbo-1 is equivalent to minimizing the loss
 
 $$
 \begin{equation}
-\label{eq:ct-elbo}
-\begin{aligned}
-\text{ELBO}_{\theta}(x_0) ={} & - \mathrm{KL}(q(x_1 | x_0) , p_{\text{source}}) \\
-& - \int_0^1 \mathbb{E}_{x_t \sim q( \cdot | x_0)} \left[ \mathrm{KL}\!\left(\dot{R}_t(x_t | x_0),\, \dot{R}_{\theta,t}(x_t)\right) \right] dt
-\end{aligned}
+\label{eq:ratio-loss}
+L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_{\text{data}} \\ x_t \sim q( \cdot |x_0)}} \Bigg[ \sum_{y \neq x_t} \bigg( [\dot{R}_{\theta,t}(x_t)]_y - [\dot{R}_t(x_t | x_0)]_y \log [\dot{R}_{\theta,t}(x_t)]_y \bigg) \Bigg].
 \end{equation}
 $$
+
+<a href="#dfm-note-5" class="dfm-note-ref">5</a>
 </Statement>
 
 <details>
@@ -2774,35 +2836,50 @@ $$
 \end{align}
 $$
 
-Combining these terms, the KL divergence becomes:
+Combining these terms, the $j$-th KL term becomes:
 
 $$
 \begin{align}
-    \mathrm{KL} &= \Delta t \sum_{y \neq x_t} \left( [\dot{R}_t(x_t | x_0)]_y \log \frac{[\dot{R}_t(x_t | x_0)]_y}{[\dot{R}_{\theta,t}(x_t)]_y} \right.  \label{eq:ratio-kl-sum-1} \\
-    &\quad \left. - [\dot{R}_t(x_t | x_0)]_y + [\dot{R}_{\theta,t}(x_t)]_y \right) + o(\Delta t)  \label{eq:ratio-kl-sum-2} \notag
+\mathrm{KL}
+&= \Delta t \sum_{y \neq x_t} \Bigg(
+[\dot{R}_{\theta,t}(x_t)]_y
+- [\dot{R}_t(x_t | x_0)]_y \log [\dot{R}_{\theta,t}(x_t)]_y \label{eq:ratio-kl-sum-1} \\
+&\quad
++ \underbrace{
+[\dot{R}_t(x_t | x_0)]_y \log [\dot{R}_t(x_t | x_0)]_y
+- [\dot{R}_t(x_t | x_0)]_y
+}_{\text{ independent of }\theta}
+\Bigg) + o(\Delta t). \notag
 \end{align}
 $$
 
-This corresponds to $\Delta t \cdot \mathrm{KL}(\dot{R}_t(x_t | x_0) , \dot{R}_{\theta,t}(x_t))$, the generalized KL divergence between the instantaneous transition rate vectors for the token $x_t$. Substituting back into the ELBO, the sum over $j$ becomes a Riemann sum, and taking the limit $T \to \infty$ yields:
+Writing $t_j=j/T$ and $\Delta t=1/T$, the ELBO @eq:discrete-elbo-1 is therefore (grouping the $\theta$-independent above and $\mathrm{KL}(q(x_1 | x_0) , p_{\text{source}})$ into a constant $C$):
 
 $$
 \begin{align}
-    \text{ELBO}_{\theta}(x_0) ={} & - \mathrm{KL}\left(q(x_1 | x_0) , p_{\text{source}}\right)  \label{eq:ct-elbo-limit-1} \\
-    & - \int_0^1 \mathbb{E}_{\substack{x_t \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(\dot{R}_t(x_t | x_0) , \dot{R}_{\theta,t}(x_t)\right) \right] dt  \label{eq:ct-elbo-limit-2} \notag
+&\sum_{j=1}^{T}
+\mathbb{E}_{x_{t_j}\sim q(\cdot|x_0)}
+\left[
+\mathrm{KL}\left(q(x_{t_j-\Delta t}|x_{t_j},x_0),p_\theta(x_{t_j-\Delta t}|x_{t_j})\right)
+\right] \label{eq:final-celbo} \\
+&= \sum_{j=1}^{T}\Delta t\,
+\mathbb{E}_{x_{t_j}\sim q(\cdot|x_0)}
+\Bigg[
+\sum_{y\neq x_{t_j}}
+\bigg(
+[\dot{R}_{\theta,t_j}(x_{t_j})]_y
+-[\dot{R}_{t_j}(x_{t_j}|x_0)]_y
+\log [\dot{R}_{\theta,t_j}(x_{t_j})]_y \label{eq:ratio-riemann-1}
+\bigg)
+\Bigg]
++ C + o(1), \notag
 \end{align}
 $$
+
+where $C$ collects the terms independent of $\theta$. Taking $T\to\infty$ turns the sum into a Riemann integral over $t$, whose integrand is exactly the loss @eq:ratio-loss.
 
 </div>
 </details>
-
-Ignoring constants independent of $\theta$, the discrete diffusion loss can be written explicitly as:
-
-$$
-\begin{equation}
-\label{eq:ratio-loss}
-L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_{\text{data}} \\ x_t \sim q( \cdot |x_0)}} \Bigg[ \sum_{y \neq x_t} \bigg( [\dot{R}_{\theta,t}(x_t)]_y - [\dot{R}_t(x_t | x_0)]_y \log [\dot{R}_{\theta,t}(x_t)]_y \bigg) \Bigg]
-\end{equation}
-$$
 
 It remains to re-express @eq:ratio-loss in terms of the concrete score. Writing the reverse rates as $[\dot{R}_{t}(x_t)]_y = [\dot{Q}_t(x_t)]_y\,s_{t}(x_t)_y$ we recover, up to a $\theta$-independent constant, the concrete score matching loss @eq:score-loss-prop established in the [score-based perspective](#score-based-discrete-diffusion). The two viewpoints therefore minimize the same objective.
 
@@ -2883,7 +2960,7 @@ where $x_0^{\pi(<i)} = (x_0^{\pi(1)}, \ldots, x_0^{\pi(i-1)})$ denotes the token
 The following proposition shows that the MDM training objective is equivalent to the AO-ARM objective.
 
 <Statement kind="Proposition" label="mdm-ao-arm-equivalence" title="MDM and AO-ARM Equivalence">
-Let $\mathcal{L}_{\text{MDM}}(\theta)$ denote the masked diffusion training loss with linear schedule $\alpha_t = 1 - t$ and uniform time sampling $t \sim \mathcal{U}(0,1)$:
+Let $\mathcal{L}_{\text{MDM}}(\theta)$ denote the Masked Diffusion training loss with linear schedule $\alpha_t = 1 - t$ and uniform time sampling $t \sim \mathcal{U}(0,1)$:
 $$
 \begin{align}
 \mathcal{L}_{\text{MDM}}(\theta) ={} & -\mathbb{E}_{t \sim \mathcal{U}(0,1),\, \mathbf{x}_0 \sim p_{\text{data}},\, \mathbf{x}_t \sim q(\cdot | \mathbf{x}_0)}  \label{eq:loss-mdm-exp-1} \\
@@ -3025,12 +3102,11 @@ with the same $f(k, \mathbf{x}_0)$ defined in Step 1.
 
 #### Equivalence with Discrete Flow Matching
 
-We now connect Discrete Diffusion to Discrete Flow Matching by aligning their time conventions.
+We now connect Discrete Diffusion to Discrete Flow Matching. First, we show that sampling in Discrete Flow Matching (@eq:euler-sampling) is equivalent to sampling in Discrete Diffusion (@eq:reverse-rate).
 
-While Discrete Diffusion and Discrete Flow Matching share similar mathematical foundations, their primary difference lies in the time convention. In Discrete Diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. Discrete Flow Matching uses the exact opposite convention.
+To align these two sampling equations directly, we must first account for the main discrepancy between the frameworks: their time conventions. In Discrete Diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. Discrete Flow Matching uses the exact opposite convention.
 
-
-We can perfectly translate between the two frameworks using a simple time reversal: $t_{\text{FM}} = 1 - t_{\text{DD}}$. Concretely, if $(x_t)_{t \in [0,1]}$ denotes the discrete diffusion reverse process, then the time-reversed process $\tilde{x}_{t'} := x_{1-t'}$ is a valid Discrete Flow Matching process: it has the same law as the flow matching process with velocity field:
+We can therefore perfectly translate between the two frameworks using a simple time reversal: $t_{\text{FM}} = 1 - t_{\text{DD}}$. Concretely, if $(x_t)_{t \in [0,1]}$ denotes the Discrete Diffusion reverse process, then the time-reversed process $\tilde{x}_{t'} := x_{1-t'}$ is a valid Discrete Flow Matching process: it has the same law as the flow matching process with velocity field:
 
 $$
 \begin{equation}
@@ -3039,15 +3115,15 @@ u_{t'}^{\text{FM}} = \dot{R}_{1-t'}
 \end{equation}
 $$
 
-In particular, sampling from discrete diffusion (running the reverse CTMC from $t=1$ to $t=0$) is equivalent to sampling from this flow matching process (running a CTMC from $t'=0$ to $t'=1$): the two procedures produce trajectories with identical distributions.
+In particular, sampling from Discrete Diffusion (running the reverse CTMC from $t=1$ to $t=0$) is equivalent to sampling from this flow matching process (running a CTMC from $t'=0$ to $t'=1$): the two procedures produce trajectories with identical distributions.
 
 <details>
 <summary>Proof</summary>
 <div>
 
-We start from the infinitesimal reverse-time transition of the discrete diffusion process @eq:reverse-rate.
+We start from the infinitesimal reverse-time transition of the Discrete Diffusion process @eq:reverse-rate.
 
-**Step 1: variable change $t' = 1 - t$.** We have $t = 1 - t'$, so $x_t = x_{1-t'}$ and $x_{t - \Delta t} = x_{1 - t' - \Delta t}$. The rate evaluates at $\dot{R}_{1-t'}$. The equation rewrites as:
+We first perform the variable change $t' = 1 - t$ in @eq:reverse-rate. We have $t = 1 - t'$, so $x_t = x_{1-t'}$ and $x_{t - \Delta t} = x_{1 - t' - \Delta t}$. The rate evaluates at $\dot{R}_{1-t'}$, giving:
 
 $$
 \begin{equation}
@@ -3056,9 +3132,7 @@ p(x_{1-t'-\Delta t} = y | x_{1-t'}) = \mathbb{I}(y = x_{1-t'}) + \Delta t \, [\d
 \end{equation}
 $$
 
-**Step 2: identify the FM process.** Since $t_{\text{FM}} = 1 - t_{\text{DD}}$, we identify $x^{\text{FM}}_{t'} = x_{1-t'}$. We deduce $x^{\text{FM}}_{t' + \Delta t} = x_{1 - t' - \Delta t}$.
-
-Substituting directly into the equation above:
+Since $t_{\text{FM}} = 1 - t_{\text{DD}}$, we identify $x^{\text{FM}}_{t'} = x_{1-t'}$. We deduce $x^{\text{FM}}_{t' + \Delta t} = x_{1 - t' - \Delta t}$. Substituting these identities into @eq:time-change:
 
 $$
 \begin{equation}
@@ -3069,7 +3143,7 @@ $$
 
 Recall the definition of a probability velocity @eq:prob-velocity: a velocity field $u_{t'}$ generates a process $x^{\text{FM}}_{t'}$ if and only if $ p(x^{\text{FM}}_{t' + \Delta t} = y | x^{\text{FM}}_{t'} = x) = \mathbb{I}(y = x^{\text{FM}}_{t'}) + \Delta t \, [u_{t'}(x^{\text{FM}}_{t'})]_y + o(\Delta t) $.
 
-Identifying the two first-order terms in $\Delta t$ directly gives:
+Identifying the first-order terms in @eq:fm-step with those in @eq:prob-velocity directly gives:
 
 $$
 \begin{equation}
@@ -3083,7 +3157,7 @@ and therefore $u_{t'}^{\text{FM}} = \dot{R}_{1-t'}$.
 </div>
 </details>
 
-Now that we have shown that the sampling schemes of discrete flow matching and discrete diffusion are equivalent, we show how their training objectives line up in the masked case. The [variational diffusion perspective](#variational-discrete-diffusion) gives the masked diffusion objective @eq:mdm-loss, while the [denoiser parameterization in discrete flow matching](#learning-with-denoiser-parameterization) gives the CDM objective @eq:cdm-loss. We now compare these objectives.
+Now that we have shown that the sampling schemes of Discrete Flow Matching and Discrete Diffusion are equivalent, we show how their training objectives line up in the masked case. The [variational diffusion perspective](#variational-discrete-diffusion) gives the Masked Diffusion objective @eq:mdm-loss, while the [denoiser parameterization in Discrete Flow Matching](#learning-with-denoiser-parameterization) gives the CDM objective @eq:cdm-loss. We now compare these objectives.
 
 To directly compare the two training losses, we first note that the two denoisers introduced in flow matching in @eq:cdm-loss and in variational diffusion in @eq:mdm-loss are exactly the same object. Applying the time reversal $t_{\text{FM}} = 1 - t_{\text{DD}}$ and identifying the clean data $x_1=x_0$, we get:
 
@@ -3095,8 +3169,8 @@ D_{\theta,t_{\text{DD}}}^i(\mathbf{x})_{x_0^i}
 \end{align}
 $$
 
-<Statement kind="Proposition" label="masked-mdm-cdm-loss-equivalence" title="Masked diffusion/CDM loss equivalence">
-Under the time reversal $t_{\text{FM}}=1-t_{\text{DD}}$ and the denoiser identification @eq:denoiser-time-identification, the masked diffusion training loss $L_{\text{MDM}}(t)$ from @eq:mdm-loss is directly comparable to the denoising loss $L_{\text{CDM}}(t)$ from @eq:cdm-loss. At fixed flow-matching time $t$:
+<Statement kind="Proposition" label="masked-mdm-cdm-loss-equivalence" title="Masked Diffusion/CDM loss equivalence">
+Under the time reversal $t_{\text{FM}}=1-t_{\text{DD}}$ and the denoiser identification @eq:denoiser-time-identification, the Masked Diffusion training loss $L_{\text{MDM}}(t)$ from @eq:mdm-loss is directly comparable to the denoising loss $L_{\text{CDM}}(t)$ from @eq:cdm-loss. At fixed flow-matching time $t$:
 
 $$
 \begin{equation}
@@ -3110,7 +3184,7 @@ $$
 <summary>Derivation</summary>
 <div>
 
-Under the time reversal above, the weight in @eq:mdm-loss satisfies $-\dot{\alpha}_{t_{\text{DD}}}/(1-\alpha_{t_{\text{DD}}})=1/t_{\text{DD}}=1/(1-t_{\text{FM}})$. Therefore the masked diffusion loss @eq:mdm-loss becomes the weighted masked cross-entropy:
+Under the time reversal above, the weight in @eq:mdm-loss satisfies $-\dot{\alpha}_{t_{\text{DD}}}/(1-\alpha_{t_{\text{DD}}})=1/t_{\text{DD}}=1/(1-t_{\text{FM}})$. Therefore the Masked Diffusion loss @eq:mdm-loss becomes the weighted masked cross-entropy:
 
 $$
 \begin{equation}
@@ -3119,7 +3193,8 @@ L_{\text{MDM}}(t) = \mathbb{E}\!\left[\,\sum_{i=1}^S \mathbb{I}(x_t^i = m) \cdot
 \end{equation}
 $$
 
-Since $P(x_t^i = m) = 1-t$, applying the law of total expectation causes the masking probability to cancel the weight:
+Since $P(x_t^i = m) = 1-t$, applying the law of total expectation,
+$\mathbb{E}[Z]=P(x_t^i=m)\mathbb{E}[Z|x_t^i=m]+P(x_t^i\neq m)\mathbb{E}[Z|x_t^i\neq m]$:
 
 $$
 \begin{align}
@@ -3128,6 +3203,12 @@ L_{\text{MDM}}(t) \label{eq:mdm-t-1}
       -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t) \label{eq:mdm-t-3}
       | x_t^i = m \label{eq:mdm-t-4}
     \right]  \label{eq:mdm-t-5} \\
+  &\quad + t \cdot
+    \underbrace{\mathbb{E}\!\left[
+      \mathbb{I}(x_t^i=m)\frac{1}{1-t}
+      \left(-\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right)
+      | x_t^i \neq m
+    \right]}_{0\ \text{since }x_t^i\neq m} \notag \\
   &= \mathbb{E}\!\left[ \label{eq:mdm-t-6}
       -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t) \label{eq:mdm-t-7}
       | x_t^i = m \label{eq:mdm-t-8}
@@ -3151,7 +3232,7 @@ L_{\text{CDM}}(t) \label{eq:cm-t-1}
 \end{align}
 $$
 
-For unmasked positions, $x_t^i=x_1^i$, so the target is a deterministic copy of the input. If the denoiser parameterization enforces this copy behavior, or once this trivial term is ignored, the second term vanishes, giving:
+For unmasked positions $i$, a well trained denoiser should just copy the current token $x_t^i=x_1^i$ it sees, therefore $P_{\theta,t}(X_1^i=x_1^i|\mathbf{x}_t)=1$, and the second term vanishes, giving:
 
 $$
 \begin{equation}
@@ -3163,23 +3244,23 @@ L_{\text{CDM}}(t) \approx (1-t) \cdot \mathbb{E}\!\left[
 \end{equation}
 $$
 
-Both expressions share the same conditional expectation. Eliminating it yields @eq:mdm-cdm-scale, up to the vanishing unmasked-loss approximation.
+Both expressions share the same conditional expectation. Eliminating it yields @eq:mdm-cdm-scale.
 
 </div>
 </details>
 
-**Disclaimer** In general, the objectives @eq:cdfm-2 (or equivalently @eq:ratio-loss recalling @eq:time-reversal) and @eq:cdm-loss are not equivalent for arbitrary source distributions or paths. Discrete Diffusion is trained by minimizing a KL between conditional and learned velocity fields, $\mathrm{KL}(u_t(\cdot|\mathbf{x}_1),u_{\theta,t})$, while the denoiser loss @eq:cdm-loss minimizes a KL between a one-hot clean-token target and a learned denoiser $\mathrm{KL}\left(\mathbf{e}_{x_1^i},\, P_{\theta,t}(X_1^i | \mathbf{x})\right)$.
+**Disclaimer** In general, the objectives @eq:cdfm-2 (or equivalently @eq:ratio-loss recalling @eq:time-reversal) and @eq:cdm-loss are not equivalent for arbitrary source distributions or paths.
 
-### To go further: Planners in masked diffusion sampling
+### To go further: Planners in Masked Diffusion sampling
 
 #### Sampling with a planner
 
-In this section, we introduce planners as a way to make sampling more efficient in masked diffusion, and explain why using a planner also requires adapting the training loss. For the complete theoretical treatment, see [<a class="cite-ref" href="#ref-7">7</a>].
+In this section, we introduce planners as a way to make sampling more efficient in Masked Diffusion, and explain why using a planner also requires adapting the training loss. For the complete theoretical treatment, see [<a class="cite-ref" href="#ref-7">7</a>].
 
-Vanilla sampling in masked diffusion is computationally expensive. It requires $(1/h) \times S$ sequential steps, where $h$ is the time step size and $S$ is the length of the sequence. At every single micro-step, we must compute and draw from probability vectors of size $|\mathcal{V}|$ for all tokens. For example, with a step size of $h = 0.01$ and a sequence length of $S = 3000$, we would need $300,000$ steps to generate a single sample.
+Vanilla sampling in Masked Diffusion is computationally expensive. It requires $(1/h) \times S$ sequential steps, where $h$ is the time step size and $S$ is the length of the sequence. At every single micro-step, we must compute and draw from probability vectors of size $|\mathcal{V}|$ for all tokens. For example, with a step size of $h = 0.01$ and a sequence length of $S = 3000$, we would need $300,000$ steps to generate a single sample.
 We can parallelize the sampling of all tokens at each step, so the number of forward passes through the model is $1/h = 100$ steps rather than $S/h$, but it requires more memory.
 
-To make generation tractable, the standard approach used for large masked diffusion models is **planner-guided sampling**. Instead of relying on infinitesimal continuous-time steps, we fix the total generation steps $N$ and directly use the denoiser to reveal tokens at each step.
+To make generation tractable, the standard approach used for large Masked Diffusion models is **planner-guided sampling**. Instead of relying on infinitesimal continuous-time steps, we fix the total generation steps $N$ and directly use the denoiser to reveal tokens at each step.
 
 <Statement kind="Definition" label="planner" title="Planner $G_\phi$">
 A planner $G_\phi$ maps a candidate sequence $\mathbf{z}$ sampled from the denoiser and the current noisy sequence $\mathbf{x}_t$ to a distribution over positions to reveal. At step $k$, with $\mathcal{M}_k = \{i : x_k^i = m\}$, we write:
@@ -3289,7 +3370,7 @@ $$
 <figure>
   <DFMSampling denoiser planner client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:dfm-planner-sampling" />:</strong> Masked diffusion sampling with the soft greedy planner. At each step, the denoiser predicts $P(x_1|x_t)$ for every position and samples a candidate clean sequence $\mathbf{z}$. The planner $G_\phi^\tau$ then assigns selection probabilities to the still-masked positions from the denoiser confidence in the proposed tokens. The selected positions are revealed by copying the corresponding candidate tokens into the next sequence. Try changing the temperature $\tau$ to make the selection more diffuse or more sharply confidence-based.
+    <strong>Figure <Counter label="fig:dfm-planner-sampling" />:</strong> Masked Diffusion sampling with the soft greedy planner. At each step, the denoiser predicts $P(x_1|x_t)$ for every position and samples a candidate clean sequence $\mathbf{z}$. The planner $G_\phi^\tau$ then assigns selection probabilities to the still-masked positions from the denoiser confidence in the proposed tokens. The selected positions are revealed by copying the corresponding candidate tokens into the next sequence. Try changing the temperature $\tau$ to make the selection more diffuse or more sharply confidence-based.
 </figcaption>
 </figure>
 
@@ -3399,6 +3480,14 @@ Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weigh
   <span id="dfm-note-4"></span>
   <div class="dfm-note-main">
     4. Here $\mathrm{KL}$ denotes the generalized KL divergence between two positive vectors $a,b \in \mathbb{R}_+^d$, $\mathrm{KL}(a,b) = \sum_{j=1}^d a_j \log(a_j/b_j) - a_j + b_j$.
+  </div>
+</div>
+
+<div class="dfm-note-entry">
+  <span id="dfm-note-5"></span>
+  <div class="dfm-note-main">
+    5. Up to a constant $C$ independent of $\theta$, @eq:ratio-loss is
+    $\mathrm{KL}\left(\dot{R}_t(x_t | x_0),\, \dot{R}_{\theta,t}(x_t)\right)$.
   </div>
 </div>
 
