@@ -1141,7 +1141,7 @@ These vectors are indeed positive (cf. @eq:velocity-positivity), and we can skip
 The exact conditional expectation is approximated by a neural network $u_{\theta,t}$, trained by minimizing over $\theta$:
 $$
 \begin{align}
-L_{\text{CDFM}}(\theta) \label{eq:cdfm-1}
+L_{\text{CDFM}}(\theta)
 &= \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t( \cdot | \mathbf{z})}}\left[ \mathrm{KL}\left(u_t(\mathbf{x}_t | \mathbf{z}), u_{\theta,t}(\mathbf{x}_t)\right) \right]  \label{eq:cdfm-2} \\
 & =\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t( \cdot | \mathbf{z})}}\left[ \sum_{i=1}^S \mathrm{KL}\left( u_t(x^i_t | z^i), u_{\theta,t}^i(\mathbf{x}_t) \right) \right] \label{eq:cdfm-3}
 \end{align}
@@ -2735,11 +2735,21 @@ $$
 <summary>Continuous-time limit proof</summary>
 <div>
 
-We start from the full ELBO derived in @eq:discrete-elbo-1. Let $\Delta t = 1/T$, $t = j/T$, and $s = (j-1)/T$. Using @eq:reverse-kernel and @eq:reverse-rate and expanding the KL divergence term summing over the vocabulary:
+We start from the full ELBO derived in @eq:discrete-elbo-1:
+
+The first term is independent of $\theta$, so we focus on the KL terms inside the sum. Let $\Delta t = 1/T$, $t = j/T$, and $s = (j-1)/T$. Using @eq:reverse-kernel and the learned analogue of @eq:reverse-rate, the $j$-th KL $\left[ \mathrm{KL}\!\left(q\!\left(x_{(j-1)/T} | x_{j/T}, x_0\right),\, p_\theta\!\left(x_{(j-1)/T} | x_{j/T}\right)\right) \right]$ expands over the vocabulary as:
 
 $$
 \begin{align}
-\mathrm{KL}\left(q( \cdot | x_t, x_0) , p_\theta( \cdot | x_t)\right) = \sum_{y \in \mathcal{V}} q(y | x_t, x_0) \log \frac{q(y | x_t, x_0)}{p_\theta(y | x_t)} \label{eq:ratio-kl-1}
+\mathrm{KL}\left(q( \cdot | x_t, x_0) , p_\theta( \cdot | x_t)\right)
+&= \sum_{y \in \mathcal{V}}
+\underbrace{q(y | x_t, x_0)}_{\mathbb{I}(y=x_t)+\Delta t[\dot{R}_t(x_t|x_0)]_y+o(\Delta t)}
+\log \frac{
+  q(y | x_t, x_0)
+}{
+  \underbrace{p_\theta(y | x_t)}_{\mathclap{\mathbb{I}(y=x_t)+\Delta t[\dot{R}_{\theta,t}(x_t)]_y+o(\Delta t)}}
+}
+\label{eq:ratio-kl-1}
 \end{align}
 $$
 
@@ -2818,7 +2828,43 @@ L_t(\theta) &= \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \
 \end{aligned}
 \end{equation}
 $$
-Expanding the logarithm and grouping $\theta$-independent terms into a constant $C$ gives exactly the loss @eq:score-loss-prop of the concrete score matching proposition.
+Expanding the logarithm gives:
+
+$$
+\begin{align}
+L_t(\theta)
+&= \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \Bigg[
+\sum_{y \neq x_t}
+\Bigg(
+[\dot{Q}_t(x_t)]_y s_{\theta,t}(x_t)_y \label{eq:score-loss-expand-1} \\
+&\qquad
+- [\dot{Q}_t(x_t)]_y \frac{p_t(y|x_0)}{p_t(x_t|x_0)}
+\log [\dot{Q}_t(x_t)]_y \notag \\
+&\qquad
+- [\dot{Q}_t(x_t)]_y \frac{p_t(y|x_0)}{p_t(x_t|x_0)}
+\log s_{\theta,t}(x_t)_y
+\Bigg)
+\Bigg]. \notag \\
+&= \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \Bigg[
+\sum_{y \neq x_t}
+[\dot{Q}_t(x_t)]_y
+\bigg(
+s_{\theta,t}(x_t)_y
+- \frac{p_t(y|x_0)}{p_t(x_t|x_0)}
+\log s_{\theta,t}(x_t)_y
+\bigg)
+\Bigg] \label{eq:score-loss-expand-group-1} \\
+&\quad + \underbrace{
+\mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \Bigg[
+\sum_{y \neq x_t}
+- [\dot{Q}_t(x_t)]_y \frac{p_t(y|x_0)}{p_t(x_t|x_0)}
+\log [\dot{Q}_t(x_t)]_y
+\Bigg]
+}_{C\ \text{independent of }\theta}. \notag
+\end{align}
+$$
+
+This is exactly the loss @eq:score-loss-prop of the concrete score matching proposition.
 </div>
 </details>
 
@@ -3037,8 +3083,94 @@ and therefore $u_{t'}^{\text{FM}} = \dot{R}_{1-t'}$.
 </div>
 </details>
 
-### To go further: Planners in masked diffusion sampling
+Now that we have shown that the sampling schemes of discrete flow matching and discrete diffusion are equivalent, we show how their training objectives line up in the masked case. The [variational diffusion perspective](#variational-discrete-diffusion) gives the masked diffusion objective @eq:mdm-loss, while the [denoiser parameterization in discrete flow matching](#learning-with-denoiser-parameterization) gives the CDM objective @eq:cdm-loss. We now compare these objectives.
 
+To directly compare the two training losses, we first note that the two denoisers introduced in flow matching in @eq:cdm-loss and in variational diffusion in @eq:mdm-loss are exactly the same object. Applying the time reversal $t_{\text{FM}} = 1 - t_{\text{DD}}$ and identifying the clean data $x_1=x_0$, we get:
+
+$$
+\begin{align}
+D_{\theta,t_{\text{DD}}}^i(\mathbf{x})_{x_0^i}
+&= P_{\theta,t_{\text{DD}}}(X_0^i=x_0^i | X_{t_{\text{DD}}}=\mathbf{x}) \notag \\
+&= P_{\theta,t_{\text{FM}}}(X_1^i=x_1^i | X_{t_{\text{FM}}}=\mathbf{x}). \label{eq:denoiser-time-identification}
+\end{align}
+$$
+
+<Statement kind="Proposition" label="masked-mdm-cdm-loss-equivalence" title="Masked diffusion/CDM loss equivalence">
+Under the time reversal $t_{\text{FM}}=1-t_{\text{DD}}$ and the denoiser identification @eq:denoiser-time-identification, the masked diffusion training loss $L_{\text{MDM}}(t)$ from @eq:mdm-loss is directly comparable to the denoising loss $L_{\text{CDM}}(t)$ from @eq:cdm-loss. At fixed flow-matching time $t$:
+
+$$
+\begin{equation}
+\label{eq:mdm-cdm-scale}
+L_{\text{MDM}}(t) \approx \frac{1}{1-t} \, L_{\text{CDM}}(t).
+\end{equation}
+$$
+</Statement>
+
+<details>
+<summary>Derivation</summary>
+<div>
+
+Under the time reversal above, the weight in @eq:mdm-loss satisfies $-\dot{\alpha}_{t_{\text{DD}}}/(1-\alpha_{t_{\text{DD}}})=1/t_{\text{DD}}=1/(1-t_{\text{FM}})$. Therefore the masked diffusion loss @eq:mdm-loss becomes the weighted masked cross-entropy:
+
+$$
+\begin{equation}
+\label{eq:mdm-mask-loss-fm-time}
+L_{\text{MDM}}(t) = \mathbb{E}\!\left[\,\sum_{i=1}^S \mathbb{I}(x_t^i = m) \cdot \frac{1}{1-t} \cdot \left(-\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right)\right].
+\end{equation}
+$$
+
+Since $P(x_t^i = m) = 1-t$, applying the law of total expectation causes the masking probability to cancel the weight:
+
+$$
+\begin{align}
+L_{\text{MDM}}(t) \label{eq:mdm-t-1}
+  &= (1-t) \cdot \frac{1}{1-t} \cdot \mathbb{E}\!\left[ \label{eq:mdm-t-2}
+      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t) \label{eq:mdm-t-3}
+      | x_t^i = m \label{eq:mdm-t-4}
+    \right]  \label{eq:mdm-t-5} \\
+  &= \mathbb{E}\!\left[ \label{eq:mdm-t-6}
+      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t) \label{eq:mdm-t-7}
+      | x_t^i = m \label{eq:mdm-t-8}
+    \right]. \label{eq:mdm-t-9}
+\end{align}
+$$
+
+We decompose $L_{\text{CDM}}$ using the same law of total expectation, splitting over masked and unmasked positions:
+
+$$
+\begin{align}
+L_{\text{CDM}}(t) \label{eq:cm-t-1}
+  &= (1-t) \cdot \mathbb{E}\!\left[ \label{eq:cm-t-2}
+      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t) \label{eq:cm-t-3}
+      | x_t^i = m \label{eq:cm-t-4}
+    \right]  \label{eq:cm-t-5} \\
+  &\quad + t \cdot \mathbb{E}\!\left[ \label{eq:cm-t-6}
+      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t) \label{eq:cm-t-7}
+      | x_t^i \neq m \label{eq:cm-t-8}
+    \right]. \notag
+\end{align}
+$$
+
+For unmasked positions, $x_t^i=x_1^i$, so the target is a deterministic copy of the input. If the denoiser parameterization enforces this copy behavior, or once this trivial term is ignored, the second term vanishes, giving:
+
+$$
+\begin{equation}
+\label{eq:cm-mask-loss}
+L_{\text{CDM}}(t) \approx (1-t) \cdot \mathbb{E}\!\left[
+  -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)
+  | x_t^i = m
+\right].
+\end{equation}
+$$
+
+Both expressions share the same conditional expectation. Eliminating it yields @eq:mdm-cdm-scale, up to the vanishing unmasked-loss approximation.
+
+</div>
+</details>
+
+**Disclaimer** In general, the objectives @eq:cdfm-2 (or equivalently @eq:ratio-loss recalling @eq:time-reversal) and @eq:cdm-loss are not equivalent for arbitrary source distributions or paths. Discrete Diffusion is trained by minimizing a KL between conditional and learned velocity fields, $\mathrm{KL}(u_t(\cdot|\mathbf{x}_1),u_{\theta,t})$, while the denoiser loss @eq:cdm-loss minimizes a KL between a one-hot clean-token target and a learned denoiser $\mathrm{KL}\left(\mathbf{e}_{x_1^i},\, P_{\theta,t}(X_1^i | \mathbf{x})\right)$.
+
+### To go further: Planners in masked diffusion sampling
 
 #### Sampling with a planner
 
@@ -3175,90 +3307,6 @@ $$
 \end{equation}
 $$
 Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weight for position $i$, and $\alpha$ controls the strength of this guidance. The stop-gradient $\operatorname{sg}[\cdot]$ detaches these weights: for example, soft greedy weights depend on $\theta$ through $\operatorname{softmax}_i\left(\frac{1}{\tau}\log D_\theta^i(\mathbf{x}_t)_{z^i}\right)$, but gradients are not propagated through this dependence.
-
-{/*
-#### Training Losses
-
-In the discrete flow matching part, we first stated the conditional discrete flow matching loss $L_{\text{CDFM}}$ in @eq:cdfm-1, then said that we can also directly train a denoiser with the conditional discrete denoising loss $L_{\text{CDM}}$ in @eq:cdm-loss.
-
-These two losses are not equivalent in general. However, for the mask source, the velocity field and the denoiser are linked by a simple rescaling (@eq:velocity-posterior) which makes the two losses directly comparable:
-
-$$
-\begin{equation}
-\label{eq:cfm-cm-scale}
-L_{\text{CDFM}}(t) \approx \frac{1}{1-t} \, L_{\text{CDM}}(t)
-\end{equation}
-$$
-
-<details>
-<summary>Derivation</summary>
-<div>
-
-The CDFM loss for the mask source can be written as a weighted cross-entropy from @eq:cdfm-1 and @eq:velocity-posterior:
-
-$$
-\begin{equation}
-\label{eq:cfm-mask-loss}
-L_{\text{CDFM}}(t) = \mathbb{E}\!\left[\,\sum_{i=1}^S \mathbf{1}(x_t^i = m) \cdot \frac{1}{1-t} \cdot \left(-\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right)\right]
-\end{equation}
-$$
-
-Since $P(x_t^i = m) = 1-t$, applying the law of total expectation causes the masking probability to cancel the weight:
-
-$$
-\begin{align}
-L_{\text{CDFM}}(t) \label{eq:cfm-t-1}
-  &= (1-t) \cdot \frac{1}{1-t} \cdot \mathbb{E}\!\left[ \label{eq:cfm-t-2}
-      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t) \label{eq:cfm-t-3}
-      | x_t^i = m \label{eq:cfm-t-4}
-    \right]  \label{eq:cfm-t-5} \\
-  &= \mathbb{E}\!\left[ \label{eq:cfm-t-6}
-      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t) \label{eq:cfm-t-7}
-      | x_t^i = m \label{eq:cfm-t-8}
-    \right] \label{eq:cfm-t-9}
-\end{align}
-$$
-
-We decompose $L_{\text{CDM}}$ using the same law of total expectation, splitting over masked and unmasked positions:
-
-$$
-\begin{align}
-L_{\text{CDM}}(t) \label{eq:cm-t-1}
-  &= (1-t) \cdot \mathbb{E}\!\left[ \label{eq:cm-t-2}
-      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t) \label{eq:cm-t-3}
-      | x_t^i = m \label{eq:cm-t-4}
-    \right]  \label{eq:cm-t-5} \\
-  &\quad + t \cdot \mathbb{E}\!\left[ \label{eq:cm-t-6}
-      -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t) \label{eq:cm-t-7}
-      | x_t^i \neq m \label{eq:cm-t-8}
-    \right] \notag
-\end{align}
-$$
-
-Since a well-trained denoiser trivially reconstructs unmasked positions by copying the input, the second term vanishes, giving:
-
-$$
-\begin{equation}
-\label{eq:cm-mask-loss}
-L_{\text{CDM}}(t) \approx (1-t) \cdot \mathbb{E}\!\left[
-  -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)
-  | x_t^i = m
-\right]
-\end{equation}
-$$
-
-Both expressions share the same conditional expectation. Eliminating it yields the relationship (up to the vanishing unmasked-loss approximation):
-
-$$
-\begin{equation}
-\label{eq:cfm-cm}
-L_{\text{CDFM}}(t) \approx \frac{1}{1-t}\, L_{\text{CDM}}(t)
-\end{equation}
-$$
-
-</div>
-</details>
-*/}
 
 ### References
 
