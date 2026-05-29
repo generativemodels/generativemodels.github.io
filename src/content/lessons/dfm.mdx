@@ -3251,11 +3251,11 @@ Both expressions share the same conditional expectation. Eliminating it yields @
 
 **Disclaimer** In general, the objectives @eq:cdfm-2 (or equivalently @eq:ratio-loss recalling @eq:time-reversal) and @eq:cdm-loss are not equivalent for arbitrary source distributions or paths.
 
-### To go further: Planners in Masked Diffusion sampling
+### To go further: Planners in masked flow-matching sampling
 
 #### Sampling with a planner
 
-In this section, we introduce planners as a way to make sampling more efficient in Masked Diffusion, and explain why using a planner also requires adapting the training loss. For the complete theoretical treatment, see [<a class="cite-ref" href="#ref-7">7</a>].
+In this section, we introduce planners as a way to make sampling more efficient in the flow-matching sampling direction, and explain why using a planner also requires adapting the training loss. Recall that this is the time-reversed view of Masked Diffusion: in the diffusion convention, $p_0$ is the clean, unmasked data distribution and $p_1$ is the fully masked sequence. For the complete theoretical treatment, see [<a class="cite-ref" href="#ref-7">7</a>].
 
 Vanilla sampling in Masked Diffusion is computationally expensive. It requires $(1/h) \times S$ sequential steps, where $h$ is the time step size and $S$ is the length of the sequence. At every single micro-step, we must compute and draw from probability vectors of size $|\mathcal{V}|$ for all tokens. For example, with a step size of $h = 0.01$ and a sequence length of $S = 3000$, we would need $300,000$ steps to generate a single sample.
 We can parallelize the sampling of all tokens at each step, so the number of forward passes through the model is $1/h = 100$ steps rather than $S/h$, but it requires more memory.
@@ -3263,7 +3263,7 @@ We can parallelize the sampling of all tokens at each step, so the number of for
 To make generation tractable, the standard approach used for large Masked Diffusion models is **planner-guided sampling**. Instead of relying on infinitesimal continuous-time steps, we fix the total generation steps $N$ and directly use the denoiser to reveal tokens at each step.
 
 <Statement kind="Definition" label="planner" title="Planner $G_\phi$">
-A planner $G_\phi$ maps a candidate sequence $\mathbf{z}$ sampled from the denoiser and the current noisy sequence $\mathbf{x}_t$ to a distribution over positions to reveal. At step $k$, with $\mathcal{M}_k = \{i : x_k^i = m\}$, we write:
+A planner $G_\phi$ maps a candidate sequence $\mathbf{z}$ sampled from the denoiser and the current partially masked sequence $\mathbf{x}_k$ to a distribution over positions to reveal. Note $\Delta(A)$ the probability simplex over a finite set $A$.<a href="#dfm-note-6" class="dfm-note-ref">6</a> At step $k$, with $\mathcal{M}_k = \{i : x_k^i = m\}$, we write:
 $$
 \begin{equation}
 \label{eq:planner-definition}
@@ -3271,32 +3271,75 @@ G_\phi(\mathbf{z}, \mathbf{x}_k) \in \Delta(\{1,\ldots,S\}), \qquad
 G_\phi(\mathbf{z}, \mathbf{x}_k)_i = 0 \text{ for } i \notin \mathcal{M}_k.
 \end{equation}
 $$
+In other words, given a denoised candidate $\mathbf{z}$ produced by the denoiser from a partially masked sequence $\mathbf{x}_k$, the planner indicates, for each position $i$ in the sequence, the probability of denoising that token. If the token is already denoised, this probability is zero. For example, if $\mathbf{x}_k=(m,A,m)$ and $\mathbf{z}=(B,A,A)$, then a possible value of $G_\phi(\mathbf{z}, \mathbf{x}_k)$ is $(0.7,0,0.3)$, which means revealing position $1$ with probability $70\%$ and position $3$ with probability $30\%$.
 </Statement>
 
 **Algorithm: Planner-Guided Sampling**
 
-**Input:** Planner $G_\phi$, trained denoiser $D_\theta$, total number of steps $N$, schedule $f$ mapping step index to number of tokens to reveal at that step, e.g., $f(k) = S/N$ for all $k$.
+**Input:** Planner $G_\phi$, trained denoiser $D_\theta$, total number of sampling steps $N$, schedule $f$ mapping step index to number of tokens to reveal at that step, e.g., $f(k) = S/N$ for all $k$ when $N$ divides $S$.
 1. **Initialize:** $\mathbf{x}_0 \leftarrow (m, \dots, m)$ (a sequence of $S$ mask tokens).
 2. **For** $k = 0, 1, \dots, N - 1$:
     * **Plan:** Sample candidate tokens $\mathbf{z} \sim D_{\theta,k}(\mathbf{x}_k)$.
-    * **Select:** Sample a set of positions $\mathcal{I}$ with $|\mathcal{I}| = f(k)$ from the distribution $G_\phi(\mathbf{z}, \mathbf{x}_k)$.
-    * **Denoise:** Create $\mathbf{x}_{k+1}$ by setting $x_{k+1}^i = z^i$ for all $i \in \mathcal{I}$, keeping the rest as masks.
+    * **Select:**
+        1. Initialize $\mathcal{I}\leftarrow \varnothing$.
+        2. **For** $\ell=1,\ldots,f(k)$:
+            * Sample one position $i_\ell$ from $G_\phi(\mathbf{z}, \mathbf{x}_k)$, restricted to positions not already in $\mathcal{I}$.
+            * Add it to the set: $\mathcal{I}\leftarrow \mathcal{I}\cup\{i_\ell\}$.
+    * **Denoise:** Create $\mathbf{x}_{k+1}$ by setting $x_{k+1}^i = z^i$ for all $i \in \mathcal{I}$, and leaving all other positions unchanged.
 3. **Return** fully generated sequence $\mathbf{x}_N$.
 
 In the rest of this section, we suppose that the denoiser does not need to know the current time in its predictions, i.e. for any step $k$ and any given sequence $\mathbf{x}$, $D_{\theta,k}(\mathbf{x}) = D_{\theta}(\mathbf{x})$.
 
-<Statement kind="Proposition" label="sampling-scheme-equivalence" title="Sampling-scheme equivalence with $G_\phi$">
-If we choose the uniform random planner that selects positions uniformly at random among the masked tokens, i.e. $G_\phi(\mathbf{z}, \mathbf{x}_k)_i = \frac{1}{|\mathcal{M}_k|}$ for each $i \in \mathcal{M}_k$, then planner-guided sampling with $N = S$ steps and $f(k) = 1$ token per step is exactly equivalent to the sampling procedure given @eq:reverse-rate as $\Delta t \to 0$.
+<Statement kind="Proposition" label="sampling-scheme-equivalence" title="Sampling-scheme equivalence with $G$">
+If we choose the uniform random planner that selects positions uniformly at random among the masked tokens, i.e. $G(\mathbf{z}, \mathbf{x}_k)_i = \frac{1}{|\mathcal{M}_k|}$ for each $i \in \mathcal{M}_k$, then planner-guided sampling with $N = S$ steps and $f(k) = 1$ token per step is exactly equivalent to the sampling procedure given @eq:reverse-rate as $\Delta t \to 0$.
 </Statement>
 
-However, we rarely decide to unmask tokens by picking a random position at each step. A simple and widely used strategy is the soft greedy planner. Instead of unmasking tokens at random, it selects the positions where the denoiser is most confident in its predictions. We then relax this strict selection into a soft probability distribution using a softmax function with a temperature parameter $\tau$:
+However, we rarely decide to unmask tokens by picking a random position at each step. Instead, we can use heuristic or learned planners that rank positions according to how reliable or informative they seem to reveal.
+
+A simple and widely used strategy in this direction is the soft greedy planner. Instead of unmasking tokens at random, it selects the positions where the denoiser is most confident in its predictions. We then relax this strict selection into a soft probability distribution using a softmax function with a temperature parameter $\tau$:
 $$
 \begin{equation}
 \label{eq:planner}
-G_\phi^\tau(\mathbf{z}, \mathbf{x}_t)_j \propto \exp\left(\frac{1}{\tau} \log D_\theta^j(\mathbf{x}_t)_{z^j}\right)
+G_\tau(\mathbf{z}, \mathbf{x}_k)_j \propto \exp\left(\frac{1}{\tau} \log D_\theta^j(\mathbf{x}_k)_{z^j}\right)
 \end{equation}
 $$
-This formulation assigns higher selection probabilities to the tokens the model is sure about. As $\tau \to \infty$, this reduces to uniform random sampling. As $\tau \to 0$, it converges to a strict, hard selection of only the most confident token in the sampled sequence $\mathbf{z}$.
+<details>
+<summary>Other planning strategies</summary>
+<div>
+
+**Entropy planner.** Another heuristic is to score each position by the negative entropy of the denoiser distribution. Low entropy means the denoiser is concentrated on a few tokens, so the position is treated as more reliable:
+$$
+\begin{equation}
+s^i(\mathbf{x}_k) = \sum_{v \in \mathcal{V}} D_\theta^i(\mathbf{x}_k)_v \log D_\theta^i(\mathbf{x}_k)_v.
+\end{equation}
+$$
+The planner then applies a softmax over the still-masked positions:
+$$
+\begin{equation}
+\label{eq:entropy-planner}
+G_\tau^{\mathrm{ent}}(\mathbf{z}, \mathbf{x}_k)_i \propto \exp\left(\frac{s^i(\mathbf{x}_k)}{\tau}\right)
+\end{equation}
+$$
+Unlike soft greedy, this planner does not use the sampled token $z^i$ directly; it only uses the shape of the denoiser distribution at position $i$.
+
+**Learned planner.** With a pretrained denoiser, one can also train a separate planner offline. Starting from a clean sequence $\mathbf{x}_0$, we first noise it into a partially masked sequence $\mathbf{x}_k$, then sample a candidate denoised sequence $\mathbf{z} \sim D_\theta(\mathbf{x}_k)$ with the frozen denoiser. The planner is trained to put more mass on masked positions where the sampled token $z^i$ matches the original clean token $x_0^i$. This can be done with a cross-entropy objective of the form:
+$$
+\begin{equation}
+\mathcal{L}_{G}(\phi) =
+\mathbb{E}\!\left[
+\sum_{i=1}^{S}
+\mathbb{I}(x_k^i=m)
+\frac{\dot{\alpha}_t}{1-\alpha_t}
+\mathrm{CE}\!\left(G_\phi^i(\mathbf{x}_k,\mathbf{z}),\, \mathbb{I}[z^i=x_0^i]\right)
+\right].
+\end{equation}
+$$
+The learned planner can then be interpreted as a consistency scorer: positions whose sampled token looks reliable under the current partially denoised context receive more planner mass.
+
+</div>
+</details>
+
+The soft-greedy formulation assigns higher selection probabilities to the tokens the model is sure about. As $\tau \to \infty$, this reduces to uniform random sampling. As $\tau \to 0$, it converges to a strict, hard selection of only the most confident token in the sampled sequence $\mathbf{z}$.
 
 <details>
 <summary>Example: one sampling step with a soft greedy planner</summary>
@@ -3321,8 +3364,8 @@ $$
 For this sampled candidate, the planner only looks at the denoiser confidence assigned to the proposed token at each still-masked position, and assigns zero mass to positions that are already unmasked.
 $$
 \begin{align}
-D_\theta(\mathbf{x}_1)_{\mathbf{z}} \label{eq:planner-example-confidence-1}
-&=
+\widetilde{G}(\mathbf{z}, \mathbf{x}_1) \label{eq:planner-example-confidence-1}
+&:=
 \begin{pmatrix}
 0 \\
 D_\theta^2(\mathbf{x}_1)_{z^2 = A} \\
@@ -3336,10 +3379,10 @@ D_\theta^3(\mathbf{x}_1)_{z^3 = B}
 \end{pmatrix}. \label{eq:planner-example-confidence-3}
 \end{align}
 $$
-Setting the temperature to $\tau = 1/3$, the planner scales these probabilities by a power of $1/\tau = 3$ and normalizes them:
+Setting the temperature to $\tau = 1/3$, the planner scales these scores by a power of $1/\tau = 3$ and normalizes them:
 $$
 \begin{align}
-G_\phi^{1/3}(\mathbf{z}, \mathbf{x}_1) \label{eq:planner-example-prob-1}
+G_{1/3}(\mathbf{z}, \mathbf{x}_1) \label{eq:planner-example-prob-1}
 &=
 \frac{1}{0.6^3 + 0.7^3}
 \begin{pmatrix}
@@ -3367,14 +3410,16 @@ $$
 </div>
 </details>
 
+The figure below illustrates the sampling with a planner.
+
 <figure>
   <DFMSampling denoiser planner client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:dfm-planner-sampling" />:</strong> Masked Diffusion sampling with the soft greedy planner. At each step, the denoiser predicts $P(x_1|x_t)$ for every position and samples a candidate clean sequence $\mathbf{z}$. The planner $G_\phi^\tau$ then assigns selection probabilities to the still-masked positions from the denoiser confidence in the proposed tokens. The selected positions are revealed by copying the corresponding candidate tokens into the next sequence. Try changing the temperature $\tau$ to make the selection more diffuse or more sharply confidence-based.
+    <strong>Figure <Counter label="fig:dfm-planner-sampling" />:</strong> Flow-matching sampling with the soft greedy planner. At each step, the denoiser predicts $P(x_1|x_k)$ for every position and samples a candidate clean sequence $\mathbf{z}$. The planner $G_\tau$ then assigns selection probabilities to the still-masked positions from the denoiser confidence in the proposed tokens. The selected positions are revealed by copying the corresponding candidate tokens into the next sequence. Try changing the temperature $\tau$ to make the selection more diffuse or more sharply confidence-based.
 </figcaption>
 </figure>
 
-#### Planner aware path-learning
+#### Exposure Bias
 
 Introducing a planner-aware sampling process creates a mismatch between training and inference. During training, the standard objective masks tokens uniformly at random across all positions and orderings. During inference, the planner reveals tokens along a specific, confidence-guided trajectory.
 
@@ -3488,6 +3533,14 @@ Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weigh
   <div class="dfm-note-main">
     5. Up to a constant $C$ independent of $\theta$, @eq:ratio-loss is
     $\mathrm{KL}\left(\dot{R}_t(x_t | x_0),\, \dot{R}_{\theta,t}(x_t)\right)$.
+  </div>
+</div>
+
+<div class="dfm-note-entry">
+  <span id="dfm-note-6"></span>
+  <div class="dfm-note-main">
+    6. For a finite set $A$, the probability simplex is
+    $\Delta(A)=\{\pi\in\mathbb{R}_+^A:\sum_{a\in A}\pi_a=1\}$.
   </div>
 </div>
 
