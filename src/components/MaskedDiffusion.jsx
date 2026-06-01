@@ -889,15 +889,15 @@ export default function MaskedDiffusionForward({
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>fast</span>
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>slow</span>
               <input
                 type="range"
                 min={150} max={1500} step={50}
-                value={speed}
-                onChange={(e) => setSpeed(Number(e.target.value))}
+                value={1650 - speed}
+                onChange={(e) => setSpeed(1650 - Number(e.target.value))}
                 style={{ width: 100, accentColor: "#a78bfa" }}
               />
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>slow</span>
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>fast</span>
             </div>
 
             {/* Step progress dots */}
