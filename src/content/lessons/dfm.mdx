@@ -2450,8 +2450,6 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 
 #### Reverse Process
 
-
-
 In the previous section, we have described the forward process of score-based discrete diffusion models. To generate new data samples, we need to reverse the forward process.
 In Continuous space Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In discrete space, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
 
