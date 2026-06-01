@@ -1538,12 +1538,11 @@ m, & \text{with probability } \beta_j
 \end{equation}
 $$
 
-**Going to the continuous-time limit ($T \to \infty$)**:
+**Going to the continuous-time limit** ($T \to \infty$):
 In continuous space diffusion, considering, for $t \in [0, 1]$, the result $x_t \in \mathbb{R}^d$ of applying applying $tT$ forward steps naturally makes the cumulative schedule $\alpha_t := \prod_{i=1}^{tT}(1 - \beta_i)$ appear.
-Indeed, one has that the law of $x_t$ given its starting points $x_0$, namely the *forward marginal*, $q(x_t | x_0)$, equals $\mathcal{N}(x_t;\ \sqrt{\alpha_t}\, x_0,\ (1 - \alpha_t) I)$.
+Indeed, one has that the law of $x_t$ given its starting point $x_0$, namely the *forward marginal*, $q(x_t | x_0)$, equals $\mathcal{N}(x_t;\ \sqrt{\alpha_t}\, x_0,\ (1 - \alpha_t) I)$.
 The cumulative schedule controls the signal-to-noise ratio, i.e how much of the clean data $x_0$ remains in $x_t$.
-
-In discrete space, the same product gives the *survival probability* of a token.
+We derive its analogous counterpart in discrete space, where the same product gives the *survival probability* of a token.
 Fix time $t = j/T$ for a given $j \in \mathbb{N}$.
 By the Markov property, the probability that a token has survived up to time $t$ satisfies:
 
@@ -1557,32 +1556,33 @@ q(x_t = x_0 | x_0)
    q(x_{(j-1)/T} = x_0 | x_0) \label{eq:survival-prob-3}
 \end{align}
 $$
-which thus equal $\prod_{i=1}^{j} (1-\beta_i)$ recursion.
+which thus equals $\prod_{i=1}^{j} (1-\beta_i)$ by recursion.
 
-For a clean <span style="color:red"> meaning? </span> continuous-time limit, we introduce a continuous masking-rate function $\beta : [0,1] \to \mathbb{R}_+$, so that, when we discretize it over the $T$ steps, with $\Delta t = 1/T$, we get: $ \beta_i = \beta(i/T)\Delta t = \frac{1}{T}\beta\left(\frac{i}{T}\right). $
+To make the continuous-time limit rigorous, we introduce a continuous masking-rate function $\beta : [0,1] \to \mathbb{R}_+$.
+When we discretize time over $T$ steps with stepsize $\Delta t = 1/T$, we obtained discrete masking rates $\beta_i := \beta(i/T)\Delta t = \frac{1}{T}\beta\left(\frac{i}{T}\right)$.
 
-Then:
+Then, the forward marginal equals, for $j=tT$,
 
 $$
 \begin{align}
 q(x_t = x_0 | x_0)
 &= \prod_{i=1}^{j}
-\left(1-\frac{1}{T}\beta\left(\frac{i}{T}\right)\right) \label{eq:survival-prob-5} \\
+\left(1- \tfrac{1}{T}\beta\left(\tfrac{i}{T}\right)\right) \label{eq:survival-prob-5} \\
 &= \exp\left(
 \sum_{i=1}^{j}
-\log\left(1-\frac{1}{T}\beta\left(\frac{i}{T}\right)\right)
+\log\left(1-\tfrac{1}{T}\beta\left(\tfrac{i}{T}\right)\right)
 \right) \label{eq:survival-prob-6} \\
 &\approx \exp\left(
 -\sum_{i=1}^{j}
-\frac{1}{T}\beta\left(\frac{i}{T}\right)
+\tfrac{1}{T}\beta\left(\tfrac{i}{T}\right)
 \right) \label{eq:survival-prob-7} \\
 &\xrightarrow[T\to\infty]{}
-\exp\left(-\int_0^t \beta(s)\,ds\right). \label{eq:survival-prob-8}
+\exp\left(-\int_0^t \beta(s)\, ds\right). \label{eq:survival-prob-8}
 \end{align}
 $$
-because this is a Riemann sum and $j = Tt$.
+identifying a Riemann sum and using $j = Tt$.
 
-We define the noise schedule $\alpha_t$ that gives the probability of a token remaining unmasked at time $t$:
+This computation leads us to define the noise schedule $\alpha_t$ that gives the probability of a token remaining unmasked at time $t$, as
 
 $$
 \begin{equation}
@@ -1594,9 +1594,9 @@ $$
 We deduce the following properties on $\alpha_t$ from the derivation above:
 - $\alpha_0 = 1$: at time $t=0$, all tokens are unmasked.
 - $\alpha_1 = 0$: at time $t=1$, all tokens are masked.
-- $\alpha_t$ is decreasing in $t$: as time increases, the probability of a token being unmasked decreases.
+- $\alpha_t$ is decreasing in $t$: as time increases, the probability of a token remaining unmasked decreases.
 
-Using the Markov property of the process, we can then compute the transition probabilities between any two time steps $s < t$:
+It turns out that we can then compute the transition probabilities between any two timesteps $s < t$:
 $$
 \begin{equation}
 \label{eq:forward-transition}
