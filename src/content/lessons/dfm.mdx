@@ -1699,7 +1699,7 @@ We conclude using that $x_s$ is either at state $x_0$ or at state $m$ with proba
   </figcaption>
 </figure>
 
-However, during generation, the clean token $x_0$ is unknown: the quantity we actually need in order to sample backward is the reverse transition $q(x_s | x_t)$. We obtain it by marginalizing $q(x_s | x_t,x_0)$ over all possible clean tokens, weighted by the true denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$. We denote this posterior by
+However, during generation, the clean token $x_0$ is unknown: the quantity we actually need in order to sample backward is the reverse transition $q(x_s | x_t)$, not $q(x_s | x_t, x_0)$. We obtain the former by marginalizing the latter over all possible clean tokens, weighted by their probability $\mathbb{P}(X_0 = v | X_t=x_t)$ (the true denoiser). We denote this posterior by
 $$
 D_t(x_t)_v := \mathbb{P}(X_0=v | X_t=x_t),
 \qquad
@@ -1707,7 +1707,7 @@ D_t^i(\mathbf{x}_t)_v := \mathbb{P}(X_0^i=v | \mathbf{X}_t=\mathbf{x}_t).
 $$
 
 <Statement kind="Lemma" label="masked-diffusion-denoiser-bridge" title="Reverse transitions $q(x_s | x_t)$">
-For Masked Diffusion, $s<t$:
+For Masked Diffusion and timesteps $s<t$:
 $$
 \begin{align}
     q(x_s=v| x_t=m) &= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,\mathbb{P}(X_0=v | X_t=x_t)\quad (v\in\mathcal{V}\setminus\{m\}),  \label{eq:bridge-denoiser-1} \\
