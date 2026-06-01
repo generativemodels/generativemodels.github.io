@@ -2174,7 +2174,7 @@ which matches the sequence-level training loss defined previously.
 
 ### Score-based Discrete Diffusion
 
-We now turn to the score-based viewpoint: predict a score function, i.e. the direction pointing toward more likely samples at noise level $t$, and follow it to move from noise back to data. In Continuous space Diffusion, the forward process is given by an SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, from which one derives the reverse SDE; the score $\nabla \log p_t(x)$ is then the only quantity that we need to learn to sample from this SDE.
+We now turn to the score-based viewpoint: predict a score function, i.e. the direction pointing toward more likely samples at noise level $t$, and follow it to move from noise back to data. In Continuous space Diffusion, the sampling process is given by the reverse-time SDE $dx_t = [f_t(x_t) - g_t^2\nabla_x\log p_t(x_t)]dt + g_td\bar{W}_t$, where $f_t$ and $g_t$ are known and $W_t$ is a Wiener process. The score $\nabla \log p_t(x)$ is then the only quantity that we need to learn to generate new samples from $p_0(x)$.
 
 We follow the same path in discrete space. Since there is no SDE here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$. We then reverse it to obtain $p(x_{t-\Delta t} | x_t)$, and identify the discrete object analogous to the score $\nabla \log p_t(x)$ that the model needs to learn.
 
@@ -2192,7 +2192,7 @@ We follow the same path in discrete space. Since there is no SDE here, we work w
 
 #### Forward Process
 
-We choose to model the discrete forward process as a continuous-time Markov chain (CTMC), characterized locally by a *forward rate matrix* $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$.
+In score-based discrete diffusion, the discrete forward process is modeled as a continuous-time Markov chain (CTMC), characterized locally by a *forward rate matrix* $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$.
 
 <Statement kind="Definition" label="forward-rate-matrix" title="Forward rate matrix $\dot{Q}_t$">
 A forward rate matrix $\dot{Q}_t$ is the infinitesimal generator of the CTMC. For a small time increment $\Delta t$, it defines the transition probabilities through:
@@ -2207,7 +2207,8 @@ $$
 where $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$.
 </Statement>
 
-The matrix $\dot{Q}_t$ plays the same role for the discrete forward process as $f_t$ plays for the continuous one. In Continuous space Diffusion, the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$ says that, over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $\Delta t\,[\dot{Q}_t(x_t)]_y$ to first order.<a href="#dfm-note-1" class="dfm-note-ref">1</a>
+{/* The matrix $\dot{Q}_t$ plays the same role for the discrete forward process as $f_t$ plays for the continuous one.  */}
+In Continuous space Diffusion, the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$ says that, over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $\Delta t\,[\dot{Q}_t(x_t)]_y$ to first order.<a href="#dfm-note-1" class="dfm-note-ref">1</a>
 
 For example, in the variance-preserving Gaussian diffusion, the local coefficients are often chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a local noise schedule. In the masked discrete space Diffusion, we make an analogous choice by specifying the rate at which unmasked tokens jump to the mask state:
 
@@ -2501,12 +2502,11 @@ x_{t-h} &\sim \mathrm{Cat}\left(
 \mathbf{e}_{x_t}
 + h\,\big([\dot{Q}_t(x_t)]_{\cdot}\odot s_t(x_t)_{\cdot}\big)
 + o(h)
-\right). \label{eq:score-sampling-cat}
+\right), \label{eq:score-sampling-cat}
 \end{align}
 $$
 
-
-The forward rate $\dot{Q}_t$ is known because it is a design choice of the noising process. The concrete score $s_t$ (or equivalently the reverse rate $\dot{R}_t$), however, depends on the noisy-data marginals $q(X_t=\cdot)$ which are unknown. This is why, in practice, we approximate $s_t$ with a neural network $s_{\theta, t}$.
+where $\odot$ denotes the elementwise product. The forward rate $\dot{Q}_t$ is known because it is a design choice of the noising process. The concrete score $s_t$ (or equivalently the reverse rate $\dot{R}_t$), however, depends on the noisy-data marginals $q(X_t=\cdot)$ which are unknown. This is why, in practice, we approximate $s_t$ with a neural network $s_{\theta, t}$.
 
 
 #### Training
@@ -2657,9 +2657,9 @@ where $C$ is a constant independent of $\theta$.
 
 #### Equivalence Between the Two Discrete Diffusion Perspectives
 
-We first connect the two views of Discrete Diffusion at the sampling level.
+Discrete diffusion models can be framed from two different perspectives: variational inference and score matching. These two viewpoints, while appearing different, are in fact equivalent. We now demonstrate this equivalence, by first showing they use their sampling schemes are the same, and then that their training objectives are equivalent. 
 
-Recall the true denoiser $D_t^i(\mathbf{x})_v=\mathbb{P}(X_0^i=v | \mathbf{X}_t=\mathbf{x})$. Similarly to the denoiser-velocity relation in Discrete Flow Matching @eq:velocity-posterior, the reverse rate can be written in terms of this denoiser:
+__Sampling:__ We first connect the two views of Discrete Diffusion at the sampling level. The reverse rate for score-based discrete diffusion can be written in terms of the true denoiser $D_t^i(\mathbf{x})_v=\mathbb{P}(X_0^i=v | \mathbf{X}_t=\mathbf{x})$:
 
 $$
 \begin{equation}
@@ -2675,7 +2675,7 @@ D_t^i(\mathbf{x})_v
 \end{equation}
 $$
 
-We start from @eq:masked-diffusion-denoiser-sampling and show that it is equivalent to @eq:score-sampling-cat by taking $s=t-h$ and letting $h \to 0$. For a masked token $x_t^i=m$:
+Then, we show that the two discrete diffusion frameworks are equivalent by showing that their sampling schemes are the same, i.e. connecting @eq:masked-diffusion-denoiser-sampling and @eq:score-sampling-cat. Starting from @eq:masked-diffusion-denoiser-sampling and taking $s=t-h$ and letting $h \to 0$, for a masked token $x_t^i=m$:
 
 $$
 \begin{align}
@@ -2707,9 +2707,9 @@ using $\alpha_{t-h} - \alpha_t = -h\dot{\alpha}_t + o(h)$ in the second line.
 
 If $x_t^i\neq m$, both samplers keep the token fixed. Thus @eq:masked-diffusion-denoiser-sampling is the finite-step version of the sampler @eq:score-sampling-cat.
 
-Now that the sampling schemes have been identified, we turn to the corresponding training objectives. The [variational perspective](#variational-discrete-diffusion) gives the ELBO loss @eq:discrete-elbo-1 (which can be rewritten as @eq:mdm-loss for Masked Diffusion), while the [score-based perspective](#score-based-discrete-diffusion) gives the concrete score matching loss @eq:score-loss-prop. We now show that these two objectives are in fact the same: taking the continuous-time limit of the variational ELBO produces, after a change of variable, exactly @eq:score-loss-prop.
+__Training Objectives__: Now we turn to the corresponding training objectives. The [variational perspective](#variational-discrete-diffusion) gives the ELBO loss @eq:discrete-elbo-1 (which can be rewritten as @eq:mdm-loss for Masked Diffusion), while the [score-based perspective](#score-based-discrete-diffusion) gives the concrete score matching loss @eq:score-loss-prop. We now show that these two objectives are in fact the same: taking the continuous-time limit of the variational ELBO produces, after a change of variable, exactly the concrete score matching loss @eq:score-loss-prop.
 
-We start from the variational loss @eq:discrete-elbo-1. In the continuous-time limit $T \to \infty$, each discrete transition $q(x_s | x_t)$ is replaced by an instantaneous rate $\dot{R}_t(x_t)$. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
+Starting from the variational loss @eq:discrete-elbo-1, in the continuous-time limit $T \to \infty$, each discrete transition $q(x_s | x_t)$ is replaced by an instantaneous rate $\dot{R}_t(x_t)$. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
 
 $$
 \begin{equation}
@@ -3105,7 +3105,8 @@ with the same $f(k, \mathbf{x}_0)$ defined in Step 1.
 
 We now connect Discrete Diffusion to Discrete Flow Matching. First, we show that sampling in Discrete Flow Matching (@eq:euler-sampling) is equivalent to sampling in Discrete Diffusion (@eq:reverse-rate).
 
-To align these two sampling equations directly, we must first account for the main discrepancy between the frameworks: their time conventions. In Discrete Diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. Discrete Flow Matching uses the exact opposite convention.
+
+__Sampling__: To align these two sampling equations directly, we must first account for the main discrepancy between the frameworks: their time conventions. In Discrete Diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. Discrete Flow Matching uses the exact opposite convention.
 
 We can therefore perfectly translate between the two frameworks using a simple time reversal: $t_{\text{FM}} = 1 - t_{\text{DD}}$. Concretely, if $(x_t)_{t \in [0,1]}$ denotes the Discrete Diffusion reverse process, then the time-reversed process $\tilde{x}_{t'} := x_{1-t'}$ is a valid Discrete Flow Matching process: it has the same law as the flow matching process with velocity field:
 
@@ -3158,7 +3159,7 @@ and therefore $u_{t'}^{\text{FM}} = \dot{R}_{1-t'}$.
 </div>
 </details>
 
-Now that we have shown that the sampling schemes of Discrete Flow Matching and Discrete Diffusion are equivalent, we show how their training objectives line up in the masked case. The [variational diffusion perspective](#variational-discrete-diffusion) gives the Masked Diffusion objective @eq:mdm-loss, while the [denoiser parameterization in Discrete Flow Matching](#learning-with-denoiser-parameterization) gives the CDM objective @eq:cdm-loss. We now compare these objectives.
+__Training Objectives__: Now we show how their training objectives line up in the masked case. The [variational diffusion perspective](#variational-discrete-diffusion) gives the Masked Diffusion objective @eq:mdm-loss, while the [denoiser parameterization in Discrete Flow Matching](#learning-with-denoiser-parameterization) gives the CDM objective @eq:cdm-loss. We now compare these objectives.
 
 To directly compare the two training losses, we first note that the two denoisers introduced in flow matching in @eq:cdm-loss and in variational diffusion in @eq:mdm-loss are exactly the same object. Applying the time reversal $t_{\text{FM}} = 1 - t_{\text{DD}}$ and identifying the clean data $x_1=x_0$, we get:
 
