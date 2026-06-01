@@ -2195,7 +2195,7 @@ which matches the sequence-level training loss defined previously.
 
 ### Score-based Discrete Diffusion
 
-We now turn to the score-based viewpoint: predict a score function, i.e. the direction pointing toward more likely samples at noise level $t$, and follow it to move from noise back to data. In Continuous space Diffusion, the sampling process is given by the reverse-time SDE $dx_t = [f_t(x_t) - g_t^2\nabla_x\log p_t(x_t)]dt + g_td\bar{W}_t$, where $f_t$ and $g_t$ are known and $W_t$ is a Wiener process. The score $\nabla \log p_t(x)$ is then the only quantity that we need to learn to generate new samples from $p_0(x)$.
+We now turn to the score-based viewpoint: predict a score function, i.e. the direction pointing toward more likely samples at noise level $t$, and follow it to move from noise back to data. In continuous diffusion, a key tool in the analysis is to model the forward process as a discretization of a forward stochastic differential equation; simulating the backward process then amounts to discretizing the associated reverse SDE. Critically, the reverse SDE involves the score, namely $\nabla \log p_t(x)$, where $p_t$ is the distribution of the variables $x_t$ defined by the forward process.
 
 We follow the same path in discrete space. Since there is no SDE here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$. We then reverse it to obtain $p(x_{t-\Delta t} | x_t)$, and identify the discrete object analogous to the score $\nabla \log p_t(x)$ that the model needs to learn.
 
@@ -2213,25 +2213,20 @@ We follow the same path in discrete space. Since there is no SDE here, we work w
 
 #### Forward Process
 
-In score-based discrete diffusion, the discrete forward process is modeled as a continuous-time Markov chain (CTMC), characterized locally by a *forward rate matrix* $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$.
-
-<Statement kind="Definition" label="forward-rate-matrix" title="Forward rate matrix $\dot{Q}_t$">
-A forward rate matrix $\dot{Q}_t$ is the infinitesimal generator of the CTMC. For a small time increment $\Delta t$, it defines the transition probabilities through:
+In continuous-space score-based diffusion, we model the forward process as the solution of the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, where we fix the drift $f_t$ and the diffusion coefficient $g_t$, and $W_t$ is a Wiener process. We follow a similar approach in discrete space: we model the forward process as a continuous-time Markov chain (CTMC), which can be written locally as
 
 $$
 \begin{equation}
 \label{eq:forward-rate}
-q(x_{t+\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{Q}_t(x_t)]_y + o(\Delta t)
+q(x_{t+\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{Q}_t(x_t)]_y + o(\Delta t),
 \end{equation}
 $$
 
-where $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$.
-</Statement>
+where we fix the forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$. $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$.
 
-{/* The matrix $\dot{Q}_t$ plays the same role for the discrete forward process as $f_t$ plays for the continuous one.  */}
-In Continuous space Diffusion, the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$ says that, over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $\Delta t\,[\dot{Q}_t(x_t)]_y$ to first order.<a href="#dfm-note-1" class="dfm-note-ref">1</a>
+The continuous SDE means that over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $\Delta t\,[\dot{Q}_t(x_t)]_y$ to first order.<a href="#dfm-note-1" class="dfm-note-ref">1</a>
 
-For example, in the variance-preserving Gaussian diffusion, the coefficients are often chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a noise schedule. In the masked discrete space Diffusion, we make an analogous choice by specifying the rate at which unmasked tokens jump to the mask state:
+A common instantiation of the continuous SDE is the variance-preserving Gaussian diffusion: the coefficients are chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a noise schedule. In the masked discrete space Diffusion, we make an analogous choice by specifying the rate at which unmasked tokens jump to the mask state:
 
 $$
 \begin{equation}
@@ -2251,8 +2246,9 @@ $$
 
 where $\sigma(t) > 0$ is the instantaneous masking rate. Thus, each unmasked token jumps to $m$ at rate $\sigma(t)$, while the mask state is absorbing (i.e it never comes back again to a clean token).
 
-
-For Gaussian diffusion in continuous spaces, we can sample intermediate points $x_t$ from the forward process in a simulation-free manner by directly sampling from the closed-form expression $q(x_t | x_0) = \mathcal{N}\!\left(x_t;\ \sqrt{\alpha_t}\,x_0,\ (1-\alpha_t)I\right)$, where $\alpha_t = \exp\!\left(-\int_0^t \beta(s)\,ds\right)$ is the cumulative noise schedule. Similarly, we can define $\bar{Q}_{t|0}$ the transition matrix from time $0$ to time $t$, so that $q(x_t | x_0)=\mathrm{Cat}(x_t;\ \bar{Q}_{t|0}^\top x_0)$. We denote $\alpha_t = \exp\!\left(-\int_0^t \sigma(s)\,ds\right)$ the cumulative masking schedule, then $\bar{Q}_{t|0}$ takes the following closed form:
+For Gaussian diffusion in continuous spaces, we can sample intermediate points $x_t$ from the forward process in a simulation-free manner by directly sampling from the closed-form expression $q(x_t | x_0) = \mathcal{N}\!\left(x_t;\ \sqrt{\alpha_t}\,x_0,\ (1-\alpha_t)I\right)$, where $\alpha_t = \exp\!\left(-\int_0^t \beta(s)\,ds\right)$ is the cumulative noise schedule.
+Similarly, we can define $\bar{Q}_{t|0}$ the transition matrix from time $0$ to time $t$, so that $q(x_t | x_0)=\mathrm{Cat}(x_t;\ \bar{Q}_{t|0}^\top x_0)$.
+We denote $\alpha_t = \exp\!\left(-\int_0^t \sigma(s)\,ds\right)$ the cumulative masking schedule, then $\bar{Q}_{t|0}$ takes the following closed form:
 
 $$
 \begin{align}
@@ -2442,7 +2438,7 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 
 
 
-In the previous section, we have described the forward process of score-based discrete diffusion models. To generate new data samples, we need to reverse the forward process. 
+In the previous section, we have described the forward process of score-based discrete diffusion models. To generate new data samples, we need to reverse the forward process.
 In Continuous space Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In discrete space, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
 
 <Statement kind="Proposition" label="reverse-rate" title="Reverse rate $\dot{R}_t$">
@@ -3517,6 +3513,30 @@ Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weigh
   <div class="ref-main">
     7. <strong>Planner Aware Path Learning in Diffusion Language Models Training</strong> <strong><a href="https://arxiv.org/pdf/2509.23405">[PDF]</a></strong><br />
     Fred Zhangzhi Peng, Zachary Bezemek, Jarrid Rector-Brooks, Shuibai Zhang, Anru R. Zhang, Michael Bronstein, Avishek Joey Bose, Alexander Tong. ICLR 2026.
+  </div>
+</div>
+
+<div class="ref-entry">
+  <span id="ref-8"></span>
+  <div class="ref-main">
+    8. <strong>Denoising Diffusion Probabilistic Models</strong> <strong><a href="https://arxiv.org/pdf/2006.11239">[PDF]</a></strong><br />
+    Jonathan Ho, Ajay Jain, Pieter Abbeel. NeurIPS 2020.
+  </div>
+</div>
+
+<div class="ref-entry">
+  <span id="ref-9"></span>
+  <div class="ref-main">
+    9. <strong>Score-Based Generative Modeling through Stochastic Differential Equations</strong> <strong><a href="https://arxiv.org/pdf/2011.13456">[PDF]</a></strong><br />
+    Yang Song, Jascha Sohl-Dickstein, Diederik P. Kingma, Abhishek Kumar, Stefano Ermon, Ben Poole. ICLR 2021.
+  </div>
+</div>
+
+<div class="ref-entry">
+  <span id="ref-10"></span>
+  <div class="ref-main">
+    10. <strong>Deep Unsupervised Learning using Nonequilibrium Thermodynamics</strong> <strong><a href="https://arxiv.org/pdf/1503.03585">[PDF]</a></strong><br />
+    Jascha Sohl-Dickstein, Eric A. Weiss, Niru Maheswaranathan, Surya Ganguli. ICML 2015.
   </div>
 </div>
 
