@@ -2187,7 +2187,7 @@ We follow the same path in discrete space. Since there is no SDE here, we work w
     loading="lazy"
   />
   <figcaption>
-    <strong>Figure <Counter label="fig:score-based-cat-sde" />:</strong> Analogy between continuous-space and discrete-space score-based diffusion. In continuous space, Euler sampling with five steps discretizes the local continuous-time SDE: in the forward direction, the drift and Gaussian increments add noise to the sample; in the reverse direction, the learned score changes the drift so that noise is removed. In discrete space, the same idea becomes an Euler sampler built from the local continuous-time transition rates: the forward rates move probability mass toward noisier categorical states, while the learned reverse rates move probability mass back toward cleaner states.
+    <strong>Figure <Counter label="fig:score-based-cat-sde" />:</strong> Analogy between continuous-space and discrete-space score-based diffusion. In continuous space, Euler sampling with five steps discretizes the continuous-time SDE: in the forward direction, the drift and Gaussian increments add noise to the sample; in the reverse direction, the learned score changes the drift so that noise is removed. In discrete space, the same idea becomes an Euler sampler built from the local continuous-time transition rates: the forward rates move probability mass toward noisier categorical states, while the learned reverse rates move probability mass back toward cleaner states.
   </figcaption>
 </figure>
 
@@ -2211,7 +2211,7 @@ where $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and col
 {/* The matrix $\dot{Q}_t$ plays the same role for the discrete forward process as $f_t$ plays for the continuous one.  */}
 In Continuous space Diffusion, the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$ says that, over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $\Delta t\,[\dot{Q}_t(x_t)]_y$ to first order.<a href="#dfm-note-1" class="dfm-note-ref">1</a>
 
-For example, in the variance-preserving Gaussian diffusion, the local coefficients are often chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a local noise schedule. In the masked discrete space Diffusion, we make an analogous choice by specifying the rate at which unmasked tokens jump to the mask state:
+For example, in the variance-preserving Gaussian diffusion, the coefficients are often chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a noise schedule. In the masked discrete space Diffusion, we make an analogous choice by specifying the rate at which unmasked tokens jump to the mask state:
 
 $$
 \begin{equation}
@@ -2420,10 +2420,13 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 
 #### Reverse Process
 
+
+
+In the previous section, we have described the forward process of score-based discrete diffusion models. To generate new data samples, we need to reverse the forward process. 
 In Continuous space Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In discrete space, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
 
 <Statement kind="Proposition" label="reverse-rate" title="Reverse rate $\dot{R}_t$">
-The reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
+Interestingly, the reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
 $$
 \begin{equation}
 \label{eq:reverse-rate}
