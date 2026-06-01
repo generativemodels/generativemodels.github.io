@@ -3255,7 +3255,7 @@ Both expressions share the same conditional expectation. Eliminating it yields @
 
 #### Sampling with a planner
 
-In this section, we introduce planners as a way to make sampling more efficient in the flow-matching sampling direction, and explain why using a planner also requires adapting the training loss. Recall that this is the time-reversed view of Masked Diffusion: in the diffusion convention, $p_0$ is the clean, unmasked data distribution and $p_1$ is the fully masked sequence. For the complete theoretical treatment, see [<a class="cite-ref" href="#ref-7">7</a>].
+In this section, we introduce planners as a way to make sampling more efficient in masked diffusion, and explain why using a planner also requires adapting the training loss. We follow the [Discrete Flow Matching](#discrete-flow-matching) convention: $p_0$ is the source distribution, corresponding here to the fully masked sequence $mm...m$, and $p_1$ is the target distribution, corresponding to the clean data distribution. For the complete theoretical treatment, see [<a class="cite-ref" href="#ref-7">7</a>].
 
 Vanilla sampling in Masked Diffusion is computationally expensive. It requires $(1/h) \times S$ sequential steps, where $h$ is the time step size and $S$ is the length of the sequence. At every single micro-step, we must compute and draw from probability vectors of size $|\mathcal{V}|$ for all tokens. For example, with a step size of $h = 0.01$ and a sequence length of $S = 3000$, we would need $300,000$ steps to generate a single sample.
 We can parallelize the sampling of all tokens at each step, so the number of forward passes through the model is $1/h = 100$ steps rather than $S/h$, but it requires more memory.
@@ -3322,15 +3322,15 @@ G_\tau^{\mathrm{ent}}(\mathbf{z}, \mathbf{x}_k)_i \propto \exp\left(\frac{s^i(\m
 $$
 Unlike soft greedy, this planner does not use the sampled token $z^i$ directly; it only uses the shape of the denoiser distribution at position $i$.
 
-**Learned planner.** With a pretrained denoiser, one can also train a separate planner offline. Starting from a clean sequence $\mathbf{x}_0$, we first noise it into a partially masked sequence $\mathbf{x}_k$, then sample a candidate denoised sequence $\mathbf{z} \sim D_\theta(\mathbf{x}_k)$ with the frozen denoiser. The planner is trained to put more mass on masked positions where the sampled token $z^i$ matches the original clean token $x_0^i$. This can be done with a cross-entropy objective of the form:
+**Learned planner.** With a pretrained denoiser, one can also train a separate planner offline. Starting from a clean target sequence $\mathbf{x}_1$, we first sample a partially masked sequence $\mathbf{x}_k$ along the flow-matching path, then sample a candidate denoised sequence $\mathbf{z} \sim D_\theta(\mathbf{x}_k)$ with the frozen denoiser. The planner is trained to put more mass on masked positions where the sampled token $z^i$ matches the clean target token $x_1^i$. This can be done with a cross-entropy objective of the form:
 $$
 \begin{equation}
 \mathcal{L}_{G}(\phi) =
 \mathbb{E}\!\left[
 \sum_{i=1}^{S}
 \mathbb{I}(x_k^i=m)
-\frac{\dot{\alpha}_t}{1-\alpha_t}
-\mathrm{CE}\!\left(G_\phi^i(\mathbf{x}_k,\mathbf{z}),\, \mathbb{I}[z^i=x_0^i]\right)
+\frac{1}{1-t}
+\mathrm{CE}\!\left(G_\phi^i(\mathbf{x}_k,\mathbf{z}),\, \mathbb{I}[z^i=x_1^i]\right)
 \right].
 \end{equation}
 $$
@@ -3429,7 +3429,7 @@ A fix is to reweight the training loss toward the positions the planner would se
 $$
 \begin{equation}
 \label{eq:papl-loss}
-\mathcal{L}_{\text{PAPL}}(\theta) = - \mathbb{E}_{t, \mathbf{x}_0, \mathbf{x}_t} \left[ \sum_{i=1}^S \mathbb{I}(x_t^i = m) \frac{1}{t}(1 + \alpha \operatorname{sg}[w^i]) \log D_\theta^i(\mathbf{x}_t)_{x_0^i} \right]
+\mathcal{L}_{\text{PAPL}}(\theta) = - \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \mathbb{I}(x_t^i = m) \frac{1}{1-t}(1 + \alpha \operatorname{sg}[w^i]) \log D_{\theta,t}^i(\mathbf{x}_t)_{x_1^i} \right]
 \end{equation}
 $$
 Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weight for position $i$, and $\alpha$ controls the strength of this guidance. The stop-gradient $\operatorname{sg}[\cdot]$ detaches these weights: for example, soft greedy weights depend on $\theta$ through $\operatorname{softmax}_i\left(\frac{1}{\tau}\log D_\theta^i(\mathbf{x}_t)_{z^i}\right)$, but gradients are not propagated through this dependence.
