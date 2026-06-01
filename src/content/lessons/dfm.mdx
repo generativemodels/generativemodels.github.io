@@ -2171,6 +2171,7 @@ which matches the sequence-level training loss defined previously.
   </tbody>
 </table>
 
+<br />
 
 ### Score-based Discrete Diffusion
 
@@ -2657,7 +2658,7 @@ where $C$ is a constant independent of $\theta$.
 
 #### Equivalence Between the Two Discrete Diffusion Perspectives
 
-Discrete diffusion models can be framed from two different perspectives: variational inference and score matching. These two viewpoints, while appearing different, are in fact equivalent. We now demonstrate this equivalence, by first showing they use their sampling schemes are the same, and then that their training objectives are equivalent. 
+Discrete diffusion models can be framed from two different perspectives: variational inference and score matching. These two viewpoints, while appearing different, are in fact equivalent. We now demonstrate this equivalence, by first showing they use their sampling schemes are the same, and then that their training objectives are equivalent.
 
 __Sampling:__ We first connect the two views of Discrete Diffusion at the sampling level. The reverse rate for score-based discrete diffusion can be written in terms of the true denoiser $D_t^i(\mathbf{x})_v=\mathbb{P}(X_0^i=v | \mathbf{X}_t=\mathbf{x})$:
 
