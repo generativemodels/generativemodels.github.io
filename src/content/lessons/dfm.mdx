@@ -1494,7 +1494,7 @@ $$
 
 ### Variational Discrete Diffusion
 
-Continuous space Diffusion models learn to generate data like images by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
+Continuous space Diffusion models learn to generate data, e. g. images, by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
 In Discrete Diffusion, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
 
 <figure>
@@ -1506,7 +1506,7 @@ In Discrete Diffusion, an analogous approach generates sequences by reversing a 
     loading="lazy"
   />
   <figcaption>
-    <strong>Figure <Counter label="fig:ddpm-masked-diffusion" />:</strong> Analogy between DDPM for images and Masked Diffusion for sequences. In the DDPM forward process, step $k$ corrupts a clean image by adding Gaussian noise, so the image gradually becomes pure noise. Given the current noisy image, the reverse model predicts the clean image that could have generated it, and uses this prediction to take one denoising step; after $N-k$ reverse steps, generated images should lie at the same scheduled noise level as forward images at step $k$. In Masked Diffusion, the forward process instead masks tokens in a clean sentence. Given the current partially masked sentence, the reverse model predicts a probability distribution over the clean sentences that could have generated it, and uses this prediction to unmask some tokens; after $N-k$ reverse steps, generated sentences should have a similar fraction of masked tokens as forward sentences at step $k$.
+    <strong>Figure <Counter label="fig:ddpm-masked-diffusion" />:</strong> Analogy between DDPM for images and Masked Diffusion for sequences. In the DDPM forward process (left), step $k$ corrupts a clean image by adding Gaussian noise, so the image gradually becomes pure noise. Given the current noisy image, the reverse model predicts the clean image that could have generated it, and uses this prediction to take one denoising step; after $N-k$ reverse steps, generated images should lie at the same scheduled noise level as forward images at step $k$. In Masked Diffusion (right), the forward process instead masks tokens in a clean sentence. Given the current partially masked sentence, the reverse model predicts a probability distribution over the clean sentences that could have generated it, and uses this prediction to unmask some tokens; after $N-k$ reverse steps, generated sentences should have a similar fraction of masked tokens as forward sentences at step $k$.
   </figcaption>
 </figure>
 
@@ -1514,7 +1514,7 @@ In Discrete Diffusion, an analogous approach generates sequences by reversing a 
 
 We first consider the forward process: we start from a clean sequence $\mathbf{x_0}$, and we progressively replace each token by the mask token, transforming the sequence into $\mathbf{x_1} = mm...m$.
 Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token in the following.
-We build the framework first in discrete time, with $T$ noising steps, and then take the continuous-time limit $T \to \infty$ to obtain time-continuous discrete space diffusion models. This avoids tying the model to a fixed number of noise steps.
+We build the framework first in discrete time, with $T \in \mathbb{N}$ noising steps, and then take the continuous-time limit $T \to \infty$ to obtain time-continuous discrete space diffusion models. This avoids tying the model to a fixed number of noise steps.
 
 In Continuous Denoising Diffusion Probabilistic Models (DDPM), we start by defining a noising process over $T$ steps, where each step slightly corrupts the signal by adding Gaussian noise:
 
@@ -1525,7 +1525,8 @@ x_{j/T} = \sqrt{1 - \beta_j}\, x_{(j-1)/T} + \sqrt{\beta_j}\,\varepsilon, \qquad
 \end{equation}
 $$
 
-where $\beta_j \in [0,1]$ controls the amount of noise injected at step $j$. In discrete space, the corruption takes a simpler binary form: at each step, a token either survives unchanged with probability $1 - \beta_j$, or is irreversibly replaced by the mask token $m$ with probability $\beta_j$:
+where $\beta_j \in [0,1]$ controls the amount of noise injected at step $j$.
+In discrete space diffusion, the forward corruption takes a simpler binary form: at each step, a token either survives unchanged with probability $1 - \beta_j$, or is irreversibly replaced by the mask token $m$ with probability $\beta_j$:
 
 $$
 \begin{equation}
@@ -1537,12 +1538,13 @@ m, & \text{with probability } \beta_j
 \end{equation}
 $$
 
-We now consider the continuous-time limit $T \to \infty$.
-In Continuous space Diffusion, applying $tT$ ($t \in [0,1]$) steps gives the cumulative schedule $\alpha_t = \prod_{i=1}^{tT}(1 - \beta_i)$, which appears in the forward marginal $q(x_t | x_0) = \mathcal{N}(x_t;\ \sqrt{\alpha_t}\, x_0,\ (1 - \alpha_t) I)$.
-It controls the signal amplitude, i.e how much of $x_0$ remains in $x_t$.
+**Going to the continuous-time limit ($T \to \infty$)**:
+In continuous space diffusion, considering, for $t \in [0, 1]$, the result $x_t \in \mathbb{R}^d$ of applying applying $tT$ forward steps naturally makes the cumulative schedule $\alpha_t := \prod_{i=1}^{tT}(1 - \beta_i)$ appear.
+Indeed, one has that the law of $x_t$ given its starting points $x_0$, namely the *forward marginal*, $q(x_t | x_0)$, equals $\mathcal{N}(x_t;\ \sqrt{\alpha_t}\, x_0,\ (1 - \alpha_t) I)$.
+The cumulative schedule controls the signal-to-noise ratio, i.e how much of the clean data $x_0$ remains in $x_t$.
 
-In discrete space, the same product gives the survival probability of a token.
-Fix $t = j/T$ for a given $j$.
+In discrete space, the same product gives the *survival probability* of a token.
+Fix time $t = j/T$ for a given $j \in \mathbb{N}$.
 By the Markov property, the probability that a token has survived up to time $t$ satisfies:
 
 $$
@@ -1552,13 +1554,12 @@ q(x_t = x_0 | x_0)
 &= q(x_{j/T} = x_0 | x_{(j-1)/T} = x_0)\,
    q(x_{(j-1)/T} = x_0 | x_0) \label{eq:survival-prob-2} \\
 &= (1-\beta_j)\,
-   q(x_{(j-1)/T} = x_0 | x_0) \label{eq:survival-prob-3} \\
-&= \prod_{i=1}^{j} (1-\beta_i). \label{eq:survival-prob-4}
+   q(x_{(j-1)/T} = x_0 | x_0) \label{eq:survival-prob-3}
 \end{align}
 $$
-by chaining $j$ consecutive transitions.
+which thus equal $\prod_{i=1}^{j} (1-\beta_i)$ recursion.
 
-For a clean continuous-time limit, we introduce a continuous masking-rate function $\beta : [0,1] \to \mathbb{R}_+$, so that, when we discretize it over the $T$ steps, with $\Delta t = 1/T$, we get: $ \beta_i = \beta(i/T)\Delta t = \frac{1}{T}\beta\left(\frac{i}{T}\right). $
+For a clean <span style="color:red"> meaning? </span> continuous-time limit, we introduce a continuous masking-rate function $\beta : [0,1] \to \mathbb{R}_+$, so that, when we discretize it over the $T$ steps, with $\Delta t = 1/T$, we get: $ \beta_i = \beta(i/T)\Delta t = \frac{1}{T}\beta\left(\frac{i}{T}\right). $
 
 Then:
 
