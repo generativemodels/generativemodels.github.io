@@ -2218,13 +2218,13 @@ In continuous-space score-based diffusion, we model the forward process as the s
 $$
 \begin{equation}
 \label{eq:forward-rate}
-q(x_{t+\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{Q}_t(x_t)]_y + o(\Delta t),
+q(x_{t+\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + [\dot{Q}_t(x_t)]_y \Delta t + o(\Delta t),
 \end{equation}
 $$
 
 where we fix the forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$. $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$.
 
-The continuous SDE means that over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $\Delta t\,[\dot{Q}_t(x_t)]_y$ to first order.<a href="#dfm-note-1" class="dfm-note-ref">1</a>
+The continuous SDE means that over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $[\dot{Q}_t(x_t)]_y\Delta t$ to first order.<a href="#dfm-note-1" class="dfm-note-ref">1</a>
 
 A common instantiation of the continuous SDE is the variance-preserving Gaussian diffusion: the coefficients are chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a noise schedule. In the masked discrete space Diffusion, we make an analogous choice by specifying the rate at which unmasked tokens jump to the mask state:
 
@@ -2307,7 +2307,7 @@ q(x_t | x_0)
 \end{align}
 $$
 
-In the continuous-time limit, each local transition is $\bar{Q}_{t+\Delta t|t}=I+\Delta t\,\dot{Q}_t+o(\Delta t)$, so this product becomes the exponential of the accumulated local rates. Let $A = \mathbf{1}\mathbf{e}_m^\top - I$. Since $\dot{Q}_t = \sigma(t)A$ has a fixed matrix direction for all $t$, this integration reduces to an ordinary matrix exponential:
+In the continuous-time limit, each local transition is $\bar{Q}_{t+\Delta t|t}=I+\dot{Q}_t\Delta t+o(\Delta t)$, so this product becomes the exponential of the accumulated local rates. Let $A = \mathbf{1}\mathbf{e}_m^\top - I$. Since $\dot{Q}_t = \sigma(t)A$ has a fixed matrix direction for all $t$, this integration reduces to an ordinary matrix exponential:
 
 $$
 \begin{align}
@@ -2371,7 +2371,7 @@ In other words, the forward process is characterized by:
 $$
 \begin{equation}
 \label{eq:forward-rate}
-q(x_{t+\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{Q}_t(x_t)]_y + o(\Delta t)
+q(x_{t+\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + [\dot{Q}_t(x_t)]_y \Delta t + o(\Delta t)
 \end{equation}
 $$
 
@@ -2429,7 +2429,7 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 <figure>
   <MaskedDiffusion initialShowDiscrete={false} initialShowContinuous={true} client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:masked-forward-continuous" />:</strong> Euler simulation of the infinitesimal forward transition @eq:forward-rate. The next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y | x_t) = \mathbb{I}(y=x_t) + \Delta t[\dot{Q}_t(x_t)]_y + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. The aggregate view reports the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
+    <strong>Figure <Counter label="fig:masked-forward-continuous" />:</strong> Euler simulation of the infinitesimal forward transition @eq:forward-rate. The next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y | x_t) = \mathbb{I}(y=x_t) + [\dot{Q}_t(x_t)]_y\Delta t + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. The aggregate view reports the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
   </figcaption>
 </figure>
 */}
@@ -2473,8 +2473,8 @@ Using Bayes' theorem, for $y \neq x_t$:
 $$
 \begin{align}
 p(x_{t-\Delta t} = y | x_t) &= \frac{q(x_t | x_{t-\Delta t} = y) q(x_{t-\Delta t} = y)}{q(x_t)}  \label{eq:reverse-rate-proof-1} \\
-&= \frac{\big(\Delta t [\dot{Q}_t(y)]_{x_t} + o(\Delta t)\big) \big(q(X_t = y) + O(\Delta t)\big)}{q(X_t = x_t)}  \label{eq:reverse-rate-proof-2} \\
-&= \Delta t \left( [\dot{Q}_t(y)]_{x_t} \frac{q(X_t = y)}{q(X_t = x_t)} \right) + o(\Delta t) \label{eq:reverse-rate-proof-3}
+&= \frac{\big([\dot{Q}_t(y)]_{x_t}\Delta t + o(\Delta t)\big) \big(q(X_t = y) + O(\Delta t)\big)}{q(X_t = x_t)}  \label{eq:reverse-rate-proof-2} \\
+&= \left( [\dot{Q}_t(y)]_{x_t} \frac{q(X_t = y)}{q(X_t = x_t)} \right)\Delta t + o(\Delta t) \label{eq:reverse-rate-proof-3}
 \end{align}
 $$
 
@@ -2600,7 +2600,7 @@ where $C$ is a constant independent of $\theta$.
         Euler-Maruyama: $x_{t+\Delta t} = x_t + f_t(x_t)\Delta t + g_t\sqrt{\Delta t}\,\varepsilon_t,\quad \varepsilon_t \sim \mathcal{N}(0,I)$ <br />
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $x_{t+\Delta t} \sim \mathrm{Cat}\!\left(\mathbf{e}_{x_t} + \Delta t\, \dot{Q}_t(x_t) + o(\Delta t)\right)$ <br />
+        $x_{t+\Delta t} \sim \mathrm{Cat}\!\left(\mathbf{e}_{x_t} + \dot{Q}_t(x_t)\Delta t + o(\Delta t)\right)$ <br />
       </td>
     </tr>
 
@@ -3549,7 +3549,7 @@ Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weigh
 <div class="dfm-note-entry">
   <span id="dfm-note-1"></span>
   <div class="dfm-note-main">
-    1. If you click on continuous in Figure <Ref label="fig:masked-forward-discrete" />, you can see the corresponding continuous-time forward process. It shows the Euler simulation of the infinitesimal forward transition @eq:forward-rate. The next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y | x_t) = \mathbb{I}(y=x_t) + \Delta t[\dot{Q}_t(x_t)]_y + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. The aggregate view reports the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
+    1. If you click on continuous in Figure <Ref label="fig:masked-forward-discrete" />, you can see the corresponding continuous-time forward process. It shows the Euler simulation of the infinitesimal forward transition @eq:forward-rate. The next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y | x_t) = \mathbb{I}(y=x_t) + [\dot{Q}_t(x_t)]_y\Delta t + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. The aggregate view reports the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
   </div>
 </div>
 
