@@ -422,20 +422,17 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
 </div>
 
 
-In recent years, flow matching and diffusion models have emerged as the state-of-the-art frameworks for continuous data generation, with high-quality images, audio and video generation [<a class="cite-ref" href="#SD3">9</a>, <a class="cite-ref" href="#SD-video">10</a>].
-Their generation capabilities, training stability and flexibility motivated their extension to discrete data, such as texts, graphs, or molecule sequences [<a class="cite-ref" href="#ref-2">2</a>, <a class="cite-ref" href="#ref-5">5</a>, <a class="cite-ref" href="#DiGress">8</a>].
+In recent years, flow matching and diffusion models have emerged as the state-of-the-art frameworks for continuous data generation, enabling the synthesis of high-quality data, such as images, audio and video [<a class="cite-ref" href="#SD3">9</a>, <a class="cite-ref" href="#SD-video">10</a>].
+Their strong generation performance, training stability and flexibility motivated their extension to discrete data,  including texts, graphs, or molecule sequences [<a class="cite-ref" href="#ref-2">2</a>, <a class="cite-ref" href="#ref-5">5</a>, <a class="cite-ref" href="#DiGress">8</a>].
 
-This blog post is a __pedagogical introduction__ to the adaptation of flow matching and diffusion models to discrete data.
+This blog post is a __pedagogical introduction__ to the adaptation of flow matching and diffusion models for discrete data.
 
 
-Several frameworks emerged recently to tackle this challenge. We first introduce in [section 2](#discrete-flow-matching), discrete flow matching, a direct generalization of the flow matching framework to discrete spaces. 
+Several frameworks emerged recently to tackle this challenge. We first introduce in [section 2](#discrete-flow-matching), discrete flow matching, which extends the flow matching framework to discrete spaces. 
 As continuous space diffusion models formalisms have been developed into two major branches, namely the variational [<a class="cite-ref" href="#NonequilibriumThermodynamics">12</a>, <a class="cite-ref" href="#DDPM">13</a>] and the score-based ones [<a class="cite-ref" href="#GenerativeScore">11</a>, <a class="cite-ref" href="#SDEDiffusion">14</a>], we present discrete diffusion models through these two formalisms.  
-In [section 3](#variational-discrete-diffusion), we consider the variational perspective, and finally in [section 4](#score-based-discrete-diffusion), we consider the score-based perspective for discrete data.
-Finally, we show the equivalence between all these viewpoints from the sampling and training perspectives in [section 5](#equivalence-between-viewpoints).
+In [section 3](#variational-discrete-diffusion), we consider the variational perspective, while [section 4](#score-based-discrete-diffusion) focusses on the score-based perspective for discrete data.
+Finally, in [section 5](#equivalence-between-viewpoints), we show how these seemingly different viewpoints are in fact equivalent from both the training and sampling perspectives.
 
-
-{/* 
-The [first section](#discrete-flow-matching) contains an introduction to Discrete Flow Matching. We then present Discrete Diffusion through its two common perspectives: the [variational perspective](#variational-discrete-diffusion) and the [score-based perspective](#score-based-discrete-diffusion). The connection between all these viewpoints is made explicit in the [last section](#equivalence-between-viewpoints). */}
 
 ### Generating discrete data
 
