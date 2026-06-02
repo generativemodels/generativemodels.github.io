@@ -501,7 +501,7 @@ We first introduce discrete flow matching; the reader already familiar with this
 
 #### Setup: probability velocities
 
-In this section we adopt the Flow Matching convention: time goes from $t=0$ (source) to $t=1$ (target): the source distribution is thus denoted $p_0$ while the target distribution is $p_1$.
+In this section we adopt the Flow Matching convention: time goes from $t=0$ (source) to $t=1$ (target): the source distribution is thus denoted $p_0$ while the target distribution is $p_1.$
 
 In *continuous* flow matching, a central object is the *velocity field* $u: \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d$, that drives the generating process: samples are obtained as solutions at time $t=1$ of the Ordinary Differential Equation (ODE)
 $$
@@ -706,12 +706,21 @@ $$
 </div>
 </details>
 
-We see from @eq:factorized-velocity that the assumption implies that for infinitesimally small time steps, a sequence $\mathbf{x}$  can only transition to states $\mathbf{y}$ differing by at most one token.
-This modeling assumption **yields a substantial computational gain**: instead of learning one transition object $u$ on the full sequence space $\mathcal{S}=\mathcal{V}^S$ (exponential in $S$), we learn $S$ local transition objects $u^i$, each on the vocabulary space $\mathcal{V}$.
+
+Through @eq:factorized-velocity, the modeling assumption has several important consequences:
+- for infinitesimally small time steps, a sequence $\mathbf{x}$  can only transition to states $\mathbf{y}$ differing by at most one token
+- learning-wise, it implies ** a substantial computational gain**: instead of learning one transition object $u$ on the full sequence space $\mathcal{S}=\mathcal{V}^S$ (exponential in $S$), we can learn $S$ local transition objects $u^i$, each on the vocabulary space $\mathcal{V}$
+- at each sampling step, we draw each token independently following:
+$$
+\begin{equation}
+\label{eq:token-sampling}
+x_{t+h}^i \sim \text{Cat}\left(\mathbf{e}_{x_t^i} + h u_t^i(\mathbf{x}_t)\right)
+\end{equation}
+$$
 
 <Statement kind="Example" label="example-utoken" title="">
 
-For example, take the vocabulary $\mathcal{V}=\{A,B\}$, sequence length $S=3$, and current sequence $\mathbf{x}=ABA$.
+To understand @eq:factorized-velocity, take the vocabulary $\mathcal{V}=\{A,B\}$, sequence length $S=3$, and current sequence $\mathbf{x}=ABA$.
 We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$. From @eq:factorized-velocity, the sequence can only transition to 4 possible values, and the probability velocity writes as:
 
 <div class="dfm-local-example">
@@ -780,14 +789,6 @@ We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$. From @eq:factorized
 </div>
 
 </Statement>
-
-This modelling step implies that at each sampling step, we draw each token independently following:
-$$
-\begin{equation}
-\label{eq:token-sampling}
-x_{t+h}^i \sim \text{Cat}\left(\mathbf{e}_{x_t^i} + h u_t^i(\mathbf{x}_t)\right)
-\end{equation}
-$$
 
 <figure>
   <DFMSampling client:load />
@@ -2759,7 +2760,7 @@ where $C$ is a constant independent of $\theta$.
 ### Equivalence between viewpoints
 
 In the previous sections, we introduced three different approaches to build a transport between a initial distribution and a final discrete distribution, namely [discrete flow matching](#discrete-flow-matching), the [variational discrete diffusion](#variational-discrete-diffusion) and [score-based discrete diffusion](#score-based-discrete-diffusion).
-We now illustrate the links between them and show they are indeed equivalent. 
+We now illustrate the links between them and show they are indeed equivalent.
 We start by showing that [variational discrete diffusion](#equivalence-between-the-two-discrete-diffusion-perspectives)  is equivalent to [score-based discrete diffusion](#equivalence-with-score-based-discrete-diffusion), and then [discrete flow matching](#equivalence-with-discrete-flow-matching) to the other two.
 
 #### Equivalence between the two discrete diffusion perspectives
@@ -2813,7 +2814,7 @@ $$
 using $\alpha_{t-h} - \alpha_t = -h\dot{\alpha}_t + o(h)$ in the second line and @eq:denoiser-reverse-rate in the third line.
 If $x_t^i\neq m$, both sampling processes keep the token fixed, i.e., once denoised, a token cannot be masked again or change token value.
 
-__Training Objectives__: Now we turn to the corresponding training objectives. The [variational perspective](#variational-discrete-diffusion) gives the ELBO loss @eq:discrete-elbo-1 (which can be rewritten as @eq:mdm-loss for Masked Diffusion), while the [score-based perspective](#score-based-discrete-diffusion) gives the concrete score matching loss @eq:score-loss-prop. 
+__Training Objectives__: Now we turn to the corresponding training objectives. The [variational perspective](#variational-discrete-diffusion) gives the ELBO loss @eq:discrete-elbo-1 (which can be rewritten as @eq:mdm-loss for Masked Diffusion), while the [score-based perspective](#score-based-discrete-diffusion) gives the concrete score matching loss @eq:score-loss-prop.
 We now show that these two objectives are in fact the same: taking the continuous-time limit of the variational ELBO produces, after a change of variable, exactly the concrete score matching loss @eq:score-loss-prop.
 
 Starting from the variational loss @eq:discrete-elbo-1, in the continuous-time limit $T \to \infty$, each discrete transition $q(x_s | x_t)$ is replaced by an instantaneous rate $\dot{R}_t(x_t)$. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
@@ -2988,7 +2989,7 @@ where $C$ collects the terms independent of $\theta$. Taking $T\to\infty$ turns 
 </div>
 </details>
 
-It remains to express @eq:ratio-loss in terms of the concrete score. 
+It remains to express @eq:ratio-loss in terms of the concrete score.
 Writing the reverse rates as $[\dot{R}_{t}(x_t)]_y = [\dot{Q}_t(x_t)]_y\,s_{t}(x_t)_y$ (see @eq:concrete-score), we recover, up to a $\theta$-independent constant, the concrete score matching loss @eq:score-loss-prop established in the [score-based perspective](#score-based-discrete-diffusion). The two viewpoints therefore minimize the same objective.
 
 <details>
