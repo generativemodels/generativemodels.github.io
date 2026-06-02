@@ -2811,9 +2811,10 @@ x_{t-h}^i
 \end{align}
 $$
 using $\alpha_{t-h} - \alpha_t = -h\dot{\alpha}_t + o(h)$ in the second line and @eq:denoiser-reverse-rate in the third line.
-If $x_t^i\neq m$, both samplers keep the token fixed. Thus, @eq:masked-diffusion-denoiser-sampling is the finite-step version of the sampler @eq:score-sampling-cat.
+If $x_t^i\neq m$, both sampling processes keep the token fixed, i.e., once denoised, a token cannot be masked again or change token value.
 
-__Training Objectives__: Now we turn to the corresponding training objectives. The [variational perspective](#variational-discrete-diffusion) gives the ELBO loss @eq:discrete-elbo-1 (which can be rewritten as @eq:mdm-loss for Masked Diffusion), while the [score-based perspective](#score-based-discrete-diffusion) gives the concrete score matching loss @eq:score-loss-prop. We now show that these two objectives are in fact the same: taking the continuous-time limit of the variational ELBO produces, after a change of variable, exactly the concrete score matching loss @eq:score-loss-prop.
+__Training Objectives__: Now we turn to the corresponding training objectives. The [variational perspective](#variational-discrete-diffusion) gives the ELBO loss @eq:discrete-elbo-1 (which can be rewritten as @eq:mdm-loss for Masked Diffusion), while the [score-based perspective](#score-based-discrete-diffusion) gives the concrete score matching loss @eq:score-loss-prop. 
+We now show that these two objectives are in fact the same: taking the continuous-time limit of the variational ELBO produces, after a change of variable, exactly the concrete score matching loss @eq:score-loss-prop.
 
 Starting from the variational loss @eq:discrete-elbo-1, in the continuous-time limit $T \to \infty$, each discrete transition $q(x_s | x_t)$ is replaced by an instantaneous rate $\dot{R}_t(x_t)$. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
 
@@ -2824,7 +2825,7 @@ q(y | x_t, x_0) = \mathbb{I}(y = x_t) + \Delta t\, [\dot{R}_t(x_t | x_0)]_y + o(
 \end{equation}
 $$
 
-For Masked Diffusion, this conditional reverse rate takes the explicit form:
+For Masked Diffusion, this conditional reverse rate takes the explicit form (proof below in the spoiler):
 
 $$
 \begin{equation}
@@ -2987,7 +2988,8 @@ where $C$ collects the terms independent of $\theta$. Taking $T\to\infty$ turns 
 </div>
 </details>
 
-It remains to re-express @eq:ratio-loss in terms of the concrete score. Writing the reverse rates as $[\dot{R}_{t}(x_t)]_y = [\dot{Q}_t(x_t)]_y\,s_{t}(x_t)_y$ we recover, up to a $\theta$-independent constant, the concrete score matching loss @eq:score-loss-prop established in the [score-based perspective](#score-based-discrete-diffusion). The two viewpoints therefore minimize the same objective.
+It remains to express @eq:ratio-loss in terms of the concrete score. 
+Writing the reverse rates as $[\dot{R}_{t}(x_t)]_y = [\dot{Q}_t(x_t)]_y\,s_{t}(x_t)_y$ (see @eq:concrete-score), we recover, up to a $\theta$-independent constant, the concrete score matching loss @eq:score-loss-prop established in the [score-based perspective](#score-based-discrete-diffusion). The two viewpoints therefore minimize the same objective.
 
 <details>
 <summary>Equivalence derivation</summary>
