@@ -1,8 +1,8 @@
 ---
-title: 'Discrete Diffusion and Flow Matching'
-menu: 'Discrete Flow Matching (DFM)'
-description: 'On Discrete Flow Matching models and their core principles, and parallel with Continuous Flow Matching'
-pubDate: '2025-10-08'
+title: 'discrete diffusion and Flow Matching'
+menu: 'discrete flow matching (DFM)'
+description: 'On discrete flow matching models and their core principles, and parallel with Continuous Flow Matching'
+pubDate: '2026-06-02'
 heroImage: '../../assets/blog-placeholder-3.jpg'
 order: 610
 tags: ['Diffusion', 'Flow Matching']
@@ -398,7 +398,7 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
 - **$\mathcal{S} = \mathcal{V}^S$** space of all possible sequences of length $S$ over the vocabulary
 - **$\mathbf{x} = x^1 \dots x^S$** sequence of $S$ tokens, where each token $x^i$ takes values in $\mathcal{V}$
 - **$\mathbf{e}_v$** one-hot vector in $\mathbb{R}^{|\mathcal{V}|}$ for token $v \in \mathcal{V}$
-- **$m$** mask token$
+- **$m$** mask token
 - **$\mathbf{x}^{\neq i}$** sub-sequence of $\mathbf{x}$ at all positions except $i$
 - **$p_0$** source distribution (mask or uniform)
 - **$p_{\text{mask}}$** mask source distribution: $p_{\text{mask}}(v) = \mathbb{I}(v = m)$
@@ -424,21 +424,21 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
 
 In recent years, flow matching and diffusion models have emerged as the state-of-the-art frameworks for continuous data generation, enabling the synthesis of high-quality data, such as images, audio and video [<a class="cite-ref" href="#SD3">9</a>, <a class="cite-ref" href="#SD-video">10</a>].
 Their strong generation performance, training stability and flexibility motivated their extension to discrete data,  including texts, graphs, or molecule sequences [<a class="cite-ref" href="#ref-2">2</a>, <a class="cite-ref" href="#ref-5">5</a>, <a class="cite-ref" href="#DiGress">8</a>].
-
 This blog post is a __pedagogical introduction__ to the adaptation of flow matching and diffusion models for discrete data.
 
 
-Several frameworks emerged recently to tackle this challenge. We first introduce in [section 2](#discrete-flow-matching), discrete flow matching [<a class="cite-ref" href="#ref-5">5</a>, <a class="cite-ref" href="#ref-6">6</a>], which extends the flow matching framework to discrete spaces.
+Several related frameworks emerged recently to tackle discrete data:
+- We first introduce in [section 2](#discrete-flow-matching) discrete flow matching [<a class="cite-ref" href="#ref-5">5</a>, <a class="cite-ref" href="#ref-6">6</a>], which extends the flow matching framework to discrete spaces.
+- As continuous-space diffusion models have been developed into two major branches, namely the *variational* [<a class="cite-ref" href="#NonequilibriumThermodynamics">12</a>, <a class="cite-ref" href="#DDPM">13</a>] and the *score-based* ones [<a class="cite-ref" href="#GenerativeScore">11</a>, <a class="cite-ref" href="#SDEDiffusion">14</a>], we present discrete diffusion through these two formalisms. In [section 3](#variational-discrete-diffusion), we show how the variational perspective leverages *discrete-time* transitions and variational principles to frame data generation. In [section 4](#score-based-discrete-diffusion), we focus on *continuous-time* transitions and score-based methods for discrete data.
+- Finally, in [section 5](#equivalence-between-viewpoints), we show how these seemingly different viewpoints are in fact equivalent from both the training and sampling perspectives.
 
-As continuous space diffusion models have been developed into two major branches, namely the variational [<a class="cite-ref" href="#NonequilibriumThermodynamics">12</a>, <a class="cite-ref" href="#DDPM">13</a>] and the score-based ones [<a class="cite-ref" href="#GenerativeScore">11</a>, <a class="cite-ref" href="#SDEDiffusion">14</a>], we present discrete diffusion models through these two formalisms.   In [section 3](#variational-discrete-diffusion), we show how the variational perspective leverage discrete-time transitions and variational principles to frame data generation. In [section 4](#score-based-discrete-diffusion), we focus on continuous-time transitions and score-based methods for discrete data.
+These sections can be read independently and the already familiar can directly jump to one of them.
+We start with a gentle introduction to discrete data generation, that paves the ground for the remaining of the post.
 
-Finally, in [section 5](#equivalence-between-viewpoints), we show how these seemingly different viewpoints are in fact equivalent from both the training and sampling perspectives.
+### 1. Generating discrete data
 
-
-### Generating discrete data
-
-Like their continuous analogs, Discrete Flow Matching and Discrete Diffusion aim at mapping a simple source distribution to a complex target distribution (the actual data we want to generate).
-To do so, they create a sequence of intermediate distributions $(p_t)_{t}$ that progressively evolve from source to target distribution.
+Like their continuous analogs, discrete flow matching and discrete diffusion aim at mapping a simple *source* probability distribution to a complex *target* distribution (the one of the data we want to generate).
+To do so, they create a sequence of intermediate probability distributions $(p_t)_{t}$ that progressively evolve from source to target distribution.
 
 In this blog post, we deal with discrete data: the space on which the probability distributions are defined is $\mathcal{S} := \mathcal{V}^S$, namely the space of sequences of length $S \in \mathbb{N}$ over a given vocabulary $\mathcal{V}$.
 A sequence $\mathbf{x}$ in $\mathcal{S}$ is denoted as $\mathbf{x} = x^1 \dots x^S$, the $x^i$'s being called *tokens*.
@@ -451,19 +451,19 @@ The source distribution acts as our starting point for generation and is typical
 In this post, *we use the mask distribution ($p_{\text{mask}}$) as our running example*; adaptations in the case of other distributions are available as toggleable content.
 
 As a first example, consider generating Sudoku grids. The vocabulary is $\mathcal{V} = \{1, 2, \ldots, 9, m\}$, and the sequence length is 81, as there are 81 cases in a grid.
-Discrete Flow Matching and Discrete Diffusion start from a sample from the source distribution, i.e. a fully masked grid here.
+discrete flow matching and discrete diffusion start from a sample from the source distribution, i.e. a fully masked grid here.
 The model then iteratively fills this grid, step-by-step, finally reaching a sample from the target distribution (a valid, completed Sudoku board).
 
 <figure>
   <SudokuFlowMatching client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:sudoku-sampling" />:</strong> Visualisation of the sampling process for Discrete Flow Matching/Discrete Diffusion: a sample from the source distribution (here a fully masked sudoku grid) is transformed into a sample from the target distribution (here a valid sudoku grid).
+    <strong>Figure <Counter label="fig:sudoku-sampling" />:</strong> Visualisation of the sampling process for discrete flow matching/discrete diffusion: a sample from the source distribution (here a fully masked sudoku grid) is transformed into a sample from the target distribution (here a valid sudoku grid).
   </figcaption>
 </figure>
 
-We first introduce Discrete Flow Matching; the reader already familiar with this technique can jump directly to the [Discrete Diffusion section](#variational-discrete-diffusion).
+We first introduce discrete flow matching; the reader already familiar with this technique can jump directly to the [discrete diffusion section](#variational-discrete-diffusion).
 
-### Discrete Flow Matching
+### discrete flow matching
 
 #### Setup: probability velocities
 
@@ -513,7 +513,7 @@ $$
 $$
 
 As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u(\mathbf{x})_{\mathbf{y}}$.
-We reach a fundamental point: unlike Continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in Discrete Flow Matching is inherently stochastic at each step**. This explains why we are allowed to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
+We reach a fundamental point: unlike Continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**. This explains why we are allowed to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
 
 <Statement kind="Proposition" label="probability-velocity-mass-conservation" title="Mass conservation for probability velocities">
 The probability velocity $u$ must preserve probability mass: for @eq:prob-velocity to define a valid probability, for every $t\in [0, 1]$ $u_t$ must satisfy:
@@ -566,7 +566,7 @@ $$
 $$
 where $\mathbf{e}_{\mathbf{x}} \in \mathbb{R}^{|\mathcal{S}|}$ is the one-hot vector corresponding to state $\mathbf{x} \in \mathcal{S}$, and $\text{Cat}$ denotes the categorical distribution.
 As $t$ increases to $t+h$, the variable $\mathbf{x}_t$ stays in state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u_t(\mathbf{x})_{\mathbf{y}}$.
-We reach a fundamental point: unlike Continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in Discrete Flow Matching is inherently stochastic at each step**.
+We reach a fundamental point: unlike Continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**.
 This explains why we are able to take $p_0 = \delta_{m\ldots m}$ and still produce different outputs $x_1$, which would not be possible with a deterministic sampling.
 
 In Continuous Flow Matching, we have the guarantee that a velocity field $u_t$ generates a probability path $(p_t)$ if the pair $(p_t, u_t)$ satisfies the continuity equation $\partial_t p_t + \nabla \cdot (u_t p_t) = 0$.
@@ -621,14 +621,14 @@ By hypothesis, the given probability path $p_t$ also satisfies this exact same l
 </div>
 </details>
 
-Now that we are equipped with adequate definitions of probability paths and velocities for the discrete case, together with a way to check that one is associated to the other, we can state the approach of Discrete Flow Matching, which is in fact the same as Continuous Flow Matching:
+Now that we are equipped with adequate definitions of probability paths and velocities for the discrete case, together with a way to check that one is associated to the other, we can state the approach of discrete flow matching, which is in fact the same as Continuous Flow Matching:
 1. Build an explicit probability path $(p_t)$ going from $p_0$ to $p_1$ (@eq:marginal-path) using a conditioning variable, conditional probability paths and conditional velocities.
 2. Build a probability velocity $u_t$ generating $(p_t)$ (@eq:marginal-velocity-def-2)
 3. Provide an explicit loss to learn $u_t$ as a neural network (@eq:cdfm-2)
 
 Before embarking on this task, we make an important modelling choice.
 Learning probability velocities taking values in the full sequence space $\mathcal{S}=\mathcal{V}^S$ is cumbersome, as the cardinality of the latter is $|\mathcal{V}|^S$, e.g. $11^{81}$ for the sudoku example!
-To make computations tractable, Discrete Flow Matching makes a **factorization assumption**: the probability path it builds updates each token in the sequence independently.
+To make computations tractable, discrete flow matching makes a **factorization assumption**: the probability path it builds updates each token in the sequence independently.
 As the next proposition shows, this has a fundamental consequence: the probability velocity that generates it can be written as a sum of token-wise contributions.
 
 <Statement kind="Proposition" label="factorization" title="Factorized velocity">
@@ -770,7 +770,7 @@ $$
   </figcaption>
 </figure>
 
-Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of Discrete Flow Matching!
+Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of discrete flow matching!
 
 #### Building the probability path
 
@@ -1017,7 +1017,7 @@ $$
 
 <figure>
   <DFMLiveFigure
-      title="Discrete Flow Matching Live Figure"
+      title="discrete flow matching Live Figure"
       height="570px"/>
   <figcaption>
     <strong>Figure <Counter label="fig:dfm-live" />:</strong> Top: evolution of the conditional path $p_t(\cdot | \mathbf{x}_1)$ defined in @eq:mask-path-1, where the vocabulary is restricted to the characters in $\mathbf{x}_1 \cup \{m\}$. In each cell, white indicates probability zero for sampling that token, while a fully colored cell indicates probability one. Bottom: for a given time $t$, five samples $x_t | \mathbf{x}_1$ drawn directly from the conditional probability path @eq:mask-path-1.
@@ -1077,7 +1077,7 @@ $$
 </div>
 </details>
 
-We now arrive to the heart of Discrete Flow Matching: building a velocity that transports $p_0$ to $p_1$.
+We now arrive to the heart of discrete flow matching: building a velocity that transports $p_0$ to $p_1$.
 
 <Statement kind="Theorem" label="fundamental-theorem-discrete-fm" title="Fundamental Theorem of Discrete FM">
 The probability velocity obtained by taking the conditional expectation of the conditional velocities,
@@ -1172,7 +1172,7 @@ L_{\text{DFM}}(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathb
 \end{equation}
 $$
 
-However, $u_t(\mathbf{x}_t)$ requires marginalizing over the entire dataset, making it computationally intractable. Following the approach of Continuous Flow Matching, we instead use the **conditional Discrete Flow Matching loss**:
+However, $u_t(\mathbf{x}_t)$ requires marginalizing over the entire dataset, making it computationally intractable. Following the approach of Continuous Flow Matching, we instead use the **conditional discrete flow matching loss**:
 
 $$
 \begin{equation}
@@ -1379,7 +1379,7 @@ $$
   <thead>
     <tr>
       <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous Flow Matching</th>
-      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Discrete Flow Matching</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>discrete flow matching</th>
     </tr>
   </thead>
   <tbody>
@@ -1507,10 +1507,10 @@ $$
 
 <br />
 
-### Variational Discrete Diffusion
+### Variational discrete diffusion
 
-Continuous space Diffusion models learn to generate data, e. g. images, by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
-In Discrete Diffusion, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
+continuous-space Diffusion models learn to generate data, e. g. images, by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
+In discrete diffusion, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
 
 <figure>
   <img
@@ -1555,7 +1555,7 @@ m, & \text{with probability } \beta_t
 $$
 
 **Forward Marginal**:
-In continuous space diffusion, considering the result $x_t \in \mathbb{R}^d$ after $t$ forward steps naturally makes the cumulative schedule $\alpha_t := \prod_{i=1}^{t}(1 - \beta_i)$ appear.
+In continuous-space diffusion, considering the result $x_t \in \mathbb{R}^d$ after $t$ forward steps naturally makes the cumulative schedule $\alpha_t := \prod_{i=1}^{t}(1 - \beta_i)$ appear.
 Indeed, one has that the law of $x_t$ given its starting point $x_0$, namely the *forward marginal*, $q(x_t | x_0)$, equals $\mathcal{N}(x_t;\ \sqrt{\alpha_t}\, x_0,\ (1 - \alpha_t) I)$.
 The cumulative schedule controls the signal-to-noise ratio, i.e how much of the clean data $x_0$ remains after $t$ steps.
 We derive its analogous counterpart in discrete space, where the same product gives the *survival probability* of a token.
@@ -1875,8 +1875,8 @@ immediately, with equality iff the reverse trajectories perfectly recover the fo
 
 As written, @eq:elbo couples all $T$ steps along a whole trajectory $x_{1:T}$. The following theorem shows that we can simplify this global objective into a sum of local objectives, one for each step.
 
-<Statement kind="Theorem" label="discrete-diffusion-elbo" title="Discrete Diffusion ELBO">
-The ELBO for a Discrete Diffusion process is given by:
+<Statement kind="Theorem" label="discrete-diffusion-elbo" title="discrete diffusion ELBO">
+The ELBO for a discrete diffusion process is given by:
 
 $$
 \begin{align}
@@ -2114,8 +2114,8 @@ which matches the sequence-level training loss defined previously.
   </colgroup>
   <thead>
     <tr>
-      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous space Diffusion</th>
-      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Masked Discrete Diffusion</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>continuous-space Diffusion</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Masked discrete diffusion</th>
     </tr>
   </thead>
   <tbody>
@@ -2213,7 +2213,7 @@ which matches the sequence-level training loss defined previously.
 
 <br />
 
-### Score-based Discrete Diffusion
+### Score-based discrete diffusion
 
 We now turn to the score-based viewpoint: predict a score function, i.e. the direction pointing toward more likely samples at noise level $t$, and follow it to move from noise back to data. In continuous diffusion, a key tool in the analysis is to model the forward process as a discretization of a forward stochastic differential equation; simulating the backward process then amounts to discretizing the associated reverse SDE. Critically, the reverse SDE involves the score, namely $\nabla \log p_t(x)$, where $p_t$ is the distribution of the variables $x_t$ defined by the forward process.
 
@@ -2458,7 +2458,7 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 #### Reverse Process
 
 In the previous section, we have described the forward process of score-based discrete diffusion models. To generate new data samples, we need to reverse the forward process.
-In Continuous space Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In discrete space, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
+In continuous-space Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In discrete space, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
 
 <Statement kind="Proposition" label="reverse-rate" title="Reverse rate $\dot{R}_t$">
 Interestingly, the reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
@@ -2513,7 +2513,7 @@ For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a v
 */}
 
 
-In Continuous space Diffusion, the score function $\nabla \log p_t(x)$ governs the reverse SDE $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $. Thus, to sample from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
+In continuous-space Diffusion, the score function $\nabla \log p_t(x)$ governs the reverse SDE $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $. Thus, to sample from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
 
 We define the discrete space analog as the **concrete score**, that is the ratio of marginal probabilities between a candidate destination state and the current state:
 $$
@@ -2550,7 +2550,7 @@ where $\odot$ denotes the elementwise product. The forward rate $\dot{Q}_t$ is k
 
 #### Training
 
-It remains to design a tractable training loss for the concrete score. As in Continuous space Diffusion, where denoising score matching exploits that the marginal score is a conditional expectation of the (tractable) conditional score: $\nabla \log p_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}[\nabla \log p_t(x_t | x_0)]$, the same identity holds here. Defining the (tractable) conditional concrete score $s_t(x_t | x_0)_y \;:=\; p_t(y | x_0)/p_t(x_t | x_0)$, we have for $y \neq x_t$:
+It remains to design a tractable training loss for the concrete score. As in continuous-space Diffusion, where denoising score matching exploits that the marginal score is a conditional expectation of the (tractable) conditional score: $\nabla \log p_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}[\nabla \log p_t(x_t | x_0)]$, the same identity holds here. Defining the (tractable) conditional concrete score $s_t(x_t | x_0)_y \;:=\; p_t(y | x_0)/p_t(x_t | x_0)$, we have for $y \neq x_t$:
 
 $$
 \begin{align}
@@ -2601,8 +2601,8 @@ where $C$ is a constant independent of $\theta$.
   </colgroup>
   <thead>
     <tr>
-      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous Space Diffusion</th>
-      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Masked Discrete Diffusion</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>continuous-space Diffusion</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Masked discrete diffusion</th>
     </tr>
   </thead>
   <tbody>
@@ -2694,11 +2694,11 @@ where $C$ is a constant independent of $\theta$.
 
 ### Equivalence Between Viewpoints
 
-#### Equivalence Between the Two Discrete Diffusion Perspectives
+#### Equivalence Between the Two discrete diffusion Perspectives
 
 Discrete diffusion models can be framed from two different perspectives: variational inference and score matching. These two viewpoints, while appearing different, are in fact equivalent. We now demonstrate this equivalence, by first showing they use their sampling schemes are the same, and then that their training objectives are equivalent.
 
-__Sampling:__ We first connect the two views of Discrete Diffusion at the sampling level. The reverse rate for score-based discrete diffusion can be written in terms of the true denoiser $D_t^i(\mathbf{x})_v=\mathbb{P}(X_0^i=v | \mathbf{X}_t=\mathbf{x})$:
+__Sampling:__ We first connect the two views of discrete diffusion at the sampling level. The reverse rate for score-based discrete diffusion can be written in terms of the true denoiser $D_t^i(\mathbf{x})_v=\mathbb{P}(X_0^i=v | \mathbf{X}_t=\mathbf{x})$:
 
 $$
 \begin{equation}
@@ -3140,14 +3140,14 @@ with the same $f(k, \mathbf{x}_0)$ defined in Step 1.
 </details>
 */}
 
-#### Equivalence with Discrete Flow Matching
+#### Equivalence with discrete flow matching
 
-We now connect Discrete Diffusion to Discrete Flow Matching. First, we show that sampling in Discrete Flow Matching (@eq:euler-sampling) is equivalent to sampling in Discrete Diffusion (@eq:reverse-rate).
+We now connect discrete diffusion to discrete flow matching. First, we show that sampling in discrete flow matching (@eq:euler-sampling) is equivalent to sampling in discrete diffusion (@eq:reverse-rate).
 
 
-__Sampling__: To align these two sampling equations directly, we must first account for the main discrepancy between the frameworks: their time conventions. In Discrete Diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. Discrete Flow Matching uses the exact opposite convention.
+__Sampling__: To align these two sampling equations directly, we must first account for the main discrepancy between the frameworks: their time conventions. In discrete diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. discrete flow matching uses the exact opposite convention.
 
-We can therefore perfectly translate between the two frameworks using a simple time reversal: $t_{\text{FM}} = 1 - t_{\text{DD}}$. Concretely, if $(x_t)_{t \in [0,1]}$ denotes the Discrete Diffusion reverse process, then the time-reversed process $\tilde{x}_{t'} := x_{1-t'}$ is a valid Discrete Flow Matching process: it has the same law as the flow matching process with velocity field:
+We can therefore perfectly translate between the two frameworks using a simple time reversal: $t_{\text{FM}} = 1 - t_{\text{DD}}$. Concretely, if $(x_t)_{t \in [0,1]}$ denotes the discrete diffusion reverse process, then the time-reversed process $\tilde{x}_{t'} := x_{1-t'}$ is a valid discrete flow matching process: it has the same law as the flow matching process with velocity field:
 
 $$
 \begin{equation}
@@ -3156,13 +3156,13 @@ u_{t'}^{\text{FM}} = \dot{R}_{1-t'}
 \end{equation}
 $$
 
-In particular, sampling from Discrete Diffusion (running the reverse CTMC from $t=1$ to $t=0$) is equivalent to sampling from this flow matching process (running a CTMC from $t'=0$ to $t'=1$): the two procedures produce trajectories with identical distributions.
+In particular, sampling from discrete diffusion (running the reverse CTMC from $t=1$ to $t=0$) is equivalent to sampling from this flow matching process (running a CTMC from $t'=0$ to $t'=1$): the two procedures produce trajectories with identical distributions.
 
 <details>
 <summary>Proof</summary>
 <div>
 
-We start from the infinitesimal reverse-time transition of the Discrete Diffusion process @eq:reverse-rate.
+We start from the infinitesimal reverse-time transition of the discrete diffusion process @eq:reverse-rate.
 
 We first perform the variable change $t' = 1 - t$ in @eq:reverse-rate. We have $t = 1 - t'$, so $x_t = x_{1-t'}$ and $x_{t - \Delta t} = x_{1 - t' - \Delta t}$. The rate evaluates at $\dot{R}_{1-t'}$, giving:
 
@@ -3198,7 +3198,7 @@ and therefore $u_{t'}^{\text{FM}} = \dot{R}_{1-t'}$.
 </div>
 </details>
 
-__Training Objectives__: Now we show how their training objectives line up in the masked case. The [variational diffusion perspective](#variational-discrete-diffusion) gives the Masked Diffusion objective @eq:mdm-loss, while the [denoiser parameterization in Discrete Flow Matching](#learning-with-denoiser-parameterization) gives the CDM objective @eq:cdm-loss. We now compare these objectives.
+__Training Objectives__: Now we show how their training objectives line up in the masked case. The [variational diffusion perspective](#variational-discrete-diffusion) gives the Masked Diffusion objective @eq:mdm-loss, while the [denoiser parameterization in discrete flow matching](#learning-with-denoiser-parameterization) gives the CDM objective @eq:cdm-loss. We now compare these objectives.
 
 To directly compare the two training losses, we first note that the two denoisers introduced in flow matching in @eq:cdm-loss and in variational diffusion in @eq:mdm-loss are exactly the same object. Applying the time reversal $t_{\text{FM}} = 1 - t_{\text{DD}}$ and identifying the clean data $x_1=x_0$, we get:
 
@@ -3296,7 +3296,7 @@ Both expressions share the same conditional expectation. Eliminating it yields @
 
 #### Sampling with a planner
 
-In this section, we introduce planners as a way to make sampling more efficient in masked diffusion, and explain why using a planner also requires adapting the training loss. We follow the [Discrete Flow Matching](#discrete-flow-matching) convention: $p_0$ is the source distribution, corresponding here to the fully masked sequence $mm...m$, and $p_1$ is the target distribution, corresponding to the clean data distribution. For the complete theoretical treatment, see [<a class="cite-ref" href="#ref-7">7</a>].
+In this section, we introduce planners as a way to make sampling more efficient in masked diffusion, and explain why using a planner also requires adapting the training loss. We follow the [discrete flow matching](#discrete-flow-matching) convention: $p_0$ is the source distribution, corresponding here to the fully masked sequence $mm...m$, and $p_1$ is the target distribution, corresponding to the clean data distribution. For the complete theoretical treatment, see [<a class="cite-ref" href="#ref-7">7</a>].
 
 Vanilla sampling in Masked Diffusion is computationally expensive. It requires $(1/h) \times S$ sequential steps, where $h$ is the time step size and $S$ is the length of the sequence. At every single micro-step, we must compute and draw from probability vectors of size $|\mathcal{V}|$ for all tokens. For example, with a step size of $h = 0.01$ and a sequence length of $S = 3000$, we would need $300,000$ steps to generate a single sample.
 We can parallelize the sampling of all tokens at each step, so the number of forward passes through the model is $1/h = 100$ steps rather than $S/h$, but it requires more memory.
@@ -3506,7 +3506,7 @@ Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weigh
 <div class="ref-entry">
   <span id="ref-4"></span>
   <div class="ref-main">
-    4. <strong>Discrete Diffusion Modeling by Estimating the Ratios of the Data Distribution</strong> <strong><a href="https://arxiv.org/pdf/2310.16834">[PDF]</a></strong><br />
+    4. <strong>discrete diffusion Modeling by Estimating the Ratios of the Data Distribution</strong> <strong><a href="https://arxiv.org/pdf/2310.16834">[PDF]</a></strong><br />
     Aaron Lou, Chenlin Meng, Stefano Ermon. ICML 2024.
   </div>
 </div>
@@ -3522,7 +3522,7 @@ Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weigh
 <div class="ref-entry">
   <span id="ref-6"></span>
   <div class="ref-main">
-    6. <strong>Discrete Flow Matching</strong> <strong><a href="https://arxiv.org/pdf/2407.15595">[PDF]</a></strong><br />
+    6. <strong>discrete flow matching</strong> <strong><a href="https://arxiv.org/pdf/2407.15595">[PDF]</a></strong><br />
     Itai Gat, Tal Remez, Neta Shaul, Felix Kreuk, Ricky T. Q. Chen, Gabriel Synnaeve, Yossi Adi, Yaron Lipman. NeurIPS 2024.
   </div>
 </div>
