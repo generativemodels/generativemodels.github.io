@@ -402,14 +402,25 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
 
     const resolveNoteRefs = () => {
       const noteNumbers = new Map();
+      let nextNumber = 1;
 
-      document.querySelectorAll('.dfm-note-entry').forEach((entry, index) => {
-        const number = String(index + 1);
-        const anchor = entry.querySelector('[id^=dfm-note-]');
+      document.querySelectorAll('a.dfm-note-ref').forEach((link) => {
+        const noteId = (link.getAttribute('href') || '').slice(1);
+        if (!noteId) return;
+        if (!noteNumbers.has(noteId)) {
+          noteNumbers.set(noteId, String(nextNumber++));
+        }
+      });
+
+      const noteEntries = Array.from(document.querySelectorAll('.dfm-note-entry'));
+
+      noteEntries.forEach((entry) => {
+        const anchor = entry.querySelector('[id]');
         const main = entry.querySelector('.dfm-note-main');
-        if (anchor) noteNumbers.set(anchor.id, number);
-        if (!main) return;
+        const number = anchor ? noteNumbers.get(anchor.id) : null;
+        if (!main || !number) return;
 
+        entry.dataset.noteNumber = number;
         const firstParagraph = main.querySelector(':scope > p:first-of-type');
         const numberParent = firstParagraph || main;
         let numberEl = numberParent.querySelector(':scope > .dfm-note-number');
@@ -420,6 +431,11 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
         }
         numberEl.textContent = number + '. ';
       });
+
+      noteEntries
+        .filter((entry) => entry.dataset.noteNumber)
+        .sort((a, b) => Number(a.dataset.noteNumber) - Number(b.dataset.noteNumber))
+        .forEach((entry) => entry.parentElement?.appendChild(entry));
 
       document.querySelectorAll('a.dfm-note-ref').forEach((link) => {
         const noteId = (link.getAttribute('href') || '').slice(1);
@@ -564,7 +580,7 @@ x(0) = x_0 \\
 \end{cases}
 \end{equation}
 $$
-and if $p_t$ is defined as the law of the ODE solution $x(t)$ at time $t \in [0, 1]$ when $x_0 \sim p_0$, we say that $u$ generates the probability path $(p_t)_{t \in [0, 1]}$.<a href="#dfm-note-0" class="dfm-note-ref"></a>
+and if $p_t$ is defined as the law of the ODE solution $x(t)$ at time $t \in [0, 1]$ when $x_0 \sim p_0$, we say that $u$ generates the probability path $(p_t)_{t \in [0, 1]}$.<a href="#cfm-blog" class="dfm-note-ref"></a>
 
 Here comes the first distinction between discrete and continuous FM: as solving an ODE when the state space is discrete is not possible, discrete FM relies on a different type of object: the *probability velocity*.
 
@@ -1219,7 +1235,7 @@ u_t(\mathbf{x}) = \underset{u \text{ measurable}}{\operatorname{argmin}}\ \mathb
 $$
 In discrete spaces, since we compare nonneg­ative rate vectors that behave like local probabilities, a Kullback-Leibler style objective is more natural.
 More generally, this conditional expectation is the minimizer
-for any Bregman divergence, and KL<a href="#dfm-note-4" class="dfm-note-ref"></a> is the Bregman choice adapted to our setting:
+for any Bregman divergence, and KL<a href="#generalized-kl" class="dfm-note-ref"></a> is the Bregman choice adapted to our setting:
 $$
 \begin{equation}
 \label{eq:kl-proj}
@@ -1665,7 +1681,7 @@ $$
 <summary>Proof</summary>
 <div>
 
-By the Markov property $q(x_t | x_s, x_0) = q(x_t | x_s)$, the marginal $q(x_t | x_0)$<a href="#dfm-note-6" class="dfm-note-ref"></a> factorizes through any intermediate step $s$:
+By the Markov property $q(x_t | x_s, x_0) = q(x_t | x_s)$, the marginal $q(x_t | x_0)$<a href="#conditional-law" class="dfm-note-ref"></a> factorizes through any intermediate step $s$:
 
 $$
 \begin{equation}
@@ -1712,7 +1728,7 @@ In summary, the forward process masks each token independently and irreversibly:
 Generating data requires a reverse process that progressively unmasks tokens to produce a clean sequence. We first derive the exact reverse transition conditioned on the initial clean token $x_0$.
 
 <Statement kind="Lemma" label="masked-diffusion-bridge" title="Conditional reverse transitions $q(x_s | x_t,x_0)$">
-For Masked Diffusion, $x_t = m$ and $s<t$, we have:<a href="#dfm-note-6" class="dfm-note-ref"></a>
+For Masked Diffusion, $x_t = m$ and $s<t$, we have:<a href="#conditional-law" class="dfm-note-ref"></a>
 $$
 \begin{equation}
 \label{eq:bridge-mask}
@@ -2027,7 +2043,7 @@ The one-step transitions $p_\theta(x_{t-1} | x_t)$ can be parameterized directly
 Indeed, most of the reverse step is already known. From @eq:bridge-mask, an unmasked token stays as it is and a masked token can only jump to $x_0$, so a token changes at most once along the trajectory. The only information not already determined is which clean token to jump to.
 Therefore, outputting the full reverse step at every $t$ would relearn this fixed structure repeatedly, which is redundant.
 Instead, the discrete diffusion models of [<a class="cite-ref" href="#ref-1">1</a>, <a class="cite-ref" href="#ref-2">2</a>] follow the key innovation of DDPM [<a class="cite-ref" href="#DDPM">13</a>]: predict the clean signal $x_0$ and rebuild the reverse step using $q(x_{t-1} | x_t, x_0)$, as in @eq:denoiser-bridge-proof-1, which combines this term with the denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$ to weight each possible clean token.
-Since this denoiser is itself intractable, we approximate it by a learned denoiser $D_{\theta,t}(x_t) \in \Delta_{|\mathcal{V}|}$.<a href="#dfm-note-7" class="dfm-note-ref"></a>.
+Since this denoiser is itself intractable, we approximate it by a learned denoiser $D_{\theta,t}(x_t) \in \Delta_{|\mathcal{V}|}$.<a href="#denoiser-mask" class="dfm-note-ref"></a>.
 This definition naturally extends to each position $i$ if we consider sequences: $[D_{\theta,t}^i(\mathbf{x}_t)]_v \approx \mathbb{P}(X_0^i = v | \mathbf{X}_t = \mathbf{x}_t)$.
 
 Equivalently, the learned reverse transition is obtained by replacing the denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$ in @eq:bridge-denoiser-1 with the learned one $D_{\theta,t}$:
@@ -2355,7 +2371,7 @@ $$
 
 where we fix the forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$. $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$.
 
-The continuous SDE means that over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $[\dot{Q}_t(x_t)]_y\Delta t$ to first order.<a href="#dfm-note-1" class="dfm-note-ref"></a>
+The continuous SDE means that over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $[\dot{Q}_t(x_t)]_y\Delta t$ to first order.<a href="#forward-euler" class="dfm-note-ref"></a>
 
 A common instantiation of the continuous SDE is the variance-preserving Gaussian diffusion: the coefficients are chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a noise schedule. In the masked discrete space Diffusion, we make an analogous choice by specifying the rate at which unmasked tokens jump to the mask state:
 
@@ -2593,7 +2609,7 @@ $$
 $$
 </Statement>
 
-<a href="#dfm-note-2" class="dfm-note-ref"></a>
+<a href="#reverse-euler" class="dfm-note-ref"></a>
 
 <details>
 <summary>Proof</summary>
@@ -2661,7 +2677,7 @@ where $\odot$ denotes the elementwise product. The forward rate $\dot{Q}_t$ is k
 
 #### Training
 
-It remains to design a tractable training loss for the concrete score. As in continuous-space Diffusion, where denoising score matching exploits that the marginal score is a conditional expectation of the (tractable) conditional score: $\nabla \log p_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}[\nabla \log p_t(x_t | x_0)]$, the same identity holds here. Defining the (tractable) conditional concrete score $s_t(x_t | x_0)_y \;:=\; p_t(y | x_0)/p_t(x_t | x_0)$, we have for $y \neq x_t$ <a href="#dfm-note-3" class="dfm-note-ref"></a>:
+It remains to design a tractable training loss for the concrete score. As in continuous-space Diffusion, where denoising score matching exploits that the marginal score is a conditional expectation of the (tractable) conditional score: $\nabla \log p_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}[\nabla \log p_t(x_t | x_0)]$, the same identity holds here. Defining the (tractable) conditional concrete score $s_t(x_t | x_0)_y \;:=\; p_t(y | x_0)/p_t(x_t | x_0)$, we have for $y \neq x_t$ <a href="#conditional-expectation" class="dfm-note-ref"></a>:
 
 $$
 \begin{align}
@@ -2673,7 +2689,7 @@ s_t(x_t)_y \;=\; \frac{p_t(y)}{p_t(x_t)}
 \end{align}
 $$
 
-This gives the characterization:<a href="#dfm-note-4" class="dfm-note-ref"></a>
+This gives the characterization:<a href="#generalized-kl" class="dfm-note-ref"></a>
 
 $$
 \begin{equation}
@@ -2937,7 +2953,7 @@ which identifies the conditional reverse rate as $\dot{R}_t(x_t | x_0) = r_t\, \
 </details>
 
 <Statement kind="Proposition" label="continuous-time-elbo" title="Variational and score-based diffusion loss equivalence">
-In the continuous-time limit, optimizing the variational ELBO @eq:discrete-elbo-1 is equivalent to minimizing the loss: <a href="#dfm-note-5" class="dfm-note-ref"></a>
+In the continuous-time limit, optimizing the variational ELBO @eq:discrete-elbo-1 is equivalent to minimizing the loss: <a href="#ratio-loss-kl" class="dfm-note-ref"></a>
 
 $$
 \begin{equation}
@@ -3716,42 +3732,42 @@ Data Distribution</strong> <strong><a href="https://openreview.net/pdf?id=B1lcYr
 <div style={{ fontSize: '0.92rem', lineHeight: '1.55' }}>
 
 <div class="dfm-note-entry">
-  <span id="dfm-note-0"></span>
+  <span id="cfm-blog"></span>
   <div class="dfm-note-main">
     For more details, see our [blog post on continuous flow matching](https://dl.heeere.com/cfm).
   </div>
 </div>
 
 <div class="dfm-note-entry">
-  <span id="dfm-note-1"></span>
+  <span id="forward-euler"></span>
   <div class="dfm-note-main">
     If you click on continuous in Figure <Ref label="fig:masked-forward-discrete" />, you can see the corresponding continuous-time forward process. It shows the Euler simulation of the infinitesimal forward transition @eq:forward-rate. The next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y | x_t) = \mathbb{I}(y=x_t) + [\dot{Q}_t(x_t)]_y\Delta t + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. The aggregate view reports the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
   </div>
 </div>
 
 <div class="dfm-note-entry">
-  <span id="dfm-note-2"></span>
+  <span id="reverse-euler"></span>
   <div class="dfm-note-main">
     If you click on continuous in Figure <Ref label="fig:masked-reverse-discrete" />, you can see the corresponding continuous-time reverse process. It shows the Euler simulation of the infinitesimal reverse transition @eq:reverse-rate, conditioned on the clean token as in @eq:reverse-kernel-mask. The previous state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t-\Delta t}=y | x_t, x_0) = \mathbb{I}(y=x_t) + \Delta t[\dot{R}_t(x_t | x_0)]_y + o(\Delta t)$, giving a discretized continuous-time reverse process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-reverse-discrete" />.
   </div>
 </div>
 
 <div class="dfm-note-entry">
-  <span id="dfm-note-3"></span>
+  <span id="conditional-expectation"></span>
   <div class="dfm-note-main">
     This is the same conditional-expectation-to-projection argument as in Theorem <Ref label="thm:fundamental-theorem-discrete-fm" /> and @eq:kl-proj.
   </div>
 </div>
 
 <div class="dfm-note-entry">
-  <span id="dfm-note-4"></span>
+  <span id="generalized-kl"></span>
   <div class="dfm-note-main">
     Here $\mathrm{KL}$ denotes the generalized KL divergence between two positive vectors $a,b \in \mathbb{R}_+^d$, $\mathrm{KL}(a,b) = \sum_{j=1}^d a_t \log(a_t/b_t) - a_t + b_t$.
   </div>
 </div>
 
 <div class="dfm-note-entry">
-  <span id="dfm-note-5"></span>
+  <span id="ratio-loss-kl"></span>
   <div class="dfm-note-main">
     Up to a constant $C$ independent of $\theta$, @eq:ratio-loss is
     $\mathrm{KL}\left(\dot{R}_t(x_t | x_0),\, \dot{R}_{\theta,t}(x_t)\right)$.
@@ -3759,7 +3775,7 @@ Data Distribution</strong> <strong><a href="https://openreview.net/pdf?id=B1lcYr
 </div>
 
 <div class="dfm-note-entry">
-  <span id="dfm-note-6"></span>
+  <span id="conditional-law"></span>
   <div class="dfm-note-main">
     We note $q(x_s | x_t, x_0)$ the conditional law
     $q(X_s = \cdot | X_t = x_t, X_0 = x_0)$.
@@ -3767,7 +3783,7 @@ Data Distribution</strong> <strong><a href="https://openreview.net/pdf?id=B1lcYr
 </div>
 
 <div class="dfm-note-entry">
-  <span id="dfm-note-7"></span>
+  <span id="denoiser-mask"></span>
   <div class="dfm-note-main">
     For simplicity, we consider $[D_{\theta,t}(x_t)]_m = 0$.
   </div>
