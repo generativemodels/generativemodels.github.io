@@ -49,14 +49,45 @@ const renderInlineMath = (value: string) =>
 const titleHtml = title ? renderInlineMath(title) : ''
 ---
 
-<div class="statement">
+<div class={`statement statement--${kind.toLowerCase()}`}>
   <strong class="statement__title">{kind} <Counter label={counterLabel} />{title && <Fragment set:html={` (${titleHtml})`} />}.</strong>{' '}
   <slot />
 </div>
 
 <style>
+  .statement {
+    margin: 1.25em 0;
+    padding: 0.85em 1em;
+    border-left: 5px solid #d1d5db;
+    background: #f8fafc;
+  }
+
+  .statement--lemma {
+    border-left-color: #f39c12;
+    background: #fff9e6;
+  }
+
+  .statement--proposition {
+    border-left-color: #2970CC;
+    background: #f0f8ff;
+  }
+
+  .statement--definition {
+    border-left-color: #4caf50;
+    background: #e8f5e9;
+  }
+
+  .statement--theorem {
+    border-left-color: #7c3aed;
+    background: #f5f0ff;
+  }
+
   .statement > :global(p:first-of-type) {
     display: inline;
     margin-top: 0;
+  }
+
+  .statement > :global(p:last-child) {
+    margin-bottom: 0;
   }
 </style>

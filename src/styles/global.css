@@ -40,7 +40,7 @@ body {
 	word-wrap: break-word;
 	overflow-wrap: break-word;
 	color: rgb(var(--gray-dark));
-	font-size: 19px;
+	font-size: 18px;
 	line-height: 1.7;
 }
 main {
@@ -74,6 +74,11 @@ h4 {
 h5 {
 	font-size: 1.25em;
 }
+.prose h3,
+.prose h4 {
+	margin-top: 0.7em;
+	margin-bottom: 0.65rem;
+}
 strong,
 b {
 	font-weight: 700;
@@ -88,7 +93,26 @@ p {
 	margin-bottom: 1em;
 }
 .prose p {
-	margin-bottom: 2em;
+	text-align: justify;
+	margin-top: 0;
+	margin-bottom: 1.15em;
+}
+.prose p:has(+ ul),
+.prose p:has(+ ol),
+.prose p:has(+ .katex-display),
+.prose p:has(+ .typst-display-math) {
+	margin-bottom: 0.65em;
+}
+.prose ul,
+.prose ol {
+	margin-top: 0.35em;
+	margin-bottom: 1em;
+}
+.prose .katex-display {
+	margin: 1em 0;
+}
+.prose .katex-display > .katex {
+	line-height: 1;
 }
 textarea {
 	width: 100%;
@@ -129,7 +153,7 @@ hr {
 }
 @media (max-width: 720px) {
 	body {
-		font-size: 18px;
+		font-size: 16px;
 	}
 	main {
 		padding: 1em;
