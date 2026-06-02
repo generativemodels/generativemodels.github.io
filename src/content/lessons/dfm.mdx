@@ -664,8 +664,10 @@ $$
 </div>
 </details>
 
-It follows that for infinitesimally small time steps, each sequence $\mathbf{x}$ is assumed to transition only to states where at most one token differs.
-It yields a substantial computational gain: instead of learning one transition object $u$ on the full sequence space $\mathcal{S}=\mathcal{V}^S$ (exponential in $S$), we learn $S$ local transition objects $u^i$, each on the vocabulary space $\mathcal{V}$.
+We see from @eq:factorized-velocity that the assumption implies that for infinitesimally small time steps, a sequence $\mathbf{x}$  can only transition to states $\mathbf{y}$ differing by at most one token.
+This modeling assumption **yields a substantial computational gain**: instead of learning one transition object $u$ on the full sequence space $\mathcal{S}=\mathcal{V}^S$ (exponential in $S$), we learn $S$ local transition objects $u^i$, each on the vocabulary space $\mathcal{V}$.
+
+<Statement kind="Example" label="example-utoken" title="">
 
 For example, take the vocabulary $\mathcal{V}=\{A,B\}$, sequence length $S=3$, and current sequence $\mathbf{x}=ABA$.
 We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$:
@@ -735,6 +737,8 @@ We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$:
   </svg>
 </div>
 
+</Statement>
+
 This modelling step implies that at each sampling step, we draw each token independently following:
 $$
 \begin{equation}
@@ -746,7 +750,7 @@ $$
 <figure>
   <DFMSampling client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:dfm-sampling" />:</strong> Generation process of a sequence of length 4 with a known probability velocity $u_t$. Key observations: 1) At each step, all tokens are updated independently 2) The probability of drawing the mask token $m$ decreases at each step, while the probability of drawing other tokens increases. 3) Once a token is unmasked, it stays at its current value until the end. 4) Different samples can be generated from the same initial sequence (change the seed!), because sampling is stochastic at each step.
+    <strong>Figure <Counter label="fig:dfm-sampling" />:</strong> Generation process of a sequence of length $S=4$ with known probability velocity $u_t$. Key observations: 1) At each step, all tokens are updated independently 2) The probability of drawing the mask token $m$ decreases at each step, while the probability of drawing other tokens increases. 3) Once a token is unmasked, it stays at its current value until the end. 4) Different samples can be generated from the same initial sequence (change the seed!), because sampling is stochastic at each step.
   </figcaption>
 </figure>
 
