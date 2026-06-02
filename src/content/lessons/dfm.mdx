@@ -33,8 +33,10 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
 '/>
 
 <style>{`
-
   a.cite-ref {
+    text-decoration: none;
+  }
+  a[href^="#"] {
     text-decoration: none;
   }
 
@@ -2708,6 +2710,9 @@ where $C$ is a constant independent of $\theta$.
 </table>
 
 ### Equivalence Between Viewpoints
+
+In the previous sections, we introduced three different approaches to build a transport between a initial distribution and a final discrete distribution, namely [discrete flow matching](#discrete-flow-matching), the [variational discrete diffusion](#variational-discrete-diffusion) and [score-based discrete diffusion](#score-based-discrete-diffusion).
+We now illustrate the links between them and show they are indeed equivalent. We start by showing that [variational discrete diffusion](#equivalence-between-the-two-discrete-diffusion-perspectives)  is equivalent to [score-based discrete diffusion](#equivalence-with-score-based-discrete-diffusion), and then [discrete flow matching](#equivalence-with-discrete-flow-matching) to the other two.
 
 #### Equivalence Between the Two discrete diffusion Perspectives
 
