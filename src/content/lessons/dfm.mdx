@@ -2759,7 +2759,8 @@ where $C$ is a constant independent of $\theta$.
 ### Equivalence between viewpoints
 
 In the previous sections, we introduced three different approaches to build a transport between a initial distribution and a final discrete distribution, namely [discrete flow matching](#discrete-flow-matching), the [variational discrete diffusion](#variational-discrete-diffusion) and [score-based discrete diffusion](#score-based-discrete-diffusion).
-We now illustrate the links between them and show they are indeed equivalent. We start by showing that [variational discrete diffusion](#equivalence-between-the-two-discrete-diffusion-perspectives)  is equivalent to [score-based discrete diffusion](#equivalence-with-score-based-discrete-diffusion), and then [discrete flow matching](#equivalence-with-discrete-flow-matching) to the other two.
+We now illustrate the links between them and show they are indeed equivalent. 
+We start by showing that [variational discrete diffusion](#equivalence-between-the-two-discrete-diffusion-perspectives)  is equivalent to [score-based discrete diffusion](#equivalence-with-score-based-discrete-diffusion), and then [discrete flow matching](#equivalence-with-discrete-flow-matching) to the other two.
 
 #### Equivalence between the two discrete diffusion perspectives
 
@@ -2809,9 +2810,8 @@ x_{t-h}^i
 \right). \label{eq:masked-denoiser-euler-4}
 \end{align}
 $$
-using $\alpha_{t-h} - \alpha_t = -h\dot{\alpha}_t + o(h)$ in the second line.
-
-If $x_t^i\neq m$, both samplers keep the token fixed. Thus @eq:masked-diffusion-denoiser-sampling is the finite-step version of the sampler @eq:score-sampling-cat.
+using $\alpha_{t-h} - \alpha_t = -h\dot{\alpha}_t + o(h)$ in the second line and @eq:denoiser-reverse-rate in the third line.
+If $x_t^i\neq m$, both samplers keep the token fixed. Thus, @eq:masked-diffusion-denoiser-sampling is the finite-step version of the sampler @eq:score-sampling-cat.
 
 __Training Objectives__: Now we turn to the corresponding training objectives. The [variational perspective](#variational-discrete-diffusion) gives the ELBO loss @eq:discrete-elbo-1 (which can be rewritten as @eq:mdm-loss for Masked Diffusion), while the [score-based perspective](#score-based-discrete-diffusion) gives the concrete score matching loss @eq:score-loss-prop. We now show that these two objectives are in fact the same: taking the continuous-time limit of the variational ELBO produces, after a change of variable, exactly the concrete score matching loss @eq:score-loss-prop.
 
