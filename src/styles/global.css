@@ -429,6 +429,14 @@ html, body {
 	.katex-display > .katex > .katex-html > .tag {
 		right: -6rem !important;
 	}
+
+	.prose .katex-display > .katex > .katex-html > .tag {
+		right: calc(-6rem + 1.125rem) !important;
+	}
+
+	.prose .statement .katex-display > .katex > .katex-html > .tag {
+		right: -6rem !important;
+	}
 }
 
 .equation-refs-resolved .katex .eqn-num::before {

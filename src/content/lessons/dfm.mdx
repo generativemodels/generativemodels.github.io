@@ -249,6 +249,16 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
     marker-end: url(#dfm-local-example-arrowhead);
   }
 
+  .dfm-comparison-table th,
+  .dfm-comparison-table td {
+    vertical-align: middle;
+  }
+
+  .dfm-comparison-table p {
+    margin: 0;
+    text-align: inherit;
+  }
+
   @media (max-width: 720px) {
     .dfm-local-example {
       grid-template-columns: 4rem minmax(22rem, 1fr);
@@ -463,7 +473,7 @@ This blog post is a __pedagogical introduction__ to the adaptation of flow match
 
 Several related frameworks emerged recently to tackle discrete data:
 - We first introduce in [section 2](#discrete-flow-matching) discrete flow matching [<a class="cite-ref" href="#ref-5">5</a>, <a class="cite-ref" href="#ref-6">6</a>], which extends the flow matching framework to discrete spaces.
-- As continuous-space diffusion models have been developed into two major branches, namely the *variational* [<a class="cite-ref" href="#NonequilibriumThermodynamics">12</a>, <a class="cite-ref" href="#DDPM">13</a>] and the *score-based* ones [<a class="cite-ref" href="#GenerativeScore">11</a>, <a class="cite-ref" href="#SDEDiffusion">14</a>], we present discrete diffusion through these two formalisms. In [section 3](#variational-discrete-diffusion), we show how the variational perspective leverages *discrete-time* transitions and variational principles to frame data generation. In [section 4](#score-based-discrete-diffusion), we focus on *continuous-time* transitions and score-based methods for discrete data.
+- As continuous-space diffusion models have been developed into two major branches, namely the *variational* [<a class="cite-ref" href="#NonequilibriumThermodynamics">12</a>, <a class="cite-ref" href="#DDPM">13</a>] and the *score-based* ones [<a class="cite-ref" href="#GenerativeScore">11</a>, <a class="cite-ref" href="#SDEDiffusion">14</a>], we present discrete diffusion through these two formalisms. In [section 3](#variational-discrete-diffusion), we show how the variational perspective leverages *discrete-time* transitions and variational principles to frame data generation [<a class="cite-ref" href="#ref-1">1</a>, <a class="cite-ref" href="#ref-2">2</a>, <a class="cite-ref" href="#NonequilibriumThermodynamics">12</a>]. In [section 4](#score-based-discrete-diffusion), we focus on *continuous-time* transitions and score-based methods for discrete data [<a class="cite-ref" href="#ref-4">4</a>].
 - Finally, in [section 5](#equivalence-between-viewpoints), we show how these seemingly different viewpoints are in fact equivalent from both the training and sampling perspectives.
 
 These sections can be read independently and the already familiar can directly jump to one of them.
@@ -1397,15 +1407,15 @@ $$
 </figure>
 */}
 
-<table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '2em', marginBottom: '3em'}}>
+<table className="dfm-comparison-table" style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '2em', marginBottom: '1.25em'}}>
   <colgroup>
     <col style={{ width: '50%' }} />
     <col style={{ width: '50%' }} />
   </colgroup>
   <thead>
     <tr>
-      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous Flow Matching</th>
-      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>discrete flow matching</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous flow matching</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Discrete flow matching</th>
     </tr>
   </thead>
   <tbody>
@@ -1530,8 +1540,6 @@ $$
     </tr>
   </tbody>
 </table>
-
-<br />
 
 ### Variational discrete diffusion
 
@@ -2171,14 +2179,14 @@ $$
 </div>
 </details>
 
-<table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '2em', marginBottom: '3em'}}>
+<table className="dfm-comparison-table" style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.9rem', marginTop: '2em', marginBottom: '1.25em'}}>
   <colgroup>
     <col style={{ width: '50%' }} />
     <col style={{ width: '50%' }} />
   </colgroup>
   <thead>
     <tr>
-      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>continuous-space Diffusion</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous-space diffusion</th>
       <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Masked discrete diffusion</th>
     </tr>
   </thead>
@@ -2274,8 +2282,6 @@ $$
     </tr>
   </tbody>
 </table>
-
-<br />
 
 ### Score-based discrete diffusion
 
@@ -2657,14 +2663,14 @@ $$
 where $C$ is a constant independent of $\theta$.
 </Statement>
 
-<table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '2em', marginBottom: '3em'}}>
+<table className="dfm-comparison-table" style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '2em', marginBottom: '1.25em'}}>
   <colgroup>
     <col style={{ width: '50%' }} />
     <col style={{ width: '50%' }} />
   </colgroup>
   <thead>
     <tr>
-      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>continuous-space Diffusion</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous-space diffusion</th>
       <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Masked discrete diffusion</th>
     </tr>
   </thead>
@@ -3381,8 +3387,9 @@ G_\phi(\mathbf{z}, \mathbf{x}_k) \in \Delta_S,\qquad
 G_\phi(\mathbf{z}, \mathbf{x}_k)_i = 0 \text{ for } i \notin \mathcal{M}_k.
 \end{equation}
 $$
-In other words, given a denoised candidate $\mathbf{z}$ produced by the denoiser from a partially masked sequence $\mathbf{x}_k$, the planner indicates, for each position $i$ in the sequence, the probability of denoising that token. If the token is already denoised, this probability is zero. For example, if $\mathbf{x}_k=(m,A,m)$ and $\mathbf{z}=(B,A,A)$, then a possible value of $G_\phi(\mathbf{z}, \mathbf{x}_k)$ is $(0.7,0,0.3)$, which means revealing position $1$ with probability $70\%$ and position $3$ with probability $30\%$.
 </Statement>
+
+In other words, given a denoised candidate $\mathbf{z}$ produced by the denoiser from a partially masked sequence $\mathbf{x}_k$, the planner indicates, for each position $i$ in the sequence, the probability of denoising that token. If the token is already denoised, this probability is zero. For example, if $\mathbf{x}_k=(m,A,m)$ and $\mathbf{z}=(B,A,A)$, then a possible value of $G_\phi(\mathbf{z}, \mathbf{x}_k)$ is $(0.7,0,0.3)$, which means revealing position $1$ with probability $70\%$ and position $3$ with probability $30\%$.
 
 **Algorithm: Planner-Guided Sampling**
 
