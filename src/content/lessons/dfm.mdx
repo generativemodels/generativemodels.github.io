@@ -647,8 +647,8 @@ $$
 Substituting this into our factorized joint probability, we get:
 $$
 \begin{align}
-\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) &= \prod_{i=1}^S \left[ \mathbb{I}(y^i = x^i) + h u_t^i(\mathbf{x})_{y^i} + o(h) \right]  \label{eq:factorized-path-2-1} \\
-&\hspace{-8em}{}= \prod_{i=1}^S \mathbb{I}(y^i = x^i) + h \sum_{i=1}^S \left[ \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i} \right] + o(h)  \label{eq:factorized-path-2-2} \\
+\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) &= \prod_{i=1}^S \left[ \mathbb{I}(y^i = x^i) + h u_t^i(\mathbf{x})_{y^i} + o(h) \right]  \\
+&\hspace{-8em}{}= \prod_{i=1}^S \mathbb{I}(y^i = x^i) + h \sum_{i=1}^S \left[ \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i} \right] + o(h)  \\
 &\hspace{-8em}{}= \mathbb{I}(\mathbf{y} = \mathbf{x}) + h \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i} + o(h) \label{eq:factorized-path-2-3}
 \end{align}
 $$
@@ -670,7 +670,7 @@ This modeling assumption **yields a substantial computational gain**: instead of
 <Statement kind="Example" label="example-utoken" title="">
 
 For example, take the vocabulary $\mathcal{V}=\{A,B\}$, sequence length $S=3$, and current sequence $\mathbf{x}=ABA$.
-We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$:
+We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$. From @eq:factorized-velocity, the sequence can only transition to 4 possible values, and the probability velocity writes as:
 
 <div class="dfm-local-example">
   <div class="dfm-local-example__source" aria-label="Current sequence ABA">
