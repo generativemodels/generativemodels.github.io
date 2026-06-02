@@ -1574,45 +1574,6 @@ $$
 \end{align}
 $$
 
-{/* To make the continuous-time limit rigorous, we introduce a continuous masking-rate function $\beta : [0,1] \to \mathbb{R}_+$.
-When we discretize time over $T$ steps with stepsize $\Delta t = 1/T$, we obtained discrete masking rates $\beta_i := \beta(i/T)\Delta t = \frac{1}{T}\beta\left(\frac{i}{T}\right)$.
-
-Then, the forward marginal equals, for $n=tT$,
-
-$$
-\begin{align}
-q(x_t = x_0 | x_0)
-&= \prod_{i=1}^{t}
-\left(1- \tfrac{1}{T}\beta\left(\tfrac{i}{T}\right)\right) \label{eq:survival-prob-5} \\
-&= \exp\left(
-\sum_{i=1}^{t}
-\log\left(1-\tfrac{1}{T}\beta\left(\tfrac{i}{T}\right)\right)
-\right) \label{eq:survival-prob-6} \\
-&\approx \exp\left(
--\sum_{i=1}^{t}
-\tfrac{1}{T}\beta\left(\tfrac{i}{T}\right)
-\right) \label{eq:survival-prob-7} \\
-&\xrightarrow[T\to\infty]{}
-\exp\left(-\int_0^t \beta(s)\, ds\right). \label{eq:survival-prob-8}
-\end{align}
-$$
-identifying a Riemann sum and using $n = Tt$.
-
-This computation leads us to define the noise schedule $\alpha_t$ that gives the probability of a token remaining unmasked at time $t$, as
-
-$$
-\begin{equation}
-\label{eq:alpha-def}
-\alpha_t = \exp\!\left(-\int_0^t \beta(s)\, ds\right)
-\end{equation}
-$$
-
-We deduce the following properties on $\alpha_t$ from the derivation above:
-- $\alpha_0 = 1$: at time $t=0$, all tokens are unmasked.
-- $\alpha_1 = 0$: at time $t=1$, all tokens are masked.
-- $\alpha_t$ is decreasing in $t$: as the step index increases, the probability of a token remaining unmasked decreases.
-*/}
-
 The schedule $\alpha_t$ is decreasing in $t$: as the step index increases, the probability of a token remaining unmasked decreases.
 It turns out that we can then compute the transition probabilities between any two steps $s < t$:
 $$
@@ -2092,17 +2053,94 @@ $$
 \end{align}
 $$
 
-{/* Passing to the continuous-time limit $T \to \infty$ with $t=n/T$, $s=(n-1)/T$, and $\alpha_s-\alpha_t \approx -\dot{\alpha}_t\,\frac{1}{T}$, the sum is a Riemann sum:
+</div>
+</details>
+
+<details>
+<summary>To go further: Continuous Time Limit</summary>
+<div>
+
+A drawback of the discrete-time construction presented in this section is that the loss @eq:mdm-loss only evaluates the denoiser $D_{\theta,t}$ at the $T$ grid times $t\in\{1,\ldots,T\}$, so it learns to undo the noise at the levels $\alpha_1,\ldots,\alpha_T$ and no others. Refining the schedule $\alpha_t$ at sampling time places new levels between the trained ones, where the denoiser must be evaluated at a noise level it never saw. Avoiding this mismatch ties us to the fixed grid $\alpha_1,\ldots,\alpha_T$. To remove this constraint, [<a class="cite-ref" href="#ref-3">3</a>] introduced the continuous-time limit of these models (later simplified for masked diffusion by [<a class="cite-ref" href="#ref-15">15</a>]): training over $t\sim\mathcal{U}(0,1)$ exposes the denoiser to every level, so the number of steps and the schedule become choices made after training rather than before.
+
+In order to provide a continuous-time version of the loss @eq:mdm-loss, we first need define a continuous-time analogue of the survival schedule $\alpha_t$ @eq:survival-prob-4, and give an intuition for its form.
+
+Introduce a continuous masking-rate function $\beta : [0,1] \to \mathbb{R}_+$. If a discrete grid has step size $\Delta t = 1/T$, the corresponding small masking probability at grid point $i/T$ is
+$$
+\begin{equation}
+\label{eq:ct-beta-discretization}
+\beta_i := \beta(i/T)\Delta t = \frac{1}{T}\beta\left(\frac{i}{T}\right).
+\end{equation}
+$$
+
+For a continuous time $t\in[0,1]$, write $n=\lfloor Tt\rfloor$. The discrete survival probability becomes
 $$
 \begin{align}
-    \text{ELBO}_{\theta}(x_0) \label{eq:mdm-elbo-ct-1}
-    = \int_0^1 \mathbb{E}_{\substack{x_t \sim q( \cdot | x_0)}}\left[ \label{eq:mdm-elbo-ct-2}
-    \mathbb{I}(x_t=m)\,\frac{-\dot{\alpha}_t}{1-\alpha_t}\,x_0^\top\log D_{\theta,t}(x_t) \label{eq:mdm-elbo-ct-3}
-    \right]dt, \label{eq:mdm-elbo-ct-4}
+q(x_t = x_0 | x_0)
+&\approx \prod_{i=1}^{n}
+\left(1- \frac{1}{T}\beta\left(\frac{i}{T}\right)\right) \label{eq:survival-prob-ct-1} \\
+&= \exp\left(
+\sum_{i=1}^{n}
+\log\left(1-\frac{1}{T}\beta\left(\frac{i}{T}\right)\right)
+\right) \label{eq:survival-prob-ct-2} \\
+&\approx \exp\left(
+-\sum_{i=1}^{n}
+\frac{1}{T}\beta\left(\frac{i}{T}\right)
+\right) \label{eq:survival-prob-ct-3} \\
+&\xrightarrow[T\to\infty]{}
+\exp\left(-\int_0^t \beta(s)\, ds\right), \label{eq:survival-prob-ct-4}
 \end{align}
 $$
-which matches the sequence-level training loss defined previously.
-*/}
+where the last line recognizes a Riemann sum.
+
+This motivates the continuous-time survival schedule
+$$
+\begin{equation}
+\label{eq:alpha-def}
+\alpha_t = \exp\!\left(-\int_0^t \beta(s)\, ds\right).
+\end{equation}
+$$
+We deduce the following properties on $\alpha_t$ from the derivation above:
+- $\alpha_0 = 1$: at time $t=0$, all tokens are unmasked.
+- $\alpha_1 = 0$: at time $t=1$, all tokens are masked.
+- $\alpha_t$ is decreasing in $t$: as the step index increases, the probability of a token remaining unmasked decreases.
+
+Now we want to express the continuous-time limit of denoiser loss @eq:mdm-loss. We define the grid $\tau_n=n/T$, $\Delta t=1/T$, with $\alpha_n=\alpha_{\tau_n}$ and $\tau_{n-1}=\tau_n-\Delta t$.
+
+$$
+\begin{align}
+L_T(\theta)
+&= T\,\mathbb{E}_{\mathbf{x}_0\sim p_{\text{data}}}\;
+\underbrace{\mathbb{E}_{n\sim\mathrm{Unif}\{1,\ldots,T\}}}_{\textstyle =\,\frac{1}{T}\sum_{n=1}^{T}}\;
+\mathbb{E}_{\mathbf{x}_{\tau_n}\sim q(\cdot|\mathbf{x}_0)}
+\left[\sum_{i=1}^{S}\mathbb{I}(x_{\tau_n}^i=m)\left(-\frac{\alpha_{n-1}-\alpha_n}{1-\alpha_n}\,\mathbf{x}_0^{i\top}\log D_{\theta,\tau_n}^i(\mathbf{x}_{\tau_n})\right)\right] \\[1.4em]
+&= \mathbb{E}_{\mathbf{x}_0\sim p_{\text{data}}}\;
+\frac{1}{T}\sum_{n=1}^{T}\;
+\mathbb{E}_{\mathbf{x}_{\tau_n}\sim q(\cdot|\mathbf{x}_0)}
+\left[\sum_{i=1}^{S}\mathbb{I}(x_{\tau_n}^i=m)\;
+\underbrace{T\,\frac{\alpha_{n-1}-\alpha_n}{1-\alpha_n}}_{\textstyle =\,\frac{-\dot{\alpha}_{\tau_n}}{1-\alpha_{\tau_n}}+o(1)}
+\left(-\mathbf{x}_0^{i\top}\log D_{\theta,\tau_n}^i(\mathbf{x}_{\tau_n})\right)\right]
+\end{align}
+$$
+
+As $T\to\infty$ this average is a Riemann sum, $\tfrac{1}{T}\sum_{n=1}^{T} g(\tau_n)\to\int_0^1 g(t)\,dt=\mathbb{E}_{t\sim\mathcal{U}(0,1)}[g(t)]$, and we obtain the continuous-time masked denoiser loss:
+
+$$
+\begin{equation}
+\label{eq:mdm-loss-ct}
+L(\theta) =
+\mathbb{E}_{\substack{
+\mathbf{x}_0 \sim p_{\text{data}} \\
+t \sim \mathcal{U}(0,1) \\
+\mathbf{x}_t \sim q(\cdot|\mathbf{x}_0)
+}}
+\left[
+\sum_{i=1}^{S}
+\mathbb{I}(x_t^i=m)\,
+\frac{-\dot{\alpha}_t}{1-\alpha_t}
+\left(-\mathbf{x}_0^{i\top}\log D_{\theta,t}^i(\mathbf{x}_t)\right)
+\right].
+\end{equation}
+$$
 
 </div>
 </details>
@@ -3583,6 +3621,13 @@ Data Distribution</strong> <strong><a href="https://openreview.net/pdf?id=B1lcYr
   <div class="ref-main">
     14. <strong>Score-Based Generative Modeling through Stochastic Differential Equations</strong> <strong><a href="https://arxiv.org/pdf/2011.13456">[PDF]</a></strong><br />
     Yang Song, Jascha Sohl-Dickstein, Diederik P. Kingma, Abhishek Kumar, Stefano Ermon, Ben Poole. ICLR 2021.
+  </div>
+</div>
+<div class="ref-entry">
+  <span id="ShiMaskedDiffusion"></span>
+  <div class="ref-main">
+    15. <strong>Simplified and Generalized Masked Diffusion for Discrete Data</strong> <strong><a href="https://arxiv.org/pdf/2406.04329">[PDF]</a></strong><br />
+    Jiaxin Shi, Kehang Han, Zhe Wang, Arnaud Doucet, Michalis K. Titsias. NeurIPS 2024.
   </div>
 </div>
 </div>
