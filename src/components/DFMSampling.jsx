@@ -1045,15 +1045,15 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
           </div>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>fast</span>
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>slow</span>
           <input
             type="range"
             min={200} max={2000} step={100}
-            value={speed}
-            onChange={(e) => setSpeed(Number(e.target.value))}
+            value={2200 - speed}
+            onChange={(e) => setSpeed(2200 - Number(e.target.value))}
             style={{ width: 100, accentColor: "#a78bfa" }}
           />
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>slow</span>
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>fast</span>
         </div>
       </div>
 
