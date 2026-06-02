@@ -1,5 +1,5 @@
 ---
-title: 'Discrete Diffusion and Flow Matching'
+title: 'Discrete diffusion and flow matching'
 menu: 'Discrete diffusion and flow matching'
 description: 'On discrete diffusion and flow matching, their core principles, and parallel with continuous versions'
 pubDate: '2026-06-02'
@@ -33,6 +33,18 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
 '/>
 
 <style>{`
+
+  .prose { counter-reset: section; }
+  .prose h3 { counter-reset: subsection; }
+  .prose h3::before {
+    counter-increment: section;
+    content: counter(section) ". ";
+  }
+  .prose h4::before {
+    counter-increment: subsection;
+    content: counter(section) "." counter(subsection) " ";
+  }
+
   a.cite-ref {
     text-decoration: none;
   }
@@ -926,7 +938,7 @@ m & 0 & 0 & 0 & -\tfrac{1}{1-t}
 $$
 
 <details>
-<summary>Proof of Proposition <Ref label="prop:conditional-velocity" /></summary>
+<summary>Proof of proposition <Ref label="prop:conditional-velocity" /></summary>
 <div>
 
 We need to verify that the token-wise velocity defined in @eq:mask-velocity satisfies the token-wise Kolmogorov equation @eq:token-kolmogorov. We start with the left-hand side.
@@ -1031,7 +1043,7 @@ $$
 
 <figure>
   <DFMLiveFigure
-      title="discrete flow matching Live Figure"
+      title="Discrete flow matching live figure"
       height="570px"/>
   <figcaption>
     <strong>Figure <Counter label="fig:dfm-live" />:</strong> Top: evolution of the conditional path $p_t(\cdot | \mathbf{x}_1)$ defined in @eq:mask-path-1, where the vocabulary is restricted to the characters in $\mathbf{x}_1 \cup \{m\}$. In each cell, white indicates probability zero for sampling that token, while a fully colored cell indicates probability one. Bottom: for a given time $t$, five samples $x_t | \mathbf{x}_1$ drawn directly from the conditional probability path @eq:mask-path-1.
@@ -1093,7 +1105,7 @@ $$
 
 We now arrive to the heart of discrete flow matching: building a velocity that transports $p_0$ to $p_1$.
 
-<Statement kind="Theorem" label="fundamental-theorem-discrete-fm" title="Fundamental Theorem of Discrete FM">
+<Statement kind="Theorem" label="fundamental-theorem-discrete-fm" title="Fundamental theorem of discrete FM">
 The probability velocity obtained by taking the conditional expectation of the conditional velocities,
 $$
 \begin{align}
@@ -1538,7 +1550,7 @@ In discrete diffusion, an analogous approach generates sequences by reversing a 
   </figcaption>
 </figure>
 
-#### Forward Process
+#### Forward process
 
 We first consider the forward process: we start from a clean sequence $\mathbf{x_0}$, and we progressively replace each token by the mask token, transforming the sequence into $\mathbf{x_T} = mm...m$.
 Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token in the following.
@@ -1645,7 +1657,7 @@ $$
 
 In summary, the forward process masks each token independently and irreversibly: at time $t$, a token remains unmasked with probability $\alpha_t$, and once it reaches the mask state $m$, it stays masked. The user-defined schedule $\alpha_t$ therefore controls how quickly clean data is transformed into pure mask noise. We now turn to reversing this process, in order to generate data from noise.
 
-#### Reverse Process
+#### Reverse process
 
 Generating data requires a reverse process that progressively unmasks tokens to produce a clean sequence. We first derive the exact reverse transition conditioned on the initial clean token $x_0$.
 
@@ -1849,7 +1861,7 @@ immediately, with equality iff the reverse trajectories perfectly recover the fo
 
 As written, @eq:elbo couples all $T$ steps along a whole trajectory $x_{1:T}$. The following theorem shows that we can simplify this global objective into a sum of local objectives, one for each step.
 
-<Statement kind="Theorem" label="discrete-diffusion-elbo" title="discrete diffusion ELBO">
+<Statement kind="Theorem" label="discrete-diffusion-elbo" title="Discrete diffusion ELBO">
 The ELBO for a discrete diffusion process is given by:
 
 $$
@@ -1977,7 +1989,7 @@ $$
 $$
 The following proposition rewrites the ELBO term entirely in terms of this denoiser.
 
-<Statement kind="Proposition" label="masked-diffusion-training-loss" title="Masked Diffusion training loss">
+<Statement kind="Proposition" label="masked-diffusion-training-loss" title="Masked diffusion training loss">
 In the specific case of Masked Diffusion, we can express the loss in terms of the denoiser output $D_{\theta,t}(\mathbf{x}_t) = (D_{\theta,t}^1(\mathbf{x}_t), \ldots, D_{\theta,t}^S(\mathbf{x}_t)) \in \Delta_{|\mathcal{V}|}^S$, where $t \sim \mathrm{Unif}\{1,\ldots,T\}$:
 
 $$
@@ -2070,7 +2082,7 @@ $$
 </details>
 
 <details>
-<summary>To go further: Continuous Time Limit</summary>
+<summary>To go further: continuous time limit</summary>
 <div>
 
 A drawback of the discrete-time construction presented in this section is that the loss @eq:mdm-loss only evaluates the denoiser $D_{\theta,t}$ at the $T$ grid times $t\in\{1,\ldots,T\}$, so it learns to undo the noise at the levels $\alpha_1,\ldots,\alpha_T$ and no others. Refining the schedule $\alpha_t$ at sampling time places new levels between the trained ones, where the denoiser must be evaluated at a noise level it never saw. Avoiding this mismatch ties us to the fixed grid $\alpha_1,\ldots,\alpha_T$. To remove this constraint, [<a class="cite-ref" href="#ref-3">3</a>] introduced the continuous-time limit of these models (later simplified for masked diffusion by [<a class="cite-ref" href="#ShiMaskedDiffusion">15</a>]): training over $t\sim\mathcal{U}(0,1)$ exposes the denoiser to every level, so the number of steps and the schedule become choices made after training rather than before.
@@ -2282,7 +2294,7 @@ We follow the same path in discrete space. Since there is no SDE here, we work w
   </figcaption>
 </figure>
 
-#### Forward Process
+#### Forward process
 
 In continuous-space score-based diffusion, we model the forward process as the solution of the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, where we fix the drift $f_t$ and the diffusion coefficient $g_t$, and $W_t$ is a Wiener process. We follow a similar approach in discrete space: we model the forward process as a continuous-time Markov chain (CTMC), which can be written locally as
 
@@ -2506,7 +2518,7 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 </figure>
 */}
 
-#### Reverse Process
+#### Reverse process
 
 In the previous section, we have described the forward process of score-based discrete diffusion models. To generate new data samples, we need to reverse the forward process.
 In continuous-space Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In discrete space, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
@@ -2601,7 +2613,7 @@ where $\odot$ denotes the elementwise product. The forward rate $\dot{Q}_t$ is k
 
 #### Training
 
-It remains to design a tractable training loss for the concrete score. As in continuous-space Diffusion, where denoising score matching exploits that the marginal score is a conditional expectation of the (tractable) conditional score: $\nabla \log p_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}[\nabla \log p_t(x_t | x_0)]$, the same identity holds here. Defining the (tractable) conditional concrete score $s_t(x_t | x_0)_y \;:=\; p_t(y | x_0)/p_t(x_t | x_0)$, we have for $y \neq x_t$:
+It remains to design a tractable training loss for the concrete score. As in continuous-space Diffusion, where denoising score matching exploits that the marginal score is a conditional expectation of the (tractable) conditional score: $\nabla \log p_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}[\nabla \log p_t(x_t | x_0)]$, the same identity holds here. Defining the (tractable) conditional concrete score $s_t(x_t | x_0)_y \;:=\; p_t(y | x_0)/p_t(x_t | x_0)$, we have for $y \neq x_t$ <a href="#dfm-note-3" class="dfm-note-ref">3</a>:
 
 $$
 \begin{align}
@@ -2612,7 +2624,6 @@ s_t(x_t)_y \;=\; \frac{p_t(y)}{p_t(x_t)}
 &\;=\; \mathbb{E}_{x_0 \sim q(\cdot|x_t)}\!\left[\,s_t(x_t|x_0)_y\,\right] \label{eq:concrete-score-cond-exp-3}
 \end{align}
 $$
-<a href="#dfm-note-3" class="dfm-note-ref">3</a>
 
 This gives the characterization:<a href="#dfm-note-4" class="dfm-note-ref">4</a>
 
@@ -2745,12 +2756,12 @@ where $C$ is a constant independent of $\theta$.
 
 
 
-### Equivalence Between Viewpoints
+### Equivalence between viewpoints
 
 In the previous sections, we introduced three different approaches to build a transport between a initial distribution and a final discrete distribution, namely [discrete flow matching](#discrete-flow-matching), the [variational discrete diffusion](#variational-discrete-diffusion) and [score-based discrete diffusion](#score-based-discrete-diffusion).
 We now illustrate the links between them and show they are indeed equivalent. We start by showing that [variational discrete diffusion](#equivalence-between-the-two-discrete-diffusion-perspectives)  is equivalent to [score-based discrete diffusion](#equivalence-with-score-based-discrete-diffusion), and then [discrete flow matching](#equivalence-with-discrete-flow-matching) to the other two.
 
-#### Equivalence Between the Two discrete diffusion Perspectives
+#### Equivalence between the two discrete diffusion perspectives
 
 Discrete diffusion models can be framed from two different perspectives: variational inference and score matching. These two viewpoints, while appearing different, are in fact equivalent. We now demonstrate this equivalence, by first showing they use their sampling schemes are the same, and then that their training objectives are equivalent.
 
@@ -2876,8 +2887,8 @@ which identifies the conditional reverse rate as $\dot{R}_t(x_t | x_0) = r_t\, \
 </div>
 </details>
 
-<Statement kind="Proposition" label="continuous-time-elbo" title="Variational and Score-based Diffusion loss equivalence">
-In the continuous-time limit, optimizing the variational ELBO @eq:discrete-elbo-1 is equivalent to minimizing the loss
+<Statement kind="Proposition" label="continuous-time-elbo" title="Variational and score-based diffusion loss equivalence">
+In the continuous-time limit, optimizing the variational ELBO @eq:discrete-elbo-1 is equivalent to minimizing the loss: <a href="#dfm-note-5" class="dfm-note-ref">5</a>
 
 $$
 \begin{equation}
@@ -2886,7 +2897,6 @@ L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_{\text{data}} \\ x_t \sim q( \cdo
 \end{equation}
 $$
 
-<a href="#dfm-note-5" class="dfm-note-ref">5</a>
 </Statement>
 
 <details>
@@ -3042,7 +3052,7 @@ This is exactly the loss @eq:score-loss-prop of the concrete score matching prop
 </details>
 
 {/*
-#### Complement: Equivalence Between Masked Diffusion Models and Any-Order Autoregressive Models
+#### Complement: equivalence between masked diffusion models and any-order autoregressive models
 
 An any-order autoregressive model (AO-ARM) is an autoregressive model trained to factorize the joint distribution under *every* possible token ordering $\pi$, not just the left-to-right one. Its training objective minimizes the expected negative log-likelihood over the uniform distribution $\mathcal{U}_\pi$ of all $S!$ orderings:
 $$
@@ -3055,7 +3065,7 @@ where $x_0^{\pi(<i)} = (x_0^{\pi(1)}, \ldots, x_0^{\pi(i-1)})$ denotes the token
 
 The following proposition shows that the MDM training objective is equivalent to the AO-ARM objective.
 
-<Statement kind="Proposition" label="mdm-ao-arm-equivalence" title="MDM and AO-ARM Equivalence">
+<Statement kind="Proposition" label="mdm-ao-arm-equivalence" title="MDM and AO-ARM equivalence">
 Let $\mathcal{L}_{\text{MDM}}(\theta)$ denote the Masked Diffusion training loss with linear schedule $\alpha_t = 1 - t$ and uniform time sampling $t \sim \mathcal{U}(0,1)$:
 $$
 \begin{align}
@@ -3261,13 +3271,13 @@ To directly compare the two training losses, we first note that the two denoiser
 $$
 \begin{align}
 D_{\theta,t_{\text{DD}}}^i(\mathbf{x})_{x_0^i}
-&= P_{\theta,t_{\text{DD}}}(X_0^i=x_0^i | X_{t_{\text{DD}}}=\mathbf{x}) \notag \\
-&= P_{\theta,t_{\text{FM}}}(X_1^i=x_1^i | X_{t_{\text{FM}}}=\mathbf{x}). \label{eq:denoiser-time-identification}
+&= P_{\theta,t_{\text{DD}}}(X_0^i=x_0^i | X_{t_{\text{DD}}}=\mathbf{x}) \label{eq:denoiser-time-identification-1} \\
+&= P_{\theta,t_{\text{FM}}}(X_1^i=x_1^i | X_{t_{\text{FM}}}=\mathbf{x}). \label{eq:denoiser-time-identification-2}
 \end{align}
 $$
 
-<Statement kind="Proposition" label="masked-mdm-cdm-loss-equivalence" title="Masked Diffusion/CDM loss equivalence">
-Under the time reversal $t_{\text{FM}}=1-t_{\text{DD}}$ and the denoiser identification @eq:denoiser-time-identification, the Masked Diffusion training loss $L_{\text{MDM}}(t)$ from @eq:mdm-loss is directly comparable to the denoising loss $L_{\text{CDM}}(t)$ from @eq:cdm-loss. At fixed flow-matching time $t$:
+<Statement kind="Proposition" label="masked-mdm-cdm-loss-equivalence" title="Masked diffusion/CDM loss equivalence">
+Under the time reversal $t_{\text{FM}}=1-t_{\text{DD}}$ and the denoiser identification @eq:denoiser-time-identification-1, the Masked Diffusion training loss $L_{\text{MDM}}(t)$ from @eq:mdm-loss is directly comparable to the denoising loss $L_{\text{CDM}}(t)$ from @eq:cdm-loss. At fixed flow-matching time $t$:
 
 $$
 \begin{equation}
@@ -3348,7 +3358,7 @@ Both expressions share the same conditional expectation. Eliminating it yields @
 
 **Disclaimer** In general, the objectives @eq:cdfm-2 (or equivalently @eq:ratio-loss recalling @eq:time-reversal) and @eq:cdm-loss are not equivalent for arbitrary source distributions or paths.
 
-### To go further: Planners in masked flow-matching sampling
+### To go further: planners in masked flow-matching sampling
 
 #### Sampling with a planner
 
@@ -3516,7 +3526,7 @@ The figure below illustrates the sampling with a planner.
 </figcaption>
 </figure>
 
-#### Exposure Bias
+#### Exposure bias
 
 Introducing a planner-aware sampling process creates a mismatch between training and inference. During training, the standard objective masks tokens uniformly at random across all positions and orderings. During inference, the planner reveals tokens along a specific, confidence-guided trajectory.
 
