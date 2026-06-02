@@ -2232,7 +2232,9 @@ $$
 where $\sigma(t) > 0$ is the instantaneous masking rate. Thus, each unmasked token jumps to $m$ at rate $\sigma(t)$, while the mask state is absorbing (i.e it never comes back again to a clean token).
 
 
-For Gaussian diffusion in continuous spaces, we can sample intermediate points $x_t$ from the forward process in a simulation-free manner by directly sampling from the closed-form expression $q(x_t | x_0) = \mathcal{N}\!\left(x_t;\ \sqrt{\alpha_t}\,x_0,\ (1-\alpha_t)I\right)$, where $\alpha_t = \exp\!\left(-\int_0^t \beta(s)\,ds\right)$ is the cumulative noise schedule. Similarly, we can define $\bar{Q}_{t|0}$ the transition matrix from time $0$ to time $t$, so that $q(x_t | x_0)=\mathrm{Cat}(x_t;\ \bar{Q}_{t|0}^\top x_0)$. We denote $\alpha_t = \exp\!\left(-\int_0^t \sigma(s)\,ds\right)$ the cumulative masking schedule, then $\bar{Q}_{t|0}$ takes the following closed form:
+In continuous-space diffusion, one strength is that we can directly sample points $x_t$ at any time in the forward process using the closed-form expression $q(x_t | x_0) = \mathcal{N}\!\left(x_t;\ \sqrt{\alpha_t}\,x_0,\ (1-\alpha_t)I\right)$, where $\alpha_t = \exp\!\left(-\int_0^t \beta(s)\,ds\right)$ is the cumulative noise schedule.
+The same thing is possible in discrete space, by defining the transition matrix from time $0$ to time $t$  $\bar{Q}_{t|0}$, such that $q(x_t | x_0)=\mathrm{Cat}(x_t;\ \bar{Q}_{t|0}^\top x_0)$.
+Denoting $\alpha_t = \exp\!\left(-\int_0^t \sigma(s)\,ds\right)$ the *cumulative masking schedule*, we have that $\bar{Q}_{t|0}$ takes the following form:
 
 $$
 \begin{align}
@@ -2422,7 +2424,7 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 
 
 
-In the previous section, we have described the forward process of score-based discrete diffusion models. To generate new data samples, we need to reverse the forward process. 
+In the previous section, we have described the forward process of score-based discrete diffusion models. To generate new data samples, we need to reverse the forward process.
 In Continuous space Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In discrete space, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
 
 <Statement kind="Proposition" label="reverse-rate" title="Reverse rate $\dot{R}_t$">
