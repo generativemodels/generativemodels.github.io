@@ -428,9 +428,9 @@ Their strong generation performance, training stability and flexibility motivate
 This blog post is a __pedagogical introduction__ to the adaptation of flow matching and diffusion models for discrete data.
 
 
-Several frameworks emerged recently to tackle this challenge. We first introduce in [section 2](#discrete-flow-matching), discrete flow matching, which extends the flow matching framework to discrete spaces. 
+Several frameworks emerged recently to tackle this challenge. We first introduce in [section 2](#discrete-flow-matching), discrete flow matching [<a class="cite-ref" href="#ref-5">5</a>, <a class="cite-ref" href="#ref-6">6</a>], which extends the flow matching framework to discrete spaces.
 
-As continuous space diffusion models have been developed into two major branches, namely the variational [<a class="cite-ref" href="#NonequilibriumThermodynamics">12</a>, <a class="cite-ref" href="#DDPM">13</a>] and the score-based ones [<a class="cite-ref" href="#GenerativeScore">11</a>, <a class="cite-ref" href="#SDEDiffusion">14</a>], we present discrete diffusion models through these two formalisms.   In [section 3](#variational-discrete-diffusion), we show how the variational perspective leverage discrete-time transitions and variational principles to frame data generation. In [section 4](#score-based-discrete-diffusion), we focus on continuous-time transitions and score-based methods for discrete data. 
+As continuous space diffusion models have been developed into two major branches, namely the variational [<a class="cite-ref" href="#NonequilibriumThermodynamics">12</a>, <a class="cite-ref" href="#DDPM">13</a>] and the score-based ones [<a class="cite-ref" href="#GenerativeScore">11</a>, <a class="cite-ref" href="#SDEDiffusion">14</a>], we present discrete diffusion models through these two formalisms.   In [section 3](#variational-discrete-diffusion), we show how the variational perspective leverage discrete-time transitions and variational principles to frame data generation. In [section 4](#score-based-discrete-diffusion), we focus on continuous-time transitions and score-based methods for discrete data.
 
 Finally, in [section 5](#equivalence-between-viewpoints), we show how these seemingly different viewpoints are in fact equivalent from both the training and sampling perspectives.
 
@@ -1873,6 +1873,8 @@ immediately, with equality iff the reverse trajectories perfectly recover the fo
 </details>
 */}
 
+As written, @eq:elbo couples all $T$ steps along a whole trajectory $x_{1:T}$. The following theorem shows that we can simplify this global objective into a sum of local objectives, one for each step.
+
 <Statement kind="Theorem" label="discrete-diffusion-elbo" title="Discrete Diffusion ELBO">
 The ELBO for a Discrete Diffusion process is given by:
 
@@ -1985,7 +1987,11 @@ where the first KL term is a constant independent of $\theta$, since $p_\theta(x
 The sum of KL terms corresponds to a forward trajectory where $x_0, x_1, \ldots, x_T$ is sampled from the noising process, and at each step the learned reverse transition $p_\theta(x_{t-1} | x_t)$ is trained to match the reverse transition conditioned on the initial clean token $x_0$: $q(x_{t-1} | x_t, x_0)$.
 Using this ELBO for training therefore requires learning the one-step reverse transitions $p_\theta(x_{t-1} | x_t)$.
 
-However, because these transitions are complicated to parameterize directly, we use @eq:bridge-denoiser-1 to rewrite these transitions in terms of the denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$. Since this denoiser is also intractable, we approximate it by a learned denoiser $D_{\theta,t}(x_t) \in \Delta_{|\mathcal{V}|}$.<a href="#dfm-note-6" class="dfm-note-ref">6</a><a href="#dfm-note-8" class="dfm-note-ref">8</a>
+The one-step transitions $p_\theta(x_{t-1} | x_t)$ can be parameterized directly with a neural network, but this is inefficient.
+Indeed, most of the reverse step is already known. From @eq:bridge-mask, an unmasked token stays as it is and a masked token can only jump to $x_0$, so a token changes at most once along the trajectory. The only information not already determined is which clean token to jump to.
+Therefore, outputting the full reverse step at every $t$ would relearn this fixed structure repeatedly, which is redundant.
+Instead, the discrete diffusion models of [<a class="cite-ref" href="#ref-1">1</a>, <a class="cite-ref" href="#ref-2">2</a>] follow the key innovation of DDPM [<a class="cite-ref" href="#DDPM">13</a>]: predict the clean signal $x_0$ and rebuild the reverse step using $q(x_{t-1} | x_t, x_0)$, as in @eq:denoiser-bridge-proof-1, which combines this term with the denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$ to weight each possible clean token.
+Since this denoiser is itself intractable, we approximate it by a learned denoiser $D_{\theta,t}(x_t) \in \Delta_{|\mathcal{V}|}$.<a href="#dfm-note-6" class="dfm-note-ref">6</a><a href="#dfm-note-8" class="dfm-note-ref">8</a>.
 This definition naturally extends to each position $i$ if we consider sequences: $[D_{\theta,t}^i(\mathbf{x}_t)]_v \approx \mathbb{P}(X_0^i = v | \mathbf{X}_t = \mathbf{x}_t)$.
 
 Equivalently, the learned reverse transition is obtained by replacing the denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$ in @eq:bridge-denoiser-1 with the learned one $D_{\theta,t}$:
