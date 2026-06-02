@@ -40,7 +40,7 @@ body {
 	word-wrap: break-word;
 	overflow-wrap: break-word;
 	color: rgb(var(--gray-dark));
-	font-size: 20px;
+	font-size: 19px;
 	line-height: 1.7;
 }
 main {
@@ -315,6 +315,24 @@ figure {
 			padding: 0.2em;
 			padding-top: 0.5em;
 			border-radius: 0.25em;
+		}
+		.glossary-section {
+			margin: 0.9em 0 0.4em;
+			padding-bottom: 0.15em;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			font-size: 1.05em;
+			color: var(--accent);
+			border-bottom: 2px solid var(--accent);
+		}
+		.glossary-section:first-of-type {
+			margin-top: 0;
+		}
+		p em {
+			display: block;
+			margin-bottom: 0.4em;
+			opacity: 0.85;
 		}
 		li {
 			margin-bottom: .5em;
