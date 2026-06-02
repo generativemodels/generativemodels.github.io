@@ -396,17 +396,26 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
 <div class="glossary-content">
 <label><input type="checkbox" id="cb-glossary" checked /> Glossary (keep visible)</label>
 
+<p class="glossary-section">Common</p>
+
 - **$\mathcal{V}$** vocabulary set; $|\mathcal{V}|$ is the vocabulary size
 - **$\mathcal{S} = \mathcal{V}^S$** space of all possible sequences of length $S$ over the vocabulary
 - **$\mathbf{x} = x^1 \dots x^S$** sequence of $S$ tokens, where each token $x^i$ takes values in $\mathcal{V}$
 - **$\mathbf{e}_v$** one-hot vector in $\mathbb{R}^{|\mathcal{V}|}$ for token $v \in \mathcal{V}$
 - **$m$** mask token
 - **$\mathbf{x}^{\neq i}$** sub-sequence of $\mathbf{x}$ at all positions except $i$
+- **$\Delta_k$** for $k \in \mathbb{N}$, $\Delta_k=\{\pi\in\mathbb{R}_+^k:\sum_{\ell=1}^{k}\pi_\ell=1\}$ is the probability simplex
+- **$\text{Cat}$** categorical distribution: $x \sim \text{Cat}(\mathbf{p})$ means $\mathbb{P}(x = v) = \mathbf{p}_v$, for a probability vector $\mathbf{p} \in \Delta_{|\mathcal{V}|}$
+- **$p_{\text{mask}}$** mask distribution: $p_{\text{mask}}(v) = \mathbb{I}(v = m)$
+- **$p_{\text{unif}}$** uniform distribution: $p_{\text{unif}}(v) = \frac{1}{|\mathcal{V}|}$
+- **$p_t$** marginal distribution at time $t$; the probability path interpolating between the source and target distributions (which endpoint is which depends on the convention, see below)
+
+<p class="glossary-section">Discrete Flow Matching</p>
+
+*Convention: $t=0$: noisy data; $t=1$: clean data.*
+
 - **$p_0$** source distribution (mask or uniform)
-- **$p_{\text{mask}}$** mask source distribution: $p_{\text{mask}}(v) = \mathbb{I}(v = m)$
-- **$p_{\text{unif}}$** uniform source distribution: $p_{\text{unif}}(v) = \frac{1}{|\mathcal{V}|}$
-- **$p_1$** target distribution
-- **$p_t$** marginal distribution at time $t \in [0,1];$ the probability path representing the trajectory that transports $p_0$ to $p_1$
+- **$p_1$** target (data) distribution
 - **$\mathbf{z}$** conditioning variable, of law $\pi(\mathbf{z})$
 - **$p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | z^j)$** factorized conditional probability path given the conditioning variable $\mathbf{z}$
 - **$q_t(x | z)$** token-wise conditional distribution given $\mathbf{z}$
@@ -417,7 +426,18 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
 {/* it relates to the marginal velocity via expectation, formulated as $u_t(\mathbf{x})_{\mathbf{y}} = \mathbb{E}_{\substack{\mathbf{z}}}[u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} | X_t = \mathbf{x}] $ */}
 {/* - **$u_t(x | x_0, x_1)$** source-target token-wise conditional velocity: $u_t(x | x_0, x_1)_v = \frac{\dot{\kappa}_t}{1 - \kappa_t} \left( \mathbb{I}(v = x_1) - \mathbb{I}(v = x) \right)$ */}
 - **$u_{\theta,t}^i(\mathbf{x})_v$** learned velocity field parameterized by $\theta$
-- **$P_{\theta,t}(X_1^i | \mathbf{x}_t)$** learned denoiser: at coordinate j, probability that the $i$-th token at time 1 is $\mathbf{e}_j$, given current sequence $\mathbf{x}_t$
+- **$P_{\theta,t}(X_1^i | \mathbf{x}_t)$** learned denoiser: at coordinate $j$, probability that the $i$-th token at time $1$ is $\mathbf{e}_j$, given current sequence $\mathbf{x}_t$
+
+<p class="glossary-section">Discrete Diffusion</p>
+
+*Convention: $t=0$: clean data; $t=1$: noisy data.*
+
+- **$p_0 = p_{\text{data}}$** clean data (target) distribution; the forward process corrupts it toward the mask/noise distribution at the final time
+- **$\beta_t$** noise schedule: probability that a token is corrupted (masked) at step $t$
+- **$\alpha_t = \prod_{i=1}^t (1 - \beta_i)$** cumulative schedule, equal to the probability that a token is still clean (has survived) at step $t$
+- **$D_{\theta,t}(\mathbf{x}_t) \in \Delta_{|\mathcal{V}|}$** learned denoiser: predicts the distribution over the clean token $\mathbf{x}_0$ given the noisy sequence $\mathbf{x}_t$
+- **$\dot{Q}_t$** forward rate matrix (generator of the continuous-time forward process)
+- **$\dot{R}_{\theta,t}$** learned reverse rate matrix (generator of the continuous-time reverse process)
 
 <label for="cb-glossary">Hide Glossary</label>
 </div>
@@ -437,7 +457,7 @@ Several related frameworks emerged recently to tackle discrete data:
 These sections can be read independently and the already familiar can directly jump to one of them.
 We start with a gentle introduction to discrete data generation, that paves the ground for the remaining of the post.
 
-### 1. Generating discrete data
+### Generating discrete data
 
 Like their continuous analogs, discrete flow matching and discrete diffusion aim at mapping a simple *source* probability distribution to a complex *target* distribution (the one of the data we want to generate).
 To do so, they create a sequence of intermediate probability distributions $(p_t)_{t}$ that progressively evolve from source to target distribution.
@@ -465,7 +485,7 @@ The model then iteratively fills this grid, step-by-step, finally reaching a sam
 
 We first introduce discrete flow matching; the reader already familiar with this technique can jump directly to the [discrete diffusion section](#variational-discrete-diffusion).
 
-### discrete flow matching
+### Discrete flow matching
 
 #### Setup: probability velocities
 
@@ -636,12 +656,22 @@ where $\mathbf{x}^{\neq i} \in \mathcal{V}^{S-1}$ denotes the sequence except $\
 <details>
 <summary>Proof</summary>
 <div>
-By definition, the transition probability for a single token at position $i$ is:
+We first formally define the token-wise velocity $u_t^i$:
 $$
-\begin{equation}
+\begin{align}
+\mathbb{P}(X_{t+h}^i = y^i | X_t = \mathbf{x})
+&= \sum_{\mathbf{z} \in \mathcal{S}}
+\mathbb{P}(X_{t+h} = \mathbf{z} | X_t = \mathbf{x})
+\mathbb{I}(z^i = y^i) \\
+&= \sum_{\mathbf{z} \in \mathcal{S}}
+\left[\mathbb{I}(\mathbf{x} = \mathbf{z}) + h u_t(\mathbf{x})_{\mathbf{z}} + o(h)\right]
+\mathbb{I}(z^i = y^i) \\
+&= \mathbb{I}(x^i = y^i)
++ h \underbrace{\sum_{\mathbf{z} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{z}}\mathbb{I}(z^i = y^i)}_{=: u_t^i(\mathbf{x})_{y^i}}
++ o(h) \\
+&= \mathbb{I}(x^i = y^i) + h u_t^i(\mathbf{x})_{y^i} + o(h).
 \label{eq:token-transition}
-\mathbb{P}(X_{t+h}^i = y^i | X_t = \mathbf{x}) = \mathbb{I}(y^i = x^i) + h u_t^i(\mathbf{x})_{y^i} + o(h)
-\end{equation}
+\end{align}
 $$
 
 Substituting this into our factorized joint probability, we get:
@@ -1492,7 +1522,7 @@ $$
 
 ### Variational discrete diffusion
 
-continuous-space Diffusion models learn to generate data, e. g. images, by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
+Continuous-space Diffusion models learn to generate data, e. g. images, by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
 In discrete diffusion, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
 
 <figure>
@@ -1524,7 +1554,7 @@ x_t = \sqrt{1 - \beta_t}\, x_{t-1} + \sqrt{\beta_t}\,\varepsilon, \qquad \vareps
 \end{equation}
 $$
 
-where $\beta_t \in [0,1]$ controls the amount of noise injected at step $t$.
+where $\beta_t \in [0,1]$ controls the amount of noise injected at step $t \in \{1,\ldots,T\}$.
 In discrete space diffusion, the forward corruption takes a simpler binary form: at each step, a token either survives unchanged with probability $1 - \beta_t$, or is irreversibly replaced by the mask token $m$ with probability $\beta_t$:
 
 $$
@@ -1573,7 +1603,7 @@ $$
 <summary>Proof</summary>
 <div>
 
-By the Markov property $q(x_t | x_s, x_0) = q(x_t | x_s)$, the marginal $q(x_t | x_0)$<a href="#dfm-note-7" class="dfm-note-ref">7</a> factorizes through any intermediate step $s$:
+By the Markov property $q(x_t | x_s, x_0) = q(x_t | x_s)$, the marginal $q(x_t | x_0)$<a href="#dfm-note-6" class="dfm-note-ref">6</a> factorizes through any intermediate step $s$:
 
 $$
 \begin{equation}
@@ -1620,7 +1650,7 @@ In summary, the forward process masks each token independently and irreversibly:
 Generating data requires a reverse process that progressively unmasks tokens to produce a clean sequence. We first derive the exact reverse transition conditioned on the initial clean token $x_0$.
 
 <Statement kind="Lemma" label="masked-diffusion-bridge" title="Conditional reverse transitions $q(x_s | x_t,x_0)$">
-For Masked Diffusion, $x_t = m$ and $s<t$, we have:<a href="#dfm-note-7" class="dfm-note-ref">7</a>
+For Masked Diffusion, $x_t = m$ and $s<t$, we have:<a href="#dfm-note-6" class="dfm-note-ref">6</a>
 $$
 \begin{equation}
 \label{eq:bridge-mask}
@@ -1935,7 +1965,7 @@ The one-step transitions $p_\theta(x_{t-1} | x_t)$ can be parameterized directly
 Indeed, most of the reverse step is already known. From @eq:bridge-mask, an unmasked token stays as it is and a masked token can only jump to $x_0$, so a token changes at most once along the trajectory. The only information not already determined is which clean token to jump to.
 Therefore, outputting the full reverse step at every $t$ would relearn this fixed structure repeatedly, which is redundant.
 Instead, the discrete diffusion models of [<a class="cite-ref" href="#ref-1">1</a>, <a class="cite-ref" href="#ref-2">2</a>] follow the key innovation of DDPM [<a class="cite-ref" href="#DDPM">13</a>]: predict the clean signal $x_0$ and rebuild the reverse step using $q(x_{t-1} | x_t, x_0)$, as in @eq:denoiser-bridge-proof-1, which combines this term with the denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$ to weight each possible clean token.
-Since this denoiser is itself intractable, we approximate it by a learned denoiser $D_{\theta,t}(x_t) \in \Delta_{|\mathcal{V}|}$.<a href="#dfm-note-6" class="dfm-note-ref">6</a><a href="#dfm-note-8" class="dfm-note-ref">8</a>.
+Since this denoiser is itself intractable, we approximate it by a learned denoiser $D_{\theta,t}(x_t) \in \Delta_{|\mathcal{V}|}$.<a href="#dfm-note-7" class="dfm-note-ref">7</a>.
 This definition naturally extends to each position $i$ if we consider sequences: $[D_{\theta,t}^i(\mathbf{x}_t)]_v \approx \mathbb{P}(X_0^i = v | \mathbf{X}_t = \mathbf{x}_t)$.
 
 Equivalently, the learned reverse transition is obtained by replacing the denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$ in @eq:bridge-denoiser-1 with the learned one $D_{\theta,t}$:
@@ -2043,7 +2073,7 @@ $$
 <summary>To go further: Continuous Time Limit</summary>
 <div>
 
-A drawback of the discrete-time construction presented in this section is that the loss @eq:mdm-loss only evaluates the denoiser $D_{\theta,t}$ at the $T$ grid times $t\in\{1,\ldots,T\}$, so it learns to undo the noise at the levels $\alpha_1,\ldots,\alpha_T$ and no others. Refining the schedule $\alpha_t$ at sampling time places new levels between the trained ones, where the denoiser must be evaluated at a noise level it never saw. Avoiding this mismatch ties us to the fixed grid $\alpha_1,\ldots,\alpha_T$. To remove this constraint, [<a class="cite-ref" href="#ref-3">3</a>] introduced the continuous-time limit of these models (later simplified for masked diffusion by [<a class="cite-ref" href="#ref-15">15</a>]): training over $t\sim\mathcal{U}(0,1)$ exposes the denoiser to every level, so the number of steps and the schedule become choices made after training rather than before.
+A drawback of the discrete-time construction presented in this section is that the loss @eq:mdm-loss only evaluates the denoiser $D_{\theta,t}$ at the $T$ grid times $t\in\{1,\ldots,T\}$, so it learns to undo the noise at the levels $\alpha_1,\ldots,\alpha_T$ and no others. Refining the schedule $\alpha_t$ at sampling time places new levels between the trained ones, where the denoiser must be evaluated at a noise level it never saw. Avoiding this mismatch ties us to the fixed grid $\alpha_1,\ldots,\alpha_T$. To remove this constraint, [<a class="cite-ref" href="#ref-3">3</a>] introduced the continuous-time limit of these models (later simplified for masked diffusion by [<a class="cite-ref" href="#ShiMaskedDiffusion">15</a>]): training over $t\sim\mathcal{U}(0,1)$ exposes the denoiser to every level, so the number of steps and the schedule become choices made after training rather than before.
 
 In order to provide a continuous-time version of the loss @eq:mdm-loss, we first need define a continuous-time analogue of the survival schedule $\alpha_t$ @eq:survival-prob-4, and give an intuition for its form.
 
@@ -2087,21 +2117,21 @@ We deduce the following properties on $\alpha_t$ from the derivation above:
 - $\alpha_1 = 0$: at time $t=1$, all tokens are masked.
 - $\alpha_t$ is decreasing in $t$: as the step index increases, the probability of a token remaining unmasked decreases.
 
-Now we want to express the continuous-time limit of denoiser loss @eq:mdm-loss. We define the grid $\tau_n=n/T$, $\Delta t=1/T$, with $\alpha_n=\alpha_{\tau_n}$ and $\tau_{n-1}=\tau_n-\Delta t$.
+Now we want to express the continuous-time limit of denoiser loss @eq:mdm-loss. We normalize the timsteps in [0,1] and therefore define the grid $\tau_n=n/T$, $\Delta t=1/T$, with $\alpha_n=\alpha_{\tau_n}$ and $\tau_{n-1}=\tau_n-\Delta t$.
 
 $$
 \begin{align}
 L_T(\theta)
 &= T\,\mathbb{E}_{\mathbf{x}_0\sim p_{\text{data}}}\;
 \underbrace{\mathbb{E}_{n\sim\mathrm{Unif}\{1,\ldots,T\}}}_{\textstyle =\,\frac{1}{T}\sum_{n=1}^{T}}\;
-\mathbb{E}_{\mathbf{x}_{\tau_n}\sim q(\cdot|\mathbf{x}_0)}
-\left[\sum_{i=1}^{S}\mathbb{I}(x_{\tau_n}^i=m)\left(-\frac{\alpha_{n-1}-\alpha_n}{1-\alpha_n}\,\mathbf{x}_0^{i\top}\log D_{\theta,\tau_n}^i(\mathbf{x}_{\tau_n})\right)\right] \\[1.4em]
+\mathbb{E}_{\mathbf{x}_{\tau_n}\sim q(\cdot|\mathbf{x}_0)} \\
+&\quad \left[\sum_{i=1}^{S}\mathbb{I}(x_{\tau_n}^i=m)\left(-\frac{\alpha_{n-1}-\alpha_n}{1-\alpha_n}\,\mathbf{x}_0^{i\top}\log D_{\theta,\tau_n}^i(\mathbf{x}_{\tau_n})\right)\right] \notag \\[1.4em]
 &= \mathbb{E}_{\mathbf{x}_0\sim p_{\text{data}}}\;
 \frac{1}{T}\sum_{n=1}^{T}\;
-\mathbb{E}_{\mathbf{x}_{\tau_n}\sim q(\cdot|\mathbf{x}_0)}
-\left[\sum_{i=1}^{S}\mathbb{I}(x_{\tau_n}^i=m)\;
+\mathbb{E}_{\mathbf{x}_{\tau_n}\sim q(\cdot|\mathbf{x}_0)} \\
+&\quad \left[\sum_{i=1}^{S}\mathbb{I}(x_{\tau_n}^i=m)\;
 \underbrace{T\,\frac{\alpha_{n-1}-\alpha_n}{1-\alpha_n}}_{\textstyle =\,\frac{-\dot{\alpha}_{\tau_n}}{1-\alpha_{\tau_n}}+o(1)}
-\left(-\mathbf{x}_0^{i\top}\log D_{\theta,\tau_n}^i(\mathbf{x}_{\tau_n})\right)\right]
+\left(-\mathbf{x}_0^{i\top}\log D_{\theta,\tau_n}^i(\mathbf{x}_{\tau_n})\right)\right] \notag
 \end{align}
 $$
 
@@ -3330,7 +3360,7 @@ We can parallelize the sampling of all tokens at each step, so the number of for
 To make generation tractable, the standard approach used for large Masked Diffusion models is **planner-guided sampling**. Instead of relying on infinitesimal continuous-time steps, we fix the total generation steps $N$ and directly use the denoiser to reveal tokens at each step.
 
 <Statement kind="Definition" label="planner" title="Planner $G_\phi$">
-A planner $G_\phi$ maps a candidate sequence $\mathbf{z}$ sampled from the denoiser and the current partially masked sequence $\mathbf{x}_k$ to a distribution over positions to reveal. At step $k$, with $\mathcal{M}_k = \{i : x_k^i = m\}$, we write:<a href="#dfm-note-6" class="dfm-note-ref">6</a>
+A planner $G_\phi$ maps a candidate sequence $\mathbf{z}$ sampled from the denoiser and the current partially masked sequence $\mathbf{x}_k$ to a distribution over positions to reveal. At step $k$, with $\mathcal{M}_k = \{i : x_k^i = m\}$, we write:
 $$
 \begin{equation}
 \label{eq:planner-definition}
@@ -3532,7 +3562,7 @@ Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weigh
 <div class="ref-entry">
   <span id="ref-4"></span>
   <div class="ref-main">
-    4. <strong>discrete diffusion Modeling by Estimating the Ratios of the Data Distribution</strong> <strong><a href="https://arxiv.org/pdf/2310.16834">[PDF]</a></strong><br />
+    4. <strong>Discrete Diffusion Modeling by Estimating the Ratios of the Data Distribution</strong> <strong><a href="https://arxiv.org/pdf/2310.16834">[PDF]</a></strong><br />
     Aaron Lou, Chenlin Meng, Stefano Ermon. ICML 2024.
   </div>
 </div>
@@ -3548,7 +3578,7 @@ Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weigh
 <div class="ref-entry">
   <span id="ref-6"></span>
   <div class="ref-main">
-    6. <strong>discrete flow matching</strong> <strong><a href="https://arxiv.org/pdf/2407.15595">[PDF]</a></strong><br />
+    6. <strong>Discrete Flow Matching</strong> <strong><a href="https://arxiv.org/pdf/2407.15595">[PDF]</a></strong><br />
     Itai Gat, Tal Remez, Neta Shaul, Felix Kreuk, Ricky T. Q. Chen, Gabriel Synnaeve, Yossi Adi, Yaron Lipman. NeurIPS 2024.
   </div>
 </div>
@@ -3670,23 +3700,15 @@ Data Distribution</strong> <strong><a href="https://openreview.net/pdf?id=B1lcYr
 <div class="dfm-note-entry">
   <span id="dfm-note-6"></span>
   <div class="dfm-note-main">
-    6. For $k \in \mathbb{N}$, we write
-    $\Delta_k=\{\pi\in\mathbb{R}_+^k:\sum_{\ell=1}^{k}\pi_\ell=1\}$ the probability simplex.
+    6. We note $q(x_s | x_t, x_0)$ the conditional law
+    $q(X_s = \cdot | X_t = x_t, X_0 = x_0)$.
   </div>
 </div>
 
 <div class="dfm-note-entry">
   <span id="dfm-note-7"></span>
   <div class="dfm-note-main">
-    7. We note $q(x_s | x_t, x_0)$ the conditional law
-    $q(X_s = \cdot | X_t = x_t, X_0 = x_0)$.
-  </div>
-</div>
-
-<div class="dfm-note-entry">
-  <span id="dfm-note-8"></span>
-  <div class="dfm-note-main">
-    8. For simplicity, we consider $[D_{\theta,t}(x_t)]_m = 0$.
+    7. For simplicity, we consider $[D_{\theta,t}(x_t)]_m = 0$.
   </div>
 </div>
 
