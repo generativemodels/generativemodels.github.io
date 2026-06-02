@@ -426,16 +426,13 @@ html, body {
 }
 
 @media (min-width: 721px) {
-	.katex-display > .katex > .katex-html > .tag {
-		right: -6rem !important;
-	}
-
+	.katex-display > .katex > .katex-html > .tag,
 	.prose .katex-display > .katex > .katex-html > .tag {
-		right: calc(-6rem + 1.125rem) !important;
+		right: calc(-6rem + 2.25rem) !important;
 	}
 
 	.prose .statement .katex-display > .katex > .katex-html > .tag {
-		right: -6rem !important;
+		right: calc(-6rem + 1.125rem) !important;
 	}
 }
 
