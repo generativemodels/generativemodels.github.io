@@ -1511,10 +1511,10 @@ To wrap up, we end this section with a table summarizing the important steps in 
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        <em>Use $L^2$:</em> <br /> $\min_\theta \mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})}}\!\left[\Vert u_{\theta, t}(\mathbf{x}_t) - (\mathbf{x}_1 - \mathbf{x}_0) \Vert^2\right]$
+        Use $L^2$: <br /> $\min_\theta \mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})}}\!\left[\Vert u_{\theta, t}(\mathbf{x}_t) - (\mathbf{x}_1 - \mathbf{x}_0) \Vert^2\right]$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        <em>Use KL:</em> <br /> $\min_\theta \mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{x}_1)}}\!\left[-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right]$
+        Use KL: <br /> $\min_\theta \mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{x}_1)}}\!\left[-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right]$
       </td>
     </tr>
 
@@ -1552,7 +1552,7 @@ To wrap up, we end this section with a table summarizing the important steps in 
 
 ### Variational discrete diffusion
 
-Continuous-space Diffusion models learn to generate data, e. g. images, by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
+Continuous-space diffusion models learn to generate data, e. g. images, by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
 In discrete diffusion, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
 
 <figure>
@@ -1564,16 +1564,19 @@ In discrete diffusion, an analogous approach generates sequences by reversing a 
     loading="lazy"
   />
   <figcaption>
-    <strong>Figure <Counter label="fig:ddpm-masked-diffusion" />:</strong> Analogy between DDPM for images and Masked Diffusion for sequences. In the DDPM forward process (left), step $k$ corrupts a clean image by adding Gaussian noise, so the image gradually becomes pure noise. Given the current noisy image, the reverse model predicts the clean image that could have generated it, and uses this prediction to take one denoising step; after $N-k$ reverse steps, generated images should lie at the same scheduled noise level as forward images at step $k$. In Masked Diffusion (right), the forward process instead masks tokens in a clean sentence. Given the current partially masked sentence, the reverse model predicts a probability distribution over the clean sentences that could have generated it, and uses this prediction to unmask some tokens; after $N-k$ reverse steps, generated sentences should have a similar fraction of masked tokens as forward sentences at step $k$.
+    <strong>Figure <Counter label="fig:ddpm-masked-diffusion" />:</strong> Analogy between continuous- and discrete-space diffusion.
+    Left: the forward process corrupts a clean image by iteratively adding Gaussian noise, so the image gradually becomes pure noise. Given the current noisy image, the reverse model predicts the clean image that could have generated it, and uses this prediction to take one denoising step. <br />
+    Right: the forward process masks tokens in a sentence, until the sequence is fully masked. Given a current partially masked sentence, the reverse model predicts a probability distribution over the clean sentences that could have generated it, and uses this prediction to unmask some tokens.
   </figcaption>
 </figure>
 
+**Note**: the convention in diffusion differs from flow matching: $p_0$ denotes the target distribution (clean sequences); the processes run from time 0 to $T$.
+
 #### Forward process
 
-We first consider the forward process: we start from a clean sequence $\mathbf{x_0}$, and we progressively replace each token by the mask token, transforming the sequence into $\mathbf{x_T} = mm...m$.
+We first consider the forward process: it starts from a clean sequence $\mathbf{x_0}$, and progressively replaces each token by the mask token, transforming the sequence into $\mathbf{x}_T = mm...m$.
 Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token in the following.
 
-{/* We build the framework first in discrete time, with $T \in \mathbb{N}$ noising steps, and then take the continuous-time limit $T \to \infty$ to obtain time-continuous discrete space diffusion models. This avoids tying the model to a fixed number of noise steps. */}
 
 In Continuous Denoising Diffusion Probabilistic Models (DDPM), we start by defining a noising process over $T$ steps, where each step slightly corrupts the signal by adding Gaussian noise:
 
@@ -1618,7 +1621,7 @@ $$
 $$
 
 The schedule $\alpha_t$ is decreasing in $t$: as the step index increases, the probability of a token remaining unmasked decreases.
-It turns out that we can then compute the transition probabilities between any two steps $s < t$:
+It turns out that we can then compute the transition probabilities between any two steps $s < t$, and obtain:
 $$
 \begin{equation}
 \label{eq:forward-transition}
@@ -1669,7 +1672,8 @@ $$
 <figure>
   <MaskedDiffusion initialShowDiscrete={true} initialShowContinuous={false} client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Discrete masked forward with T steps as in @eq:mdm-step (or equivalently in @eq:forward-transition with $s = t - 1$). At step $k$, an unmasked token stays at $x_0$ with probability $\alpha_{k+1}/\alpha_k$; after masking, this probability is zero. The blue bar shows the one-step forward probability $q(x_t=x_0 | x_{t-1}=x_0)=\alpha_t/\alpha_{t-1}$ (@eq:forward-transition), and the grey bar shows $q(x_t=x_0 | x_0)=\alpha_t$. The trajectories are stochastic: changing the seed changes the step at which the clean token transitions to the mask token. The “Show N trajectories” button switches to an aggregate view that samples $N$ independent trajectories with the same transition rule; at each step $i$, the plotted proportion of still-unmasked trajectories should approach the schedule $\alpha_i$ as $T$ and $N$ grow.
+    <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Discrete masked forward with T steps as in @eq:mdm-step. At step $t$, an unmasked token gets masked with probability $\beta_t$; after masking, this probability is 1. The blue bar shows the one-step forward probability $q(x_t=x_0 | x_{t-1}=x_0)=1-\beta_t$ (@eq:forward-transition), and the grey bar shows $q(x_t=x_0 | x_0) = \alpha_t$. The trajectories are stochastic: changing the seed changes the step at which the clean token transitions to the mask token.
+    <br /> The “Show $N$ trajectories” button switches to an aggregate view that samples $N$ independent trajectories with the same transition rule; at step $t$, the plotted proportion of still-unmasked trajectories approaches the schedule $\alpha_t$ as $T$ and $N$ grow.
   </figcaption>
 </figure>
 
