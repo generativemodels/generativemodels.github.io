@@ -935,17 +935,46 @@ $$
 <details>
 <summary>Proof of proposition <Ref label="prop:conditional-velocity" /></summary>
 <div>
-Since we've made the factorization assumption, we can derive the conditional velocity only token-wise $u_t(x^i | x_1^i)$. We say it generates the token-wise conditional path $q_t(x^i | x_1^i)$ if it satisfies a token-wise Kolmogorov equation:
+We will proceed in two steps:
+
+1. For the masked source, we show that the token-wise velocity $u_t(x^i | x_1^i)$ in @eq:mask-velocity generates the token-wise conditional path $q_t(x^i | x_1^i)$ appearing in @eq:mask-path-1, in the sense that it satisfies the token-wise Kolmogorov equation
 $$
 \begin{equation}
 \label{eq:token-kolmogorov}
 \frac{\mathrm{d}}{\mathrm{d}t} q_t(y^{i} | x_1^{i}) = \sum_{v \in \mathcal{V} } u_{t}(v | x_1^{i})_{y^{i}} \, q_t(v | x_1^{i})
 \end{equation}
 $$
-Then, if @eq:token-kolmogorov holds for all tokens $x_i \in \mathcal{V}$ and all $i \in \{1, \dots, S\}$, we can show that the conditional velocity defined as $u_t(\mathbf{x} | \mathbf{x}_1)_{\mathbf{y}} := \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t(x^i | x_1^i)_{y^i}$ generates the conditional path $p_t(\mathbf{x} | \mathbf{x}_1)$, as per @eq:kolmogorov-equation.
+for all $y^i \in \mathcal{V}$ and all $i \in \{1, \dots, S\}$.
 
+2. Once @eq:token-kolmogorov holds, we show that the velocity
+$$
+\begin{equation}
+u_t(\mathbf{x} | \mathbf{x}_1)_{\mathbf{y}} := \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t(x^i | x_1^i)_{y^i}
+\end{equation}
+$$
+generates the conditional path $p_t(\mathbf{x} | \mathbf{x}_1)$, as per @eq:kolmogorov-equation.
 
-We verify that the global path and the global velocity satisfy the Kolmogorov equation. Since the conditional path is factorized, we have:
+We start with the first statement. Since $q_t(y^i | x_1^i) := t \mathbb{I}(y^i = x_1^i) + (1 - t) \mathbb{I}(y^i = m)$, we have
+$$
+\begin{equation}
+\label{eq:mask-path-derivative}
+\frac{\mathrm{d}}{\mathrm{d}t} q_t(y^{i} | x_1^{i}) = \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m).
+\end{equation}
+$$
+
+Equivalently, the velocity in @eq:mask-velocity can be written as $u_{t}(v | x_1^{i})_{y^{i}} = \frac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) \mathbb{I}(v = m)$.
+Therefore, the right-hand side of @eq:token-kolmogorov is
+$$
+\begin{align}
+&\sum_{v \in \mathcal{V} } u_t(v | x_1^i)_{y^i} \, q_t(v | x_1^{i})  \label{eq:mask-velocity-rhs-1} \\
+&= \sum_{v \in \mathcal{V} } \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) \mathbb{I}(v = m) \, q_t(v | x_1^{i})  \label{eq:mask-velocity-rhs-2} \\
+&= \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) q_t(m | x_1^{i})  \label{eq:mask-velocity-rhs-3} \\
+&=  \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m), \label{eq:mask-velocity-rhs-4}
+\end{align}
+$$
+since $q_t(m | x_1^{i}) = 1-t$. This matches @eq:mask-path-derivative, so $(u_t(\cdot | x_1^i), q_t(\cdot | x_1^i))$ satisfies the token-wise Kolmogorov equation.
+
+We now show that, using @eq:token-kolmogorov, the pair $(p_t(\cdot | \mathbf{x}_1), u_t(\cdot | \mathbf{x}_1))$ satisfies the Kolmogorov equation @eq:kolmogorov-equation. Since the conditional path is factorized, we have:
 $$
 \begin{equation}
 \label{eq:conditional-factorized-path}
@@ -1016,29 +1045,6 @@ $$
 $$
 
 The pair $(p_t(\cdot | \mathbf{x}_1), u_t(\cdot | \mathbf{x}_1))$ satisfies the Kolmogorov equation.
-
-We need to verify that the token-wise velocity defined in @eq:mask-velocity satisfies the token-wise Kolmogorov equation @eq:token-kolmogorov. We start with the left-hand side.
-
-Since $q_t(y^i | x_1^i) := t \mathbb{I}(y^i = x_1^i) + (1 - t) \mathbb{I}(y^i = m)$,
-$$
-\begin{equation}
-\label{eq:mask-path-derivative}
-\frac{\mathrm{d}}{\mathrm{d}t} q_t(y^{i} | x_1^{i}) = \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m)
-\end{equation}
-$$
-
-Now, let's examine the right-hand side using the analytic formulation of the velocity field $u_{t}(v | x_1^{i})_{y^{i}} = \frac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) \mathbb{I}(v = m)$:
-$$
-\begin{align}
-&\sum_{v \in \mathcal{V} } u_t(v | x_1^i)_{y^i} \, q_t(v | x_1^{i})  \label{eq:mask-velocity-rhs-1} \\
-&= \sum_{v \in \mathcal{V} } \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) \mathbb{I}(v = m) \, q_t(v | x_1^{i})  \label{eq:mask-velocity-rhs-2} \\
-&= \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) q_t(m | x_1^{i})  \label{eq:mask-velocity-rhs-3} \\
-&=  \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \label{eq:mask-velocity-rhs-4}
-\end{align}
-$$
-
-since $q_t(m | x_1^{i}) = (1-t)$.
-Hence $(u_t(\cdot | x_1^i), q_t(\cdot | x_1^i))$ satisfies the Kolmogorov equation.
 
 
 </div>
@@ -1256,6 +1262,8 @@ When applying it to probability velocities, we only compare the off-diagonal ent
 These vectors are indeed positive (cf. @eq:velocity-positivity), and we can skip the diagonal entry since its value is determined by all the other ones due to the zero-sum constraint.
 
 The exact conditional expectation of @eq:marginal-velocity-def is approximated by a neural network $u_{\theta,t}$, trained by minimizing over $\theta$:
+<PinkEquation>
+
 $$
 \begin{align}
 L_{\text{CDFM}}(\theta)
@@ -1263,6 +1271,9 @@ L_{\text{CDFM}}(\theta)
 & =\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t( \cdot | \mathbf{z})}}\left[ \sum_{i=1}^S \mathrm{KL}\left( u_t(x^i_t | z^i), u_{\theta,t}^i(\mathbf{x}_t) \right) \right] \label{eq:cdfm-3}
 \end{align}
 $$
+
+</PinkEquation>
+
 
 
 #### Learning with denoiser parameterization
@@ -1366,6 +1377,7 @@ where the last equality uses $x^i = m$. Both cases match the claimed formula.
 
 Because the term $\mathbb{I}(v = x^i)$ is a known constant given the current state, learning the velocity field $u$ is mathematically exactly equivalent to learning the denoiser probability $\mathbb{P}(X_1^i = v | X_t = \mathbf{x})$.
 Consequently, we can train a denoiser $P_{\theta, t}$ directly. Using the KL divergence between the true clean token distribution and the learned one, the loss simplifies to the standard cross-entropy:
+<PinkEquation>
 
 $$
 \begin{equation}
@@ -1373,6 +1385,8 @@ $$
 L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right]
 \end{equation}
 $$
+
+</PinkEquation>
 for $x_s \neq m$; if $x_s = m$, then $x_t = x_s = m$.
 
 <details>
