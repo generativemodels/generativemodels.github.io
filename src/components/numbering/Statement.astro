@@ -2,7 +2,7 @@
 import Counter from './Counter.astro'
 import katex from 'katex'
 
-type Kind = 'Definition' | 'Lemma' | 'Proposition' | 'Theorem' | 'Corollary'
+type Kind = 'Definition' | 'Lemma' | 'Proposition' | 'Theorem' | 'Corollary' | 'Example'
 
 const typeByKind: Record<Kind, string> = {
   Definition: 'def',
@@ -10,6 +10,7 @@ const typeByKind: Record<Kind, string> = {
   Proposition: 'prop',
   Theorem: 'thm',
   Corollary: 'cor',
+  Example: 'example',
 }
 
 const { kind, label, title } = Astro.props as {

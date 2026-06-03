@@ -268,6 +268,15 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
     text-align: inherit;
   }
 
+  .dfm-comparison-table caption {
+    caption-side: bottom;
+    margin-top: 0.5em;
+    color: rgb(var(--gray));
+    font-size: 16.2px;
+    font-style: italic;
+    text-align: center;
+  }
+
   @media (max-width: 720px) {
     .dfm-local-example {
       grid-template-columns: 4rem minmax(22rem, 1fr);
@@ -1447,6 +1456,7 @@ $$
 To wrap up, we end this section with a table summarizing the important steps in discrete flow matching, put in parallel with their equivalent for continuous flow matching.
 
 <table className="dfm-comparison-table" style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '2em', marginBottom: '1.25em'}}>
+  <caption><strong>Table <Counter label="table:continuous-discrete-flow-matching" />:</strong> Continuous and discrete flow matching side by side.</caption>
   <colgroup>
     <col style={{ width: '47%' }} />
     <col style={{ width: '53%' }} />
@@ -1526,10 +1536,10 @@ To wrap up, we end this section with a table summarizing the important steps in 
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        Numerical Integration (Euler ODE): <br /> $\mathbf{x}_{k+1} = \mathbf{x}_k + \frac{1}{N} u_{\theta,k/N}(\mathbf{x}_k)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,k/N}(\mathbf{x}) = \frac{1}{1-k/N}\!\left(\mathbb{E}_\theta[X_1 | X_{k/N} = \mathbf{x}] - \mathbf{x}\right)$
+        Numerical Integration (Euler ODE): <br /> $\mathbf{x}_{k+1} = \mathbf{x}_k + \frac{1}{N} u_{\theta,k/N}(\mathbf{x}_k)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}(\mathbf{x}) = \frac{1}{1-t}\!\left(\mathbb{E}_\theta[X_1 | X_t = \mathbf{x}] - \mathbf{x}\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        Continuous Time Markov Chain: <br /> $x_{k+1}^i \sim \text{Cat}\!\left(\mathbf{e}_{x_k^i} + \frac{1}{N} u_{\theta,k/N}^i(\mathbf{x}_k)\right)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,k/N}^i(\mathbf{x}) = \frac{1}{1-k/N}\!\left(P_{\theta,k/N}(X_1^i | \mathbf{x}) - \mathbf{e}_{x^i}\right)$
+        Continuous Time Markov Chain: <br /> $x_{k+1}^i \sim \text{Cat}\!\left(\mathbf{e}_{x_k^i} + \frac{1}{N} u_{\theta,k/N}^i(\mathbf{x}_k)\right)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}^i(\mathbf{x}) = \frac{1}{1-t}\!\left(P_{\theta,t}(X_1^i | \mathbf{x}) - \mathbf{e}_{x^i}\right)$
       </td>
     </tr>
 
@@ -2193,6 +2203,7 @@ $$
 </details>
 
 <table className="dfm-comparison-table" style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.9rem', marginTop: '2em', marginBottom: '1.25em'}}>
+  <caption><strong>Table <Counter label="table:continuous-masked-diffusion" />:</strong> Continuous-space diffusion and masked discrete diffusion side by side.</caption>
   <colgroup>
     <col style={{ width: '50%' }} />
     <col style={{ width: '50%' }} />
@@ -2691,6 +2702,7 @@ where $C$ is a constant independent of $\theta$.
 </Statement>
 
 <table className="dfm-comparison-table" style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '2em', marginBottom: '1.25em'}}>
+  <caption><strong>Table <Counter label="table:continuous-masked-score" />:</strong> Continuous-space and masked discrete score-based diffusion side by side.</caption>
   <colgroup>
     <col style={{ width: '50%' }} />
     <col style={{ width: '50%' }} />
