@@ -776,7 +776,7 @@ $$
 
 Through @eq:factorized-velocity, the modeling assumption has several important consequences:
 - for infinitesimally small time steps, a sequence $\mathbf{x}$  can only transition to states $\mathbf{y}$ differing by at most one token
-- learning-wise, it implies ** a substantial computational gain**: instead of learning one transition object $u$ on the full sequence space $\mathcal{S}=\mathcal{V}^S$ (exponential in $S$), we can learn $S$ local transition objects $u^i$, each on the vocabulary space $\mathcal{V}$
+- learning-wise, it implies **a substantial computational gain**: instead of learning one transition object $u$ on the full sequence space $\mathcal{S}=\mathcal{V}^S$ (exponential in $S$), we can learn $S$ local transition objects $u^i$, each on the vocabulary space $\mathcal{V}$ (linear in $S$)
 - at each sampling step, we draw each token independently following:
 $$
 \begin{equation}
@@ -788,7 +788,7 @@ $$
 <Statement kind="Example" label="example-utoken" title="">
 
 To understand @eq:factorized-velocity, take the vocabulary $\mathcal{V}=\{A,B\}$, sequence length $S=3$, and current sequence $\mathbf{x}=ABA$.
-We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$. From @eq:factorized-velocity, the sequence can only transition to 4 possible values, and the probability velocity writes as:
+We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$. From @eq:factorized-velocity, the sequence can only transition to 4 possible values (its current state, or state differing by a single token), and the probability velocity writes as:
 
 <div class="dfm-local-example">
   <div class="dfm-local-example__source" aria-label="Current sequence ABA">
@@ -855,6 +855,7 @@ We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$. From @eq:factorized
   </svg>
 </div>
 
+While $u_t$ outputs a vector in $\mathbb{R}^8$, $u_t^1, u_t^2$ and $u_t^3$ output vectors in $\mathbb{R}^2$ (as $|\mathcal{V}| = 2$).
 </Statement>
 
 <figure>
@@ -864,7 +865,7 @@ We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$. From @eq:factorized
   </figcaption>
 </figure>
 
-Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of discrete flow matching!
+Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of discrete flow matching, going from source to target distribution!
 
 #### Building the probability path
 
@@ -884,11 +885,57 @@ $$
 & p_t(\mathbf{x} | \mathbf{x_1}) = \prod_{i=1}^S  \big( \underbrace{ t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = m) } _{:= q_t(x^j | x_1^j)} \big)  \label{eq:mask-path-1} \\
 \end{align}
 $$
-This choice simply means that at time $t$, the $i$-th token $x^i_t$ equals the target token $x_1^i$ with probability $t$, or it is the mask token $m$ with probability $1 - t$:
+This choice simply means that at time $t$, the $i$-th token $x^i_t$ equals the target token $x_1^i$ with probability $t$, or the mask token $m$ with probability $1 - t$:
 $p_0(\cdot | \mathbf{x}_1)$ is a Dirac at the all-masked sequence, while $p_1(\cdot | \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_1$.
-The interest of this conditional probability path is that we can derive the associated probability velocity.
+The interest of this conditional probability path is that we can derive the associated probability velocity in closed-form.
 
-Since we've made the factorization assumption, we can derive the conditional velocity only token-wise $u_t(x^i | x_1^i)$. We say it generates the token-wise conditional path $q_t(x^i | x_1^i)$ if it satisfies token-wise Kolmogorov equation:
+
+
+<Statement kind="Proposition" label="conditional-velocity" title="Closed-form for conditional velocity">
+Define the following token-wise conditional velocity:
+{/* the token-wise $u_t(x^i | x_1^i)$ conditional velocity (generating the token-wise conditional path $q_t(x^i | x_1^i)$) : */}
+$$
+\begin{equation}
+\label{eq:mask-velocity}
+u_t(x^i | x_1^i)_v := \begin{cases}
+\frac{1}{1-t} & \text{if } v = x_1^i \text{ and } x^i = m, \\[0.3cm]
+-\frac{1}{1-t} & \text{if } v = x^i = m, \\[0.3cm]
+0 & \text{otherwise}.
+\end{cases}
+\end{equation}
+$$
+Then, the velocity field
+$$
+\begin{equation}
+u_t(\mathbf{x} | \mathbf{x}_1)_{\mathbf{y}} := \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t(x^i | x_1^i)_{y^i}
+\end{equation}
+$$
+generates the conditional path $p_t(\mathbf{x} | \mathbf{x}_1)$ in @eq:mask-path-1
+</Statement>
+**Note**: compared to @eq:factorized-velocity, one may be surprised that $u^i$ in @eq:mask-velocity depends only on $x_i$ and not on $\mathbf{x}$. As the proof will show, this is a byproduct of the conditional probability paths factorizing over each token of the conditioning sequence $\mathbf{z}$.
+
+<Statement kind="Example" label="ex-conditional-velocity" title="Example of conditional velocity">
+
+Remember that $u$ is a rate of change of probability: $u_t(x^i | x_1^i)_v$ quantifies the instantaneous probability flow from the current token $x^i$ toward any token $v$.
+In the masked-source setting, the flow progressively removes mass from $m$ and transfers it to the target token $x_1^i$; if $x^i_t$ differs from $m$, then the conditional velocity is 0: the token remains at its value until the end.
+As an example, if the vocabulary has 4 tokens $\{A, B, C, m\}$, and if the conditioning target is $x_1^i = B$, then the conditional velocity field is given by:
+{/* */}
+$$
+u_t(x^i | x_1^i = B)_v = \begin{array}{c|cccc}
+\begin{matrix} x^i  \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & A & B & C & m \\
+\hline
+A & 0 & 0 & 0 & 0 \\[0.1cm]
+B & 0 & 0 & 0 & \tfrac{1}{1-t} \\[0.1cm]
+C & 0 & 0 & 0 & 0 \\[0.1cm]
+m & 0 & 0 & 0 & -\tfrac{1}{1-t}
+\end{array}
+$$
+</Statement>
+
+<details>
+<summary>Proof of proposition <Ref label="prop:conditional-velocity" /></summary>
+<div>
+Since we've made the factorization assumption, we can derive the conditional velocity only token-wise $u_t(x^i | x_1^i)$. We say it generates the token-wise conditional path $q_t(x^i | x_1^i)$ if it satisfies a token-wise Kolmogorov equation:
 $$
 \begin{equation}
 \label{eq:token-kolmogorov}
@@ -897,9 +944,6 @@ $$
 $$
 Then, if @eq:token-kolmogorov holds for all tokens $x_i \in \mathcal{V}$ and all $i \in \{1, \dots, S\}$, we can show that the conditional velocity defined as $u_t(\mathbf{x} | \mathbf{x}_1)_{\mathbf{y}} := \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t(x^i | x_1^i)_{y^i}$ generates the conditional path $p_t(\mathbf{x} | \mathbf{x}_1)$, as per @eq:kolmogorov-equation.
 
-<details>
-<summary>Proof</summary>
-<div>
 
 We verify that the global path and the global velocity satisfy the Kolmogorov equation. Since the conditional path is factorized, we have:
 $$
@@ -973,42 +1017,6 @@ $$
 
 The pair $(p_t(\cdot | \mathbf{x}_1), u_t(\cdot | \mathbf{x}_1))$ satisfies the Kolmogorov equation.
 
-</div>
-</details>
-
-<Statement kind="Proposition" label="conditional-velocity" title="Conditional velocity $u_t(x^i | x_1^i)$">
-The token-wise $u_t(x^i | x_1^i)$ conditional velocity generating the token-wise conditional path $q_t(x^i | x_1^i)$ @eq:mask-path-1 is given by:
-$$
-\begin{equation}
-\label{eq:mask-velocity}
-u_t(x^i | x_1^i)_v = \begin{cases}
-\frac{1}{1-t} & \text{if } v = x_1^i \text{ and } x^i = m, \\[0.3cm]
--\frac{1}{1-t} & \text{if } v = x^i = m, \\[0.3cm]
-0 & \text{otherwise}.
-\end{cases}
-\end{equation}
-$$
-</Statement>
-
-Remember that $u$ is a rate of change of probability: $u_t(x^i | x_1^i)_v$ quantifies the instantaneous probability flow from the current token $x^i$ toward any token $v$.
-In the masked-source setting, the flow progressively removes mass from $m$ and transfers it to the target token $x_1^i$; if $x^i_t$ differs from $m$, then the conditional velocity is 0: the token remains at its value until the end.
-As an example, if the vocabulary has 4 tokens $\{A, B, C, m\}$, and if the conditioning target is $x_1^i = B$, then the conditional velocity field is given by:
-{/* */}
-$$
-u_t(x^i | x_1^i = B)_v = \begin{array}{c|cccc}
-\begin{matrix} x^i  \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & A & B & C & m \\
-\hline
-A & 0 & 0 & 0 & 0 \\[0.1cm]
-B & 0 & 0 & 0 & \tfrac{1}{1-t} \\[0.1cm]
-C & 0 & 0 & 0 & 0 \\[0.1cm]
-m & 0 & 0 & 0 & -\tfrac{1}{1-t}
-\end{array}
-$$
-
-<details>
-<summary>Proof of proposition <Ref label="prop:conditional-velocity" /></summary>
-<div>
-
 We need to verify that the token-wise velocity defined in @eq:mask-velocity satisfies the token-wise Kolmogorov equation @eq:token-kolmogorov. We start with the left-hand side.
 
 Since $q_t(y^i | x_1^i) := t \mathbb{I}(y^i = x_1^i) + (1 - t) \mathbb{I}(y^i = m)$,
@@ -1062,13 +1070,14 @@ u_t(x^i | x_0^i, x_1^i)_v = \begin{cases}
 \end{equation}
 $$
 
-In the source-target setting, the flow moves mass directly from the source token $x_0^i$ toward the target token $x_1^i$, with no mask involved. All rows except the source row are identically zero — once a token is already at a state other than $x_0^i$, no transition occurs. Concretely, if the vocabulary has 3 tokens $\{1, 2, 3\}$, and $x_0^i = 1$, $x_1^i = 2$:
+In the source-target setting, the flow moves mass directly from the source token $x_0^i$ toward the target token $x_1^i$, with no mask involved. All rows except the source row are identically zero — once a token is already at a state other than $x_0^i$, no transition occurs.
+Concretely, if the vocabulary has 3 tokens $\{1, 2, 3\}$, and $x_0^i = 1$, $x_1^i = 2$:
 
 $$
 u_t(x^i | x_0^i = 1,\, x_1^i = 2)_v = \begin{array}{c|ccc}
 \begin{matrix} x^i \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & 1 & 2 & 3 \\
 \hline
-1 & -\dfrac{1}{1-t} & \dfrac{1}{1-t} & 0 \\[0.3cm]
+1 & -\tfrac{1}{1-t} & \tfrac{1}{1-t} & 0 \\[0.3cm]
 2 & 0 & 0 & 0 \\[0.3cm]
 3 & 0 & 0 & 0
 \end{array}
@@ -1100,7 +1109,7 @@ $$
 u_t(x^i | x_1^i = 2)_v = \begin{array}{c|ccc}
 \begin{matrix} x^i \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & 1 & 2 & 3 \\
 \hline
-1 & -\tfrac{1}{1-t} & \dfrac{1}{1-t} & 0 \\[0.1cm]
+1 & -\tfrac{1}{1-t} & \tfrac{1}{1-t} & 0 \\[0.1cm]
 2 & 0 & 0 & 0 \\[0.1cm]
 3 & 0 & \tfrac{1}{1-t} & -\tfrac{1}{1-t}
 \end{array}
