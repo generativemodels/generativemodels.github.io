@@ -2324,9 +2324,19 @@ $$
 
 ### Score-based discrete diffusion
 
-We now turn to the score-based viewpoint: predict a score function, i.e. the direction pointing toward more likely samples at noise level $t$, and follow it to move from noise back to data. In continuous diffusion, a key tool in the analysis is to model the forward process as a discretization of a forward stochastic differential equation; simulating the backward process then amounts to discretizing the associated reverse SDE. Critically, the reverse SDE involves the score, namely $\nabla \log p_t(x)$, where $p_t$ is the distribution of the variables $x_t$ defined by the forward process.
+{/* We now turn to the score-based viewpoint: predict a score function, i.e. the direction pointing toward more likely samples at noise level $t$, and follow it to move from noise back to data. In continuous diffusion, a key tool in the analysis is to model the forward process as a discretization of a forward stochastic differential equation; simulating the backward process then amounts to discretizing the associated reverse SDE. Critically, the reverse SDE involves the score, namely $\nabla \log p_t(x)$, where $p_t$ is the distribution of the variables $x_t$ defined by the forward process. */}
 
-We follow the same path in discrete space. Since there is no SDE here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$. We then reverse it to obtain $p(x_{t-\Delta t} | x_t)$, and identify the discrete object analogous to the score $\nabla \log p_t(x)$ that the model needs to learn.
+In this section, we study the score-based perspective on discrete diffusion. 
+The main idea is to learn a transport guided by the _score function_ $s_t(x_t)$ to reverse the diffusion process.
+This quantity points toward more likely samples at noise level $t$, guiding the generation process back toward the data distribution.
+In continuous-space diffusion models, the generation process, i.e. the backward process, is defined by the reverse SDE (see Figure <Ref label="fig:discrete-continuous-score" />, bottom).
+Critically, the reverse SDE involves the score, namely $\nabla_x \log p_t(x_t)$, where $p_t$ is the distribution of the variables $x_t$ defined by the forward process.
+
+We follow the same path in discrete space. Since there is no SDE involved here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$ in the forward SDE, i.e. describing the evolution of $x_t$ during the corruption process. 
+Then we reverse the process to obtain $p(x_{t-\Delta t} | x_t)$ and identify the _concrete score_ $s_t(x_t)_{y}$, the discrete analogue of $\nabla_x \log p_t(x_t)$ (the score function of the continuous process).
+Finally, we learn a neural network to predict the concrete score and use it to generate new discrete data.
+
+
 
 <figure>
   <img
@@ -2336,13 +2346,14 @@ We follow the same path in discrete space. Since there is no SDE here, we work w
     loading="lazy"
   />
   <figcaption>
-    <strong>Figure <Counter label="fig:score-based-cat-sde" />:</strong> Analogy between continuous-space and discrete-space score-based diffusion. In continuous space, Euler sampling with five steps discretizes the continuous-time SDE: in the forward direction, the drift and Gaussian increments add noise to the sample; in the reverse direction, the learned score changes the drift so that noise is removed. In discrete space, the same idea becomes an Euler sampler built from the local continuous-time transition rates: the forward rates move probability mass toward noisier categorical states, while the learned reverse rates move probability mass back toward cleaner states.
+    <strong>Figure <Counter label="fig:discrete-continuous-score" />:</strong> Analogy between continuous-space and discrete-space score-based diffusion. In continuous space, Euler sampling with five steps discretizes the continuous-time SDE: in the forward direction, the drift and Gaussian increments add noise to the sample; in the reverse direction, the learned score changes the drift so that noise is removed. In discrete space, the same idea becomes an Euler sampler built from the local continuous-time transition rates: the forward rates move probability mass toward noisier categorical states, while the learned reverse rates move probability mass back toward cleaner states.
   </figcaption>
 </figure>
 
 #### Forward process
 
-In continuous-space score-based diffusion, we model the forward process as the solution of the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, where we fix the drift $f_t$ and the diffusion coefficient $g_t$, and $W_t$ is a Wiener process. We follow a similar approach in discrete space: we model the forward process as a continuous-time Markov chain (CTMC), which can be written locally as
+In continuous-space score-based diffusion, we model the forward process as the solution of the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, where we fix the drift $f_t$ and the diffusion coefficient $g_t$, and $W_t$ is a Wiener process.
+We follow a similar approach in discrete space: we model the forward process as a continuous-time Markov chain (CTMC), which can be written as
 
 $$
 \begin{equation}
@@ -2351,11 +2362,14 @@ q(x_{t+\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + [\dot{Q}_t(x_t)]_y \Delta t 
 \end{equation}
 $$
 
-where we fix the forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$. $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$.
+where we choose the forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$. 
+In the above equation and in what follows, $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$.
 
 The continuous SDE means that over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $[\dot{Q}_t(x_t)]_y\Delta t$ to first order.<a href="#forward-euler" class="dfm-note-ref"></a>
 
-A common instantiation of the continuous SDE is the variance-preserving Gaussian diffusion: the coefficients are chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a noise schedule. In the masked discrete space Diffusion, we make an analogous choice by specifying the rate at which unmasked tokens jump to the mask state:
+{/* A common instantiation of the continuous SDE is the variance-preserving Gaussian diffusion: the coefficients are chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a noise schedule.  */}
+Then, we need to specify the forward rate matrix $\dot{Q}_t$ that governs the masking process. 
+A simple choice is to set the rate of transition from any unmasked token to the mask state: 
 
 $$
 \begin{equation}
@@ -2373,11 +2387,11 @@ $$
 \end{equation}
 $$
 
-where $\sigma(t) > 0$ is the instantaneous masking rate. Thus, each unmasked token jumps to $m$ at rate $\sigma(t)$, while the mask state is absorbing (i.e it never comes back again to a clean token).
+where $\sigma(t) > 0$ is the instantaneous masking rate, $\mathbf{e}_m$ is the one-hot vector for the mask token. 
+The last column of $\dot{Q}_t$ indicates that the rates for jumping to $m$ are equal to $\sigma(t)$ for any token $x_t\in\mathcal{V}\setminus\{m\}$, and the last row indicates that the rate for jumping from $m$ to any other state is 0 (the mask is an absorbing state).
 
-
-In continuous-space diffusion, one strength is that we can directly sample points $x_t$ at any time in the forward process using the closed-form expression $q(x_t | x_0) = \mathcal{N}\!\left(x_t;\ \sqrt{\alpha_t}\,x_0,\ (1-\alpha_t)I\right)$, where $\alpha_t = \exp\!\left(-\int_0^t \beta(s)\,ds\right)$ is the cumulative noise schedule.
-The same thing is possible in discrete space, by defining the transition matrix from time $0$ to time $t$  $\bar{Q}_{t|0}$, such that $q(x_t | x_0)=\mathrm{Cat}(x_t;\ \bar{Q}_{t|0}^\top x_0)$.
+Continuous-space diffusion models benefits from _simulation-free_ forward processes, which mean we can directly sample $x_t$ given $x_0$ without having to simulate the process step by step, simply using the closed-form expression $q(x_t | x_0) = \mathcal{N}\!\left(x_t;\ \sqrt{\alpha_t}\,x_0,\ (1-\alpha_t)I\right)$, where $\alpha_t = \exp\!\left(-\int_0^t \beta(s)\,ds\right)$ is the cumulative noise schedule.
+The same thing is possible in discrete space, we can define the transition matrix from time $0$ to time $t$  $\bar{Q}_{t|0}$, such that $q(x_t | x_0)=\mathrm{Cat}(x_t;\ \bar{Q}_{t|0}^\top x_0)$.
 Denoting $\alpha_t = \exp\!\left(-\int_0^t \sigma(s)\,ds\right)$ the *cumulative masking schedule*, we have that $\bar{Q}_{t|0}$ takes the following form:
 
 $$
