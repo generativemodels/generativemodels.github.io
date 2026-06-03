@@ -2319,6 +2319,8 @@ $$
   </tbody>
 </table>
 
+<br />
+
 ### Score-based discrete diffusion
 
 {/* We now turn to the score-based viewpoint: predict a score function, i.e. the direction pointing toward more likely samples at noise level $t$, and follow it to move from noise back to data. In continuous diffusion, a key tool in the analysis is to model the forward process as a discretization of a forward stochastic differential equation; simulating the backward process then amounts to discretizing the associated reverse SDE. Critically, the reverse SDE involves the score, namely $\nabla \log p_t(x)$, where $p_t$ is the distribution of the variables $x_t$ defined by the forward process. */}
@@ -2326,11 +2328,11 @@ $$
 In this section, we study the score-based perspective on discrete diffusion.
 The main idea is to learn a transport guided by the _score function_ $s_t(x_t)$ to reverse the diffusion process.
 This quantity points toward more likely samples at noise level $t$, guiding the generation process back toward the data distribution.
-In continuous-space diffusion models, the generation process, i.e. the backward process, is defined by the reverse SDE (see Figure <Ref label="fig:discrete-continuous-score" />, bottom).
-Critically, the reverse SDE involves the score, namely $\nabla_x \log p_t(x_t)$, where $p_t$ is the distribution of the variables $x_t$ defined by the forward process.
+In continuous-space diffusion models, the generation process, i.e. the backward process, is defined by the reverse SDE (see Figure <Ref label="fig:discrete-continuous-score" />, bottom); critically, the reverse SDE involves the score, namely $\nabla_x \log p_t(x_t)$, where $p_t$ is the distribution of the variables $x_t$ defined by the forward process.
 
-We follow the same path in discrete space. Since there is no SDE involved here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$ in the forward SDE, i.e. describing the evolution of $x_t$ during the corruption process.
-Then we reverse the process to obtain $p(x_{t-\Delta t} | x_t)$ and identify the _concrete score_ $s_t(x_t)_{y}$, the discrete analogue of $\nabla_x \log p_t(x_t)$ (the score function of the continuous process).
+We follow the same approach in discrete space.
+Since there is no SDE involved here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$ in the forward SDE, i.e. describing the evolution of $x_t$ during the corruption process.
+Then we reverse the process to obtain $p(x_{t-\Delta t} | x_t)$ and identify the **concrete score** $s_t(x_t)_{y}$, the discrete analogue of $\nabla_x \log p_t(x_t)$ (the score function of the continuous process).
 Finally, we learn a neural network to predict the concrete score and use it to generate new discrete data.
 
 
