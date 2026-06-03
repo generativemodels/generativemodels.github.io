@@ -867,13 +867,6 @@ We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$. From @eq:factorized
 While $u_t$ outputs a vector in $\mathbb{R}^8$, $u_t^1, u_t^2$ and $u_t^3$ output vectors in $\mathbb{R}^2$ (as $|\mathcal{V}| = 2$).
 </Statement>
 
-<figure>
-  <DFMSampling client:load />
-  <figcaption>
-    <strong>Figure <Counter label="fig:dfm-sampling" />:</strong> Generation process of a sequence of length $S=4$ with known probability velocity $u_t$. Key observations: 1) At each step, all tokens are updated independently 2) The probability of drawing the mask token $m$ decreases at each step, while the probability of drawing other tokens increases. 3) Once a token is unmasked, it stays at its current value until the end. 4) Different samples can be generated from the same initial sequence (change the seed!), because sampling is stochastic at each step.
-  </figcaption>
-</figure>
-
 Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of discrete flow matching, going from source to target distribution!
 
 #### Building the probability path
@@ -1452,6 +1445,13 @@ $$
 </div>
 </details>
 
+<figure>
+  <DFMSampling showModeToggle={false} client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:dfm-sampling" />:</strong> Generation process of a sequence of length $S=4$ with a learned probability velocity $u_t$ or denoiser $P_{\theta,t}(X_1^i | \mathbf{x})$. **Key facts**: 1) At each step, all tokens are updated independently 2) Different samples can be generated from the same initial sequence (change the seed!), because sampling is stochastic at each step.
+    **Key empirical observations**: 3) The probability of drawing the mask token $m$ decreases at each step, while the probability of drawing other tokens increases. 4) Once a token is unmasked, it stays at its current value until the end.
+  </figcaption>
+</figure>
 
 To wrap up, we end this section with a table summarizing the important steps in discrete flow matching, put in parallel with their equivalent for continuous flow matching.
 
@@ -1680,7 +1680,7 @@ $$
 </details>
 
 <figure>
-  <MaskedDiffusion initialShowDiscrete={true} initialShowContinuous={false} client:load />
+  <MaskedDiffusion showVariational={true} showScore={false} showDirectionControls={false} client:load />
   <figcaption>
     <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Discrete masked forward with T steps as in @eq:mdm-step. At step $t$, an unmasked token gets masked with probability $\beta_t$; after masking, this probability is 1. The blue bar shows the one-step forward probability $q(x_t=x_0 | x_{t-1}=x_0)=1-\beta_t$ (@eq:forward-transition), and the grey bar shows $q(x_t=x_0 | x_0) = \alpha_t$. The trajectories are stochastic: changing the seed changes the step at which the clean token transitions to the mask token.
     <br /> The “Show $N$ trajectories” button switches to an aggregate view that samples $N$ independent trajectories with the same transition rule; at step $t$, the plotted proportion of still-unmasked trajectories approaches the schedule $\alpha_t$ as $T$ and $N$ grow.
@@ -1731,7 +1731,7 @@ We conclude using that $x_s$ is either at state $x_0$ or at state $m$ with proba
 </details>
 
 <figure>
-  <MaskedDiffusion initialShowDiscrete={true} initialShowContinuous={false} initialDirection="reverse" client:load />
+  <MaskedDiffusion showVariational={true} showScore={false} initialDirection="reverse" client:load />
   <figcaption>
     <strong>Figure <Counter label="fig:masked-reverse-discrete" />:</strong> Discrete masked reverse with T steps as in @eq:masked-diffusion-denoiser-sampling (or equivalently @eq:bridge-mask when the denoiser puts all mass on the true $x_0$). At step $k$, a masked token is unmasked with probability $(\alpha_{k-1}-\alpha_k)/(1-\alpha_k)$; after unmasking, it stays fixed at $x_0$. The blue bar shows $q(x_{t-1}=x_0 | x_t=m, x_0)$ (@eq:bridge-mask), and the grey bar shows $q(x_t=x_0 | x_0)=\alpha_t$. The “Show N trajectories” button switches to the same empirical aggregation as in Figure <Ref label="fig:masked-forward-discrete" />, but with the reverse process.
   </figcaption>
@@ -2556,7 +2556,7 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 
 {/*
 <figure>
-  <MaskedDiffusion initialShowDiscrete={false} initialShowContinuous={true} client:load />
+  <MaskedDiffusion showVariational={false} showScore={true} client:load />
   <figcaption>
     <strong>Figure <Counter label="fig:masked-forward-continuous" />:</strong> Euler simulation of the infinitesimal forward transition @eq:forward-rate. The next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y | x_t) = \mathbb{I}(y=x_t) + [\dot{Q}_t(x_t)]_y\Delta t + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. The aggregate view reports the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
   </figcaption>
@@ -2613,7 +2613,7 @@ For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a v
 
 {/*
 <figure>
-  <MaskedDiffusion initialShowDiscrete={false} initialShowContinuous={true} initialDirection="reverse" client:load />
+  <MaskedDiffusion showVariational={false} showScore={true} initialDirection="reverse" client:load />
   <figcaption>
     <strong>Figure <Counter label="fig:masked-reverse-continuous" />:</strong> Euler simulation of the infinitesimal reverse transition @eq:reverse-rate, conditioned on the clean token as in @eq:reverse-kernel-mask. The previous state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t-\Delta t}=y | x_t, x_0) = \mathbb{I}(y=x_t) + \Delta t[\dot{R}_t(x_t | x_0)]_y + o(\Delta t)$, giving a discretized continuous-time reverse process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-reverse-discrete" />. The aggregate view is analogous to the continuous-time forward case.
   </figcaption>

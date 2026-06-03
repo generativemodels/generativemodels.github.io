@@ -479,7 +479,7 @@ function ToggleButton({ options, value, onChange }) {
 
 // ── Main component ─────────────────────────────────────────────────
 
-export default function DFMSampling({ denoiser = false, planner = false }) {
+export default function DFMSampling({ denoiser = false, planner = false, showModeToggle = true }) {
   const isPlanner = (v) => v === "planner";
   const defaultRight = planner ? "planner" : "sampling";
   const defaultLeft = denoiser ? "denoiser" : "velocity";
@@ -699,14 +699,16 @@ export default function DFMSampling({ denoiser = false, planner = false }) {
 
       {/* Mode + panel toggles */}
       <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
-        <ToggleButton
-          options={[
-            { value: "sampling", label: "Vanilla (Euler)" },
-            { value: "planner", label: "Greedy Planner" },
-          ]}
-          value={rightView}
-          onChange={switchMode}
-        />
+        {showModeToggle && (
+          <ToggleButton
+            options={[
+              { value: "sampling", label: "Vanilla (Euler)" },
+              { value: "planner", label: "Greedy Planner" },
+            ]}
+            value={rightView}
+            onChange={switchMode}
+          />
+        )}
         {!isPlannerMode && (
           <ToggleButton
             options={[
