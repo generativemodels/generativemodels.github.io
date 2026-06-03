@@ -1469,7 +1469,7 @@ To wrap up, we end this section with a table summarizing the important steps in 
         $\mathbf{z}=(\mathbf{x}_0, \mathbf{x}_1)$ with  $\pi(\mathbf{z}) = p_0 \times p_{\text{data}}$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $\mathbf{z}=(\mathbf{x}_0, \mathbf{x}_1)$ with $\pi(\mathbf{z}) = p_0 \times p_{\text{data}}$
+        $\mathbf{z}=\mathbf{x}_1$ with $\pi(\mathbf{z}) = p_{\text{data}}$ <br /> $\mathbf{x}_0 = m\ldots m$ and $p_0 = p_{\text{mask}} = \delta_{m\ldots m}$
       </td>
     </tr>
 
@@ -1481,10 +1481,10 @@ To wrap up, we end this section with a table summarizing the important steps in 
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $p_t(\mathbf{x} | \mathbf{z}) = \mathbb{I}\!\left(\mathbf{x} = (1 - t)\mathbf{x}_0 + t\mathbf{x}_1\right)$ <br /> $= \prod_{i=1}^S \mathbb{I}\!\left(x^i = (1-t)x_0^i + t x_1^i\right)$
+        $p_t(\mathbf{x} | \mathbf{z}) = \mathbb{I}\!\left(\mathbf{x} = (1 - t)\mathbf{x}_0 + t\mathbf{x}_1\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | x_0^j, x_1^j)$ <br /> where $q_t \sim \text{Cat}((1 - t) \mathbf{e}_{x_0^j} + t \mathbf{e}_{x_1^j} )$
+        $p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | x_1^j)$ <br /> where $q_t \sim \text{Cat}((1 - t) \mathbf{e}_{m} + t \mathbf{e}_{x_1^j} )$
       </td>
     </tr>
 
@@ -1496,62 +1496,32 @@ To wrap up, we end this section with a table summarizing the important steps in 
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $u_t(\mathbf{x} | \mathbf{z}) = x_1 - x_0 = \sum_{i=1}^S u_t(x^i | z^i)\, \mathbf{e}_i$ <br /> $u_t(x^i | z^i) = x_1^i - x_0^i$
+        $u_t(\mathbf{x} | \mathbf{z}) = x_1 - x_0$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})\, u_t(x^i | z^i)_{y^i}$ <br /> $u_t(x^i | z^i) = \frac{1}{1-t}\mathbb{I}(x^i = x_0^i)\left(\mathbf{e}_{x_1^i} - \mathbf{e}_{x_0^i}\right)$
+        $u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})\, u_t(x^i | x_1^i)_{y^i}$ <br /> $u_t(x^i | x_1^i) = \frac{1}{1-t}\mathbb{I}(x^i = m)\left(\mathbf{e}_{x_1^i} - \mathbf{e}_{m}\right)$
       </td>
     </tr>
 
     {/* ASPECT 4 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>4. Conditional Flow Matching Loss</strong>
+        <strong>4. Training in practice</strong> <br /> <em>Sample $t \sim \mathcal{U}_{[0,1]}, \mathbf{z} \sim \pi, \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})$</em>
       </td>
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $D_{L^2}(x_1 - x_0, u_{\theta,t}(\mathbf{x}_t))$ <br /> $= \sum_{i=1}^S \left(u_{\theta,t}^i(\mathbf{x}_t) - (x_1^i - x_0^i)\right)^2$
+        <em>Use $L^2$:</em> <br /> $\mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})}}\!\left[\Vert u_{\theta, t}(\mathbf{x}_t) - (x_1 - x_0) \Vert^2\right]$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $\sum_{i=1}^S \mathrm{KL}(u(x_t^i | (x_1, x_0)), u_{\theta,t}^i(\mathbf{x}_t))$ <br /> $= \sum_{i=1}^S \Big[\sum_{v \neq x_t^i} u_{\theta,t}^i(\mathbf{x}_t)_v$ <br /> $\quad - \mathbb{I}(x_t^i = x_0^i) \frac{1}{1 - t} \log u_{\theta,t}^i(\mathbf{x}_t)_{x_1^i}\Big]$
+        <em>Use KL:</em> <br /> $\mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{x}_1)}}\!\left[-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right]$
       </td>
     </tr>
 
     {/* ASPECT 5 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>5. Denoising view</strong>
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $D_{\theta,t}(\mathbf{x}_t) := \mathbb{E}_\theta[X_1 | X_t = \mathbf{x}_t]$ <br /> $L = D_{L^2}(x_1, \mathbb{E}_\theta[X_1 | X_t = \mathbf{x}_t])$ <br /> $= \sum_{i=1}^S \left(x_1^i - \mathbb{E}_\theta[X_1^i | X_t = \mathbf{x}_t]\right)^2$
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $D_{\theta,t}^i(\mathbf{x}_t) := P_{\theta,t}(X_1^i | \mathbf{x}_t) \in \Delta_{|\mathcal{V}|}$ <br /> $L = \sum_{i=1}^S \mathrm{KL}\!\left(\mathbf{e}_{x_1^i}, D_{\theta,t}^i(\mathbf{x}_t)\right)$ <br /> $= -\sum_{i=1}^S \log D_{\theta,t}^i(\mathbf{x}_t)_{x_1^i}$
-      </td>
-    </tr>
-
-    {/* ASPECT 6 */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>6. Training in practice</strong> <br /> <em>Sample $t \sim \mathcal{U}_{[0,1]}, \mathbf{z} \sim \pi, \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})$</em>
-      </td>
-    </tr>
-    <tr>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $\Vert u_{\theta, t}(\mathbf{x}_t) - (x_1 - x_0) \Vert^2$
-      </td>
-      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)$
-      </td>
-    </tr>
-
-    {/* ASPECT 7 */}
-    <tr>
-      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>7. Sampling</strong> <br /> <em>Sample $\mathbf{x}_0 \sim p_0$, integration scheme for $k=0,\ldots,N-1$</em>
+        <strong>5. Sampling</strong> <br /> <em>Sample $\mathbf{x}_0 \sim p_0$, integration scheme for $k=0,\ldots,N-1$</em>
       </td>
     </tr>
     <tr>
@@ -1563,10 +1533,10 @@ To wrap up, we end this section with a table summarizing the important steps in 
       </td>
     </tr>
 
-    {/* ASPECT 8 */}
+    {/* ASPECT 6 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>8. Master Equation</strong>
+        <strong>6. Master Equation</strong>
       </td>
     </tr>
     <tr>
