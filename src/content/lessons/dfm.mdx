@@ -1711,7 +1711,10 @@ We now turn to reversing this process, in order to generate data from noise.
 #### Reverse process
 
 
-Generating data requires a reverse process that progressively unmasks tokens to produce samples from the discrete data distribution. We first derive the exact reverse transition conditioned on the initial clean token $x_0$, namely what is denoted $q(x_s | x_t, x_0)$.
+Generating data requires a reverse process that progressively unmasks tokens to produce samples from the discrete data distribution, i.e. generating samples $x_s$ from $x_t$ for $s < t$ until $s=0$.
+However, the transition kernel $q(x_s|x_t)$ is __intractable__. To overcome this difficulty, we express $q(x_s|x_t)$ by marginalizing the conditional reverse transition $q(x_s | x_t, x_0)$ over all possible $x_0$.
+
+First, we derive the reverse transitions from $x_t$ to $x_s$ for $st$, conditioned on the initial clean token $x_0$, namely $q(x_s | x_t, x_0)$.
 
 
 <Statement kind="Lemma" label="masked-diffusion-bridge" title="Conditional reverse transitions $q(x_s | x_t,x_0)$">
@@ -1751,7 +1754,8 @@ We conclude using that $x_s$ is either at state $x_0$ or at state $m$ with proba
 </div>
 </details>
 
-The reverse process conditioned on $x_0$, namely sampling from $q(x_s | x_t, x_0)$ in @eq:bridge-mask, can also be simulated in Figure <Ref label="fig:masked-forward-discrete" /> by clicking the reverse button.
+The reverse process conditioned on $x_0$, namely sampling reccursively from $q(x_s | x_t, x_0)$ as described in @eq:bridge-mask, can also be simulated in Figure <Ref label="fig:masked-forward-discrete" /> by clicking the reverse button.
+Finally, we compute the unconditional reverse transition $q(x_s|x_t)$ by marginalizing the conditional reverse transition $q(x_s | x_t, x_0)$ over all possible clean tokens $v$, weighted by their probability $\mathbb{P}(X_0 = v | X_t=x_t)$ (more details in the proof spoiler).
 
 {/*
 <figure>
@@ -1762,8 +1766,7 @@ The reverse process conditioned on $x_0$, namely sampling from $q(x_s | x_t, x_0
 </figure>
 */}
 
-However, during generation, the clean token $x_0$ is unknown: the quantity we actually need in order to sample backward is the reverse transition $q(x_s | x_t)$, not $q(x_s | x_t, x_0)$. We obtain the former by marginalizing the latter over all possible clean tokens, weighted by their probability $\mathbb{P}(X_0 = v | X_t=x_t)$.
-
+{/* However, during generation, the clean token $x_0$ is unknown: the quantity we actually need in order to sample backward is the reverse transition $q(x_s | x_t)$, not $q(x_s | x_t, x_0)$.  */}
 {/* We denote this posterior by
 $$
 D_t(x_t)_v := \mathbb{P}(X_0=v | X_t=x_t),
