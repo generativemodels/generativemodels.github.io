@@ -702,7 +702,7 @@ Because both $p_t$ and $\tilde{p}_t$ are solutions to the same first-order linea
 
 Now that we are equipped with adequate definitions of probability paths and velocities for the discrete case, together with a way to check that one is associated to the other, we can state the approach of discrete flow matching, which is in fact the same as for continuous flow matching:
 1. Build an explicit probability path $(p_t)$ going from $p_0$ to $p_1$ (@eq:marginal-path) using a conditioning variable, conditional probability paths and conditional velocities.
-2. Build a probability velocity $u_t$ generating $(p_t)$ (@eq:marginal-velocity-def-2)
+2. Build a probability velocity $u_t$ generating $(p_t)$ (@eq:marginal-velocity-def)
 3. Provide an explicit loss to learn $u_t$ with a neural network (@eq:cdfm-2)
 
 Before embarking on this task, we make an **important modelling choice**.
@@ -1127,7 +1127,7 @@ $$
   </figcaption>
 </figure>
 
-#### From conditional to unconditional velocity
+#### Building the target velocity
 
 Now that we have defined our conditional probability paths and velocities, we can use them to build global, unconditional ones.
 The overall distribution $p_t$ is obtained by marginalizing the conditional paths over the conditioning variable $\mathbf{z}$:
@@ -1137,11 +1137,11 @@ $$
 p_t(\mathbf{x}) := \sum_{\mathbf{z}} p_t(\mathbf{x} | \mathbf{z}) \pi(\mathbf{z})
 \end{equation}
 $$
-where $\pi(\mathbf{z})$ is the distribution of $\mathbf{z}$.
+where $\pi(\mathbf{z})$ chosen distribution over $\mathbf{z}$.
 In our case, $\mathbf{z} = \mathbf{x}_1$ and $\pi= p_1$; as the proof below shows, the path defined by marginalization indeed goes from $p_0$ to $p_1$.
 
 <details>
-<summary>Proof that path goes from $p_0$ to $p_1$</summary>
+<summary>Proof that path $(p_t)$ does go from $p_0$ to $p_1$</summary>
 <div>
 
 We verify the two boundary conditions separately:
@@ -1168,27 +1168,26 @@ q_1(x^i | x_1^i) &= \mathbb{I}(x^i = x_1^i)  \label{eq:endpoint-path-1} \\
 p_1(\mathbf{x} | \mathbf{x}_1) &= \prod_{j=1}^S \mathbb{I}(x^j = x_1^j) = \mathbb{I}(\mathbf{x} = \mathbf{x}_1) \label{eq:endpoint-path-2}
 \end{align}
 $$
-Since $\pi(\mathbf{z}) = p_{\mathrm{data}}(\mathbf{x}_1)$,
+Since $\pi(\mathbf{z}) = p_1(\mathbf{x}_1)$,
 the indicator collapses the sum directly:
 $$
 p_{t=1}(\mathbf{x})
-= \sum_{\mathbf{x}_1} \mathbb{I}(\mathbf{x} = \mathbf{x}_1)\, p_{\mathrm{data}}(\mathbf{x}_1)
-= p_{\mathrm{data}}(\mathbf{x})
+= \sum_{\mathbf{x}_1} \mathbb{I}(\mathbf{x} = \mathbf{x}_1)\, p_1(\mathbf{x}_1)
 = p_1(\mathbf{x}).
 $$
 
 </div>
 </details>
 
-We now arrive to the heart of discrete flow matching: building a velocity that transports $p_0$ to $p_1$.
+We now arrive to the heart of discrete flow matching: **building a velocity that transports $p_0$ to $p_1$**.
 
 <Statement kind="Theorem" label="fundamental-theorem-discrete-fm" title="Fundamental theorem of discrete FM">
 The probability velocity obtained by taking the conditional expectation of the conditional velocities,
 $$
 \begin{align}
 u_t(\mathbf{x})_{\mathbf{y}}
-:= \mathbb{E}_{\substack{\mathbf{z}}}\!\left[u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} | X_t = \mathbf{x}\right]  \label{eq:marginal-velocity-def-2}
-&= \sum_{\mathbf{z}} u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(\mathbf{z} | X_t = \mathbf{x}) \, \label{eq:marginal-velocity-def-3}
+:= \mathbb{E}_{\substack{\mathbf{z}}}\!\left[u_t(X_t|\mathbf{z})_{\mathbf{y}} | X_t = \mathbf{x}\right]
+&= \sum_{\mathbf{z}} u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(\mathbf{z} | X_t = \mathbf{x}) \label{eq:marginal-velocity-def}
 \end{align}
 $$
 generates the probability path $p_t(\mathbf{x}) = \sum_{\mathbf{z}} p_t(\mathbf{x}|\mathbf{z})\,\pi(\mathbf{z})$.
@@ -1216,6 +1215,7 @@ $$
 &\hspace{-8em}{}= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h). \label{eq:marginal-velocity-proof-6}
 \end{align}
 $$
+where we have used in @eq:eq:marginal-velocity-proof-4 the fact that $u_t(\mathbf{\cdot | \mathbf{z}})$ generate $p_t(\cdot | \mathbf{z})$.
 
 **Alternative proof**: apply the Kolmogorov equation to each conditional process and average over $\mathbf{z}$:
 $$
@@ -1233,13 +1233,13 @@ So $u_t$ satisfies the Kolmogorov equation for $p_t$ and therefore generates $p_
 
 {/* If needed we can add the same figure u,ucond,p,pcond as the one in the CFM blogpost, because it's still valid.*/}
 
-This theorem follows the exact same logic as in Continuous FM, and has the same practical consequence: since the target field is identified as a conditional expectation, it can be learned through a regression problem.
+This theorem follows the exact same logic as in continuous FM, and has the same practical consequence: since the target field is identified as a conditional expectation, it can be learned through a regression problem.
 
 In continuous spaces, this is typically introduced via the $L^2$ projection view, as the conditional expectation solves
 $$
 \begin{equation}
 \label{eq:l2-proj}
-u_t(\mathbf{x}) = \underset{u \text{ measurable}}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})}} \!\left[\left\|u_t(\mathbf{x}_t | \mathbf{z}) - u(\mathbf{x}_t)\right\|^2 \right]
+u_t(\mathbf{x}) = \underset{u_t \text{ measurable}}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})}} \!\left[\left\|u_t(\mathbf{x}_t | \mathbf{z}) - u(\mathbf{x}_t)\right\|^2 \right] .
 \end{equation}
 $$
 In discrete spaces, since we compare nonneg­ative rate vectors that behave like local probabilities, a Kullback-Leibler style objective is more natural.
@@ -1253,9 +1253,9 @@ u_t(\mathbf{x}) ={} \underset{u}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\
 $$
 
 When applying it to probability velocities, we only compare the off-diagonal entries of $u_t(\mathbf{x})$, i.e. the rates $u_t(\mathbf{x})_{\mathbf{y}}$ for $\mathbf{y}\neq\mathbf{x}$.
-These vectors are indeed positive (cf. @eq:velocity-positivity), and we can skip the diagonal entry since it is fixed by the other values, cf. @eq:velocity-normalization.
+These vectors are indeed positive (cf. @eq:velocity-positivity), and we can skip the diagonal entry since its value is determined by all the other ones due to the zero-sum constraint.
 
-The exact conditional expectation is approximated by a neural network $u_{\theta,t}$, trained by minimizing over $\theta$:
+The exact conditional expectation of @eq:marginal-velocity-def is approximated by a neural network $u_{\theta,t}$, trained by minimizing over $\theta$:
 $$
 \begin{align}
 L_{\text{CDFM}}(\theta)
@@ -3771,7 +3771,7 @@ Data Distribution</strong> <strong><a href="https://openreview.net/pdf?id=B1lcYr
 <div class="dfm-note-entry">
   <span id="generalized-kl"></span>
   <div class="dfm-note-main">
-    Here $\mathrm{KL}$ denotes the generalized KL divergence between two positive vectors $a,b \in \mathbb{R}_+^d$, $\mathrm{KL}(a,b) = \sum_{j=1}^d a_t \log(a_t/b_t) - a_t + b_t$.
+    Here $\mathrm{KL}$ denotes the generalized KL divergence between two positive vectors $a,b \in \mathbb{R}_+^d$, $\mathrm{KL}(a,b) = \sum_{j=1}^d a_j \log(a_j/b_j) - a_j + b_j$.
   </div>
 </div>
 
