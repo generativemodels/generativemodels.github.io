@@ -1448,7 +1448,8 @@ $$
 <figure>
   <DFMSampling showModeToggle={false} client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:dfm-sampling" />:</strong> Generation process of a sequence of length $S=4$ with a learned probability velocity $u_t$ or denoiser $P_{\theta,t}(X_1^i | \mathbf{x})$. **Key facts**: 1) At each step, all tokens are updated independently 2) Different samples can be generated from the same initial sequence (change the seed!), because sampling is stochastic at each step.
+    <strong>Figure <Counter label="fig:dfm-sampling" />:</strong> Generation process of a sequence of length $S=4$ with a learned probability velocity $u_{\theta,t}$ or denoiser $P_{\theta,t}(X_1^i | X_t)$.
+    **Key facts**: 1) At each step, all tokens are updated independently 2) Different samples can be generated from the same initial sequence (change the seed!), because sampling is stochastic at each step.
     **Key empirical observations**: 3) The probability of drawing the mask token $m$ decreases at each step, while the probability of drawing other tokens increases. 4) Once a token is unmasked, it stays at its current value until the end.
   </figcaption>
 </figure>
@@ -1680,14 +1681,18 @@ $$
 </details>
 
 <figure>
-  <MaskedDiffusion showVariational={true} showScore={false} showDirectionControls={false} client:load />
+  <MaskedDiffusion showVariational={true} showScore={false} client:load />
   <figcaption>
     <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Discrete masked forward with T steps as in @eq:mdm-step. At step $t$, an unmasked token gets masked with probability $\beta_t$; after masking, this probability is 1. The blue bar shows the one-step forward probability $q(x_t=x_0 | x_{t-1}=x_0)=1-\beta_t$ (@eq:forward-transition), and the grey bar shows $q(x_t=x_0 | x_0) = \alpha_t$. The trajectories are stochastic: changing the seed changes the step at which the clean token transitions to the mask token.
     <br /> The “Show $N$ trajectories” button switches to an aggregate view that samples $N$ independent trajectories with the same transition rule; at step $t$, the plotted proportion of still-unmasked trajectories approaches the schedule $\alpha_t$ as $T$ and $N$ grow.
   </figcaption>
 </figure>
 
+<ParagraphAccent>
+
 In summary, the forward process masks each token independently and irreversibly: at time $t$, a token remains unmasked with probability $\alpha_t$, and once it reaches the mask state $m$, it stays masked. The user-defined schedule $\alpha_t$ therefore controls how quickly clean data is transformed into pure mask noise. We now turn to reversing this process, in order to generate data from noise.
+
+</ParagraphAccent>
 
 #### Reverse process
 
@@ -1705,7 +1710,7 @@ Equivalently:
 $$
 \begin{equation}
 \label{eq:bridge-mask-sampling}
-x_s = \begin{cases}
+x_s | x_t=m, x_0 = \begin{cases}
 x_0, & \text{with probability } \dfrac{\alpha_s - \alpha_t}{1 - \alpha_t} \\
 m, & \text{with probability } \dfrac{1 - \alpha_s}{1 - \alpha_t}
 \end{cases}
@@ -1730,12 +1735,16 @@ We conclude using that $x_s$ is either at state $x_0$ or at state $m$ with proba
 </div>
 </details>
 
+The reverse process conditioned on $x_0$, namely sampling from $q(x_s | x_t, x_0)$ in @eq:bridge-mask, can also be simulated in Figure <Ref label="fig:masked-forward-discrete" /> by clicking the reverse button.
+
+{/*
 <figure>
   <MaskedDiffusion showVariational={true} showScore={false} initialDirection="reverse" client:load />
   <figcaption>
     <strong>Figure <Counter label="fig:masked-reverse-discrete" />:</strong> Discrete masked reverse with T steps as in @eq:masked-diffusion-denoiser-sampling (or equivalently @eq:bridge-mask when the denoiser puts all mass on the true $x_0$). At step $k$, a masked token is unmasked with probability $(\alpha_{k-1}-\alpha_k)/(1-\alpha_k)$; after unmasking, it stays fixed at $x_0$. The blue bar shows $q(x_{t-1}=x_0 | x_t=m, x_0)$ (@eq:bridge-mask), and the grey bar shows $q(x_t=x_0 | x_0)=\alpha_t$. The “Show N trajectories” button switches to the same empirical aggregation as in Figure <Ref label="fig:masked-forward-discrete" />, but with the reverse process.
   </figcaption>
 </figure>
+*/}
 
 However, during generation, the clean token $x_0$ is unknown: the quantity we actually need in order to sample backward is the reverse transition $q(x_s | x_t)$, not $q(x_s | x_t, x_0)$. We obtain the former by marginalizing the latter over all possible clean tokens, weighted by their probability $\mathbb{P}(X_0 = v | X_t=x_t)$.
 
