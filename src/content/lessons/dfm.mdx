@@ -693,7 +693,7 @@ We can derive this directly by expanding the marginal probability at $t+h$ using
 
 $$
 \begin{align}
-p_{t+h}(\mathbf{y}) &:= \mathbb{P}(X_{t+h} = \mathbf{y})  \label{eq:kolmogorov-proof-1} \\
+p_{t+h}(\mathbf{y}) &:= \mathbb{P}(X_{t+h} = \mathbf{y}) \notag \\
 &= \sum_{\mathbf{x} \in \mathcal{S}} \mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x})\, \mathbb{P}(X_t = \mathbf{x})  \label{eq:kolmogorov-proof-2} \\
 &= \sum_{\mathbf{x} \in \mathcal{S}} \left(\mathbb{I}(\mathbf{y} = \mathbf{x}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h)\right) p_t(\mathbf{x})  \label{eq:kolmogorov-proof-3} \\
 &= p_t(\mathbf{y}) + h \sum_{\mathbf{x} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}}\, p_t(\mathbf{x}) + o(h) \label{eq:kolmogorov-proof-4}
@@ -1223,7 +1223,7 @@ $$
 &\hspace{-8em}{}= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h). \label{eq:marginal-velocity-proof-6}
 \end{align}
 $$
-where we have used in @eq:eq:marginal-velocity-proof-4 the fact that $u_t(\mathbf{\cdot | \mathbf{z}})$ generate $p_t(\cdot | \mathbf{z})$.
+where we have used in @eq:marginal-velocity-proof-4 the fact that $u_t(\mathbf{\cdot | \mathbf{z}})$ generate $p_t(\cdot | \mathbf{z})$.
 
 **Alternative proof**: apply the Kolmogorov equation to each conditional process and average over $\mathbf{z}$:
 $$
@@ -1289,9 +1289,7 @@ $$
 u_t^i(\mathbf{x})_v = \frac{1}{1 - t} \left( \mathbb{P}(X_1^i = v | X_t = \mathbf{x}) - \mathbb{I}(v = x^i) \right) .
 \end{equation}
 $$
-In this equation, the function $\mathbb{x} \mapsto \mathbb{P}(X_1^i = v | X_t = \mathbf{x})$ can be interpreted as a denoiser: it gives the probability of the $i$-th token in the clean sequence $\mathbf{x}_1$ being $v$, given the full noisy sequence $\mathbf{x}_t$.
-
-
+In this equation, the function $\mathbf{x} \mapsto \mathbb{P}(X_1^i = v | X_t = \mathbf{x})$ can be interpreted as a denoiser: it gives the probability of the $i$-th token in the clean sequence $\mathbf{x}_1$ being $v$, given the full noisy sequence $\mathbf{x}_t$.
 
 
 <details>
@@ -1585,7 +1583,7 @@ In discrete diffusion, an analogous approach generates sequences by reversing a 
 
 #### Forward process
 
-We first consider the forward process: it starts from a clean sequence $\mathbf{x_0}$, and progressively replaces each token by the mask token, transforming the sequence into $\mathbf{x}_T = mm...m$.
+We first consider the forward process: it starts from a clean sequence $\mathbf{x}_0$, and progressively replaces each token by the mask token, transforming the sequence into $\mathbf{x}_T = mm...m$.
 Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token in the following.
 
 
@@ -1805,7 +1803,7 @@ because $\mathbb{P}(X_0=\cdot | X_t=x_t)$ is a probability distribution over $\m
 </div>
 </details>
 
-This directly gives the sampling process from a fully masked sequence toward a clean sequence: for $s<t$, we sample each still masked position $i$ as
+This directly gives the sampling process from a fully masked sequence toward a clean sequence<a href="#single-token-to-sequence" class="dfm-note-ref"></a>: for $s<t$, we sample each still masked position $i$ as
 $$
 \begin{equation}
 \label{eq:masked-diffusion-denoiser-sampling}
@@ -2104,12 +2102,9 @@ $$
 
 Plugging this into the ELBO yields:
 $$
-\begin{align}
-&\text{ELBO}_{\theta}(x_0) = {} \label{eq:mdm-elbo-sum-1} \\
-&\sum_{t=1}^T \mathbb{E}_{\substack{x_t \sim q( \cdot | x_0)}} \left[
-    \mathbb{I}(x_t=m)\,\frac{\alpha_{t-1}-\alpha_t}{1-\alpha_t}
-    \,x_0^\top \log D_{\theta, t}(x_t)\right]. \notag
-\end{align}
+\begin{equation}
+\text{ELBO}_{\theta}(x_0) = \sum_{t=1}^T \mathbb{E}_{x_t \sim q(\cdot | x_0)} \left[\mathbb{I}(x_t=m)\,\frac{\alpha_{t-1}-\alpha_t}{1-\alpha_t}\,x_0^\top \log D_{\theta, t}(x_t)\right]. \label{eq:mdm-elbo-sum-1}
+\end{equation}
 $$
 
 Equivalently, by sampling a step $t \sim \mathrm{Unif}\{1,\ldots,T\}$, we use $\sum_{t=1}^{T} f(t) = T\,\mathbb{E}_{t \sim \mathrm{Unif}\{1,\ldots,T\}}[f(t)]$:
@@ -2711,7 +2706,7 @@ $$
 \begin{equation}
 \label{eq:score-loss-prop}
 L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \Bigg[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y \bigg( s_{\theta,t}(x_t)_y - \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \log s_{\theta,t}(x_t)_y \bigg) \Bigg] + C
-\end{equation},
+\end{equation}
 $$
 where $C$ is a constant independent of $\theta$.
 </Statement>
@@ -3783,6 +3778,18 @@ Data Distribution</strong> <strong><a href="https://openreview.net/pdf?id=B1lcYr
   <span id="denoiser-mask"></span>
   <div class="dfm-note-main">
     For simplicity, we consider $[D_{\theta,t}(x_t)]_m = 0$.
+  </div>
+</div>
+
+<div class="dfm-note-entry">
+  <span id="single-token-to-sequence"></span>
+  <div class="dfm-note-main">
+    Passing from the single-token derivation to the full sequence uses two assumptions:
+    1. The forward transition factorizes token-wise:
+    $q(\mathbf{X}_t=\mathbf{x}_t | \mathbf{X}_s=\mathbf{x}_s)=\prod_{i=1}^S q(X_t^i=x_t^i | X_s^i=x_s^i)$.
+    2. The denoiser factorizes position per position:
+    $\mathbb{P}(\mathbf{X}_0=\mathbf{x}_0 | \mathbf{X}_t=\mathbf{x}_t)=\prod_{i=1}^S \mathbb{P}(X_0^i=x_0^i | \mathbf{X}_t=\mathbf{x}_t)$.
+    Each per-position prediction still use the whole current sequence $\mathbf{x}_t$ as context.
   </div>
 </div>
 
