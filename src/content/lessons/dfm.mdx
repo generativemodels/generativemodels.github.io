@@ -1448,8 +1448,8 @@ To wrap up, we end this section with a table summarizing the important steps in 
 
 <table className="dfm-comparison-table" style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '2em', marginBottom: '1.25em'}}>
   <colgroup>
-    <col style={{ width: '50%' }} />
-    <col style={{ width: '50%' }} />
+    <col style={{ width: '47%' }} />
+    <col style={{ width: '53%' }} />
   </colgroup>
   <thead>
     <tr>
@@ -1461,7 +1461,7 @@ To wrap up, we end this section with a table summarizing the important steps in 
     {/* ASPECT 1 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', borderTop: '1px solid #ccc', textAlign: 'center' }}>
-        <strong>1. Define a conditioning variable $\mathbf{z}$ with some known distribution $\pi(\mathbf{z})$</strong>
+        <strong>1. Define a conditioning variable $\mathbf{z}$ with known distribution $\pi(\mathbf{z})$</strong>
       </td>
     </tr>
     <tr>
@@ -1469,7 +1469,7 @@ To wrap up, we end this section with a table summarizing the important steps in 
         $\mathbf{z}=(\mathbf{x}_0, \mathbf{x}_1)$ with  $\pi(\mathbf{z}) = p_0 \times p_{\text{data}}$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $\mathbf{z}=\mathbf{x}_1$ with $\pi(\mathbf{z}) = p_{\text{data}}$ <br /> $\mathbf{x}_0 = m\ldots m$ and $p_0 = p_{\text{mask}} = \delta_{m\ldots m}$
+        $\mathbf{z}=\mathbf{x}_1$ with $\pi(\mathbf{z}) = p_{\text{data}}$ <br /> (our choice for simplicity; $\mathbf{z} = (\mathbf{x}_0, \mathbf{x}_1)$ is also possible)
       </td>
     </tr>
 
@@ -1481,10 +1481,10 @@ To wrap up, we end this section with a table summarizing the important steps in 
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $p_t(\mathbf{x} | \mathbf{z}) = \mathbb{I}\!\left(\mathbf{x} = (1 - t)\mathbf{x}_0 + t\mathbf{x}_1\right)$
+        $p_t(\mathbf{x} | \mathbf{z}) = \delta_{(1 - t)\mathbf{x}_0 + t\mathbf{x}_1}(\mathbf{x})$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | x_1^j)$ <br /> where $q_t \sim \text{Cat}((1 - t) \mathbf{e}_{m} + t \mathbf{e}_{x_1^j} )$
+        $p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | x_1^j)$ <br /> where $q_t = \text{Cat}((1 - t) \mathbf{e}_{m} + t \mathbf{e}_{x_1^j} )$
       </td>
     </tr>
 
@@ -1496,25 +1496,25 @@ To wrap up, we end this section with a table summarizing the important steps in 
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $u_t(\mathbf{x} | \mathbf{z}) = x_1 - x_0$
+        $u_t(\mathbf{x} | \mathbf{z}) = \mathbf{x}_1 - \mathbf{x}_0$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})\, u_t(x^i | x_1^i)_{y^i}$ <br /> $u_t(x^i | x_1^i) = \frac{1}{1-t}\mathbb{I}(x^i = m)\left(\mathbf{e}_{x_1^i} - \mathbf{e}_{m}\right)$
+        $u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})\, u_t(x^i | x_1^i)_{y^i}$ <br /> with $u_t(x^i | x_1^i) = \frac{1}{1-t}\mathbb{I}(x^i = m)\left(\mathbf{e}_{x_1^i} - \mathbf{e}_{m}\right)$
       </td>
     </tr>
 
     {/* ASPECT 4 */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>4. Training in practice</strong> <br /> <em>Sample $t \sim \mathcal{U}_{[0,1]}, \mathbf{z} \sim \pi, \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})$</em>
+        <strong>4. Training objective</strong>
       </td>
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        <em>Use $L^2$:</em> <br /> $\mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})}}\!\left[\Vert u_{\theta, t}(\mathbf{x}_t) - (x_1 - x_0) \Vert^2\right]$
+        <em>Use $L^2$:</em> <br /> $\min_\theta \mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})}}\!\left[\Vert u_{\theta, t}(\mathbf{x}_t) - (\mathbf{x}_1 - \mathbf{x}_0) \Vert^2\right]$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        <em>Use KL:</em> <br /> $\mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{x}_1)}}\!\left[-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right]$
+        <em>Use KL:</em> <br /> $\min_\theta \mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{x}_1)}}\!\left[-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right]$
       </td>
     </tr>
 
@@ -2296,13 +2296,13 @@ $$
 
 {/* We now turn to the score-based viewpoint: predict a score function, i.e. the direction pointing toward more likely samples at noise level $t$, and follow it to move from noise back to data. In continuous diffusion, a key tool in the analysis is to model the forward process as a discretization of a forward stochastic differential equation; simulating the backward process then amounts to discretizing the associated reverse SDE. Critically, the reverse SDE involves the score, namely $\nabla \log p_t(x)$, where $p_t$ is the distribution of the variables $x_t$ defined by the forward process. */}
 
-In this section, we study the score-based perspective on discrete diffusion. 
+In this section, we study the score-based perspective on discrete diffusion.
 The main idea is to learn a transport guided by the _score function_ $s_t(x_t)$ to reverse the diffusion process.
 This quantity points toward more likely samples at noise level $t$, guiding the generation process back toward the data distribution.
 In continuous-space diffusion models, the generation process, i.e. the backward process, is defined by the reverse SDE (see Figure <Ref label="fig:discrete-continuous-score" />, bottom).
 Critically, the reverse SDE involves the score, namely $\nabla_x \log p_t(x_t)$, where $p_t$ is the distribution of the variables $x_t$ defined by the forward process.
 
-We follow the same path in discrete space. Since there is no SDE involved here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$ in the forward SDE, i.e. describing the evolution of $x_t$ during the corruption process. 
+We follow the same path in discrete space. Since there is no SDE involved here, we work with the first-order expansion of $q(x_{t+\Delta t} | x_t)$ as $\Delta t \to 0$, which plays the role of $dx_t$ in the forward SDE, i.e. describing the evolution of $x_t$ during the corruption process.
 Then we reverse the process to obtain $p(x_{t-\Delta t} | x_t)$ and identify the _concrete score_ $s_t(x_t)_{y}$, the discrete analogue of $\nabla_x \log p_t(x_t)$ (the score function of the continuous process).
 Finally, we learn a neural network to predict the concrete score and use it to generate new discrete data.
 
@@ -2332,14 +2332,14 @@ q(x_{t+\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + [\dot{Q}_t(x_t)]_y \Delta t 
 \end{equation}
 $$
 
-where we choose the forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$. 
+where we choose the forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$.
 In the above equation and in what follows, $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$.
 
 The continuous SDE means that over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $[\dot{Q}_t(x_t)]_y\Delta t$ to first order.<a href="#forward-euler" class="dfm-note-ref"></a>
 
 {/* A common instantiation of the continuous SDE is the variance-preserving Gaussian diffusion: the coefficients are chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a noise schedule.  */}
-Then, we need to specify the forward rate matrix $\dot{Q}_t$ that governs the masking process. 
-A simple choice is to set the rate of transition from any unmasked token to the mask state: 
+Then, we need to specify the forward rate matrix $\dot{Q}_t$ that governs the masking process.
+A simple choice is to set the rate of transition from any unmasked token to the mask state:
 
 $$
 \begin{equation}
@@ -2357,7 +2357,7 @@ $$
 \end{equation}
 $$
 
-where $\sigma(t) > 0$ is the instantaneous masking rate, $\mathbf{e}_m$ is the one-hot vector for the mask token. 
+where $\sigma(t) > 0$ is the instantaneous masking rate, $\mathbf{e}_m$ is the one-hot vector for the mask token.
 The last column of $\dot{Q}_t$ indicates that the rates for jumping to $m$ are equal to $\sigma(t)$ for any token $x_t\in\mathcal{V}\setminus\{m\}$, and the last row indicates that the rate for jumping from $m$ to any other state is 0 (the mask is an absorbing state).
 
 Continuous-space diffusion models benefits from _simulation-free_ forward processes, which mean we can directly sample $x_t$ given $x_0$ without having to simulate the process step by step, simply using the closed-form expression $q(x_t | x_0) = \mathcal{N}\!\left(x_t;\ \sqrt{\alpha_t}\,x_0,\ (1-\alpha_t)I\right)$, where $\alpha_t = \exp\!\left(-\int_0^t \beta(s)\,ds\right)$ is the cumulative noise schedule.
