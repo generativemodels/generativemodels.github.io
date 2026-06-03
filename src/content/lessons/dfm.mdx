@@ -2362,7 +2362,7 @@ $$
 where we choose the forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$.
 In the above equation and in what follows, $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$.
 
-The continuous SDE means that over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $[\dot{Q}_t(x_t)]_y\Delta t$ to first order.<a href="#forward-euler" class="dfm-note-ref"></a>
+For continuous-space diffusion models, the forward SDE means that over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $[\dot{Q}_t(x_t)]_y\Delta t$ to first order.<a href="#forward-euler" class="dfm-note-ref"></a>
 
 {/* A common instantiation of the continuous SDE is the variance-preserving Gaussian diffusion: the coefficients are chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a noise schedule.  */}
 Then, we need to specify the forward rate matrix $\dot{Q}_t$ that governs the masking process.
@@ -2388,7 +2388,7 @@ where $\sigma(t) > 0$ is the instantaneous masking rate, $\mathbf{e}_m$ is the o
 The last column of $\dot{Q}_t$ indicates that the rates for jumping to $m$ are equal to $\sigma(t)$ for any token $x_t\in\mathcal{V}\setminus\{m\}$, and the last row indicates that the rate for jumping from $m$ to any other state is 0 (the mask is an absorbing state).
 
 Continuous-space diffusion models benefits from _simulation-free_ forward processes, which mean we can directly sample $x_t$ given $x_0$ without having to simulate the process step by step, simply using the closed-form expression $q(x_t | x_0) = \mathcal{N}\!\left(x_t;\ \sqrt{\alpha_t}\,x_0,\ (1-\alpha_t)I\right)$, where $\alpha_t = \exp\!\left(-\int_0^t \beta(s)\,ds\right)$ is the cumulative noise schedule.
-The same thing is possible in discrete space, we can define the transition matrix from time $0$ to time $t$  $\bar{Q}_{t|0}$, such that $q(x_t | x_0)=\mathrm{Cat}(x_t;\ \bar{Q}_{t|0}^\top x_0)$.
+The same thing is possible in discrete space, we can define the transition matrix from time $0$ to time $t$, denoted $\bar{Q}_{t|0}$, such that $q(x_t | x_0)=\mathrm{Cat}(x_t;\ \bar{Q}_{t|0}^\top x_0)$.
 Denoting $\alpha_t = \exp\!\left(-\int_0^t \sigma(s)\,ds\right)$ the *cumulative masking schedule*, we have that $\bar{Q}_{t|0}$ takes the following form:
 
 $$
