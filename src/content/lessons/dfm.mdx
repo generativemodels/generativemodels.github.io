@@ -2566,7 +2566,7 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 #### Reverse process
 
 In the previous section, we have described the forward process of score-based discrete diffusion models. To generate new data samples, we need to reverse the forward process.
-In continuous-space Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In discrete space, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
+Similarly to continuous-space diffusion, where the reverse process is obtained by reversing the forward process, in discrete space, the reverse process is obtained by reversing the forward Markov chain, and is also a continuous-time Markov chain.
 
 <Statement kind="Proposition" label="reverse-rate" title="Reverse rate $\dot{R}_t$">
 Interestingly, the reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
@@ -2590,7 +2590,7 @@ $$
 $$
 </Statement>
 
-<a href="#reverse-euler" class="dfm-note-ref"></a>
+{/* <a href="#reverse-euler" class="dfm-note-ref"></a> */}
 
 <details>
 <summary>Proof</summary>
@@ -2621,9 +2621,8 @@ For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a v
 */}
 
 
-In continuous-space Diffusion, the score function $\nabla \log p_t(x)$ governs the reverse SDE $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $. Thus, to sample from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
-
-We define the discrete space analog as the **concrete score**, that is the ratio of marginal probabilities between a candidate destination state and the current state:
+In continuous-space diffusion, the score function $\nabla_x \log p_t(x_t)$ governs the reverse SDE, i.e. the generative process. 
+In the discrete space, the analog to the score function is the **concrete score** $s_t(x_t)_y$, defined as the ratio of marginal probabilities between a candidate destination state and the current state:
 $$
 s_t(x_t)_y \;=\; \frac{q(X_t = y)}{q(X_t = x_t)} \quad (y \neq x_t).
 $$
@@ -2653,12 +2652,15 @@ x_{t-h} &\sim \mathrm{Cat}\left(
 \end{align}
 $$
 
-where $\odot$ denotes the elementwise product. The forward rate $\dot{Q}_t$ is known because it is a design choice of the noising process. The concrete score $s_t$ (or equivalently the reverse rate $\dot{R}_t$), however, depends on the noisy-data marginals $q(X_t=\cdot)$ which are unknown. This is why, in practice, we approximate $s_t$ with a neural network $s_{\theta, t}$.
+where $\odot$ denotes the elementwise product. The forward rate $\dot{Q}_t$ is known because it is a design choice of the noising process. 
+However, the concrete score $s_t(x_t)_y$ (or equivalently the reverse rate $\dot{R}_t$) depends on the noisy-data marginals $q(X_t=\cdot)$ which are unknown and untractable. 
+This is why, in practice, we learn a neural approximation of it, denoted by $s_{\theta, t}(x_t)_y$.
 
 
 #### Training
 
-It remains to design a tractable training loss for the concrete score. As in continuous-space Diffusion, where denoising score matching exploits that the marginal score is a conditional expectation of the (tractable) conditional score: $\nabla \log p_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}[\nabla \log p_t(x_t | x_0)]$, the same identity holds here. Defining the (tractable) conditional concrete score $s_t(x_t | x_0)_y \;:=\; p_t(y | x_0)/p_t(x_t | x_0)$, we have for $y \neq x_t$ <a href="#conditional-expectation" class="dfm-note-ref"></a>:
+In the  forward and backward processes sections, we showed how these processes can be simulated with respectively the forward rate $\dot{Q}_t$ and the reverse rate $\dot{R}_t$, and that the unknown quantity connecting them is the concrete score $s_t(x_t)_y$. 
+However, this last is untractable and therefore we need to rewritte it before approximating it with a neural network $s_{\theta,t}$. To do so, we apply the _marginalisation trick_, meaning we express the concrete score $s_t(x_t)_y$ as a conditional expectation of the conditional concrete score $s_t(x_t | x_0)_y$ over $x_0$:
 
 $$
 \begin{align}
@@ -2679,7 +2681,8 @@ s_t \;=\; \underset{s}{\operatorname{argmin}}\ \mathbb{E}_{\substack{x_0 \sim p_
 \end{equation}
 $$
 
-Approximating $s_t$ by a neural network $s_{\theta,t}$ and weighting each term by the forward rate $[\dot{Q}_t(x_t)]_y$ (which leaves the minimizer unchanged) yields the loss:
+{/* Approximating $s_t$ by a neural network $s_{\theta,t}$ and weighting each term by the forward rate $[\dot{Q}_t(x_t)]_y$ (which leaves the minimizer unchanged) yields the loss: */}
+By weighting each term by the forward rate $[\dot{Q}_t(x_t)]_y$ (which leaves the minimizer unchanged), we can derived a new loss function to train the concrete score approximation $s_{\theta,t}$:
 
 $$
 \begin{equation}
@@ -2688,7 +2691,7 @@ L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q(\cdot|x_0)}} \Big
 \end{equation}
 $$
 
-Expanding the KL and dropping $\theta$-independent terms gives the equivalent explicit form:
+Finally, by expanding the KL divergence and dropping $\theta$-independent terms, we obtain an explicit form for the score-based discrete diffusion loss:
 
 <Statement kind="Proposition" label="concrete-score-matching" title="Concrete score matching $s_t$">
 The concrete score $s_t$ is the minimizer (over $s_{\theta,t}$) of
@@ -2696,7 +2699,7 @@ $$
 \begin{equation}
 \label{eq:score-loss-prop}
 L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \Bigg[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y \bigg( s_{\theta,t}(x_t)_y - \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \log s_{\theta,t}(x_t)_y \bigg) \Bigg] + C
-\end{equation}
+\end{equation},
 $$
 where $C$ is a constant independent of $\theta$.
 </Statement>
