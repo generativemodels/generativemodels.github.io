@@ -78,6 +78,22 @@ $
 
 This theme comes with the [@astrojs/mdx](https://docs.astro.build/en/guides/integrations-guide/mdx/) integration installed and configured in your `astro.config.mjs` config file. If you prefer not to use MDX, you can disable support by removing the integration from your config file.
 
+## Highlighted equations
+
+Use `EquationAccent` or `PinkEquation` around a display equation when a derivation needs the same kind of visual color cue as theorem/lemma blocks.
+
+<EquationAccent>
+
+$$
+\begin{align*}
+\log p_\theta(x|z)
+&= \log \mathcal{N}(x; d_\theta(z), I) \\
+&= -\frac{D}{2}\log(2\pi) - \frac{1}{2}\|x - d_\theta(z)\|^2
+\end{align*}
+$$
+
+</EquationAccent>
+
 ## Why MDX?
 
 MDX is a special flavor of Markdown that supports embedded JavaScript & JSX syntax. This unlocks the ability to [mix JavaScript and UI Components into your Markdown content](https://docs.astro.build/en/guides/markdown-content/#mdx-features) for things like interactive charts or alerts.
