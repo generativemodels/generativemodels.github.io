@@ -78,9 +78,9 @@ function getGrid(t, solvedBoard, thresholds) {
   );
 }
 
-const CELL = 50;
+const CELL = 42;
 const GAP = 2;
-const BOX_GAP = 6;
+const BOX_GAP = 5;
 
 function getPos(r, c) {
   const x = Math.floor(c / 3) * (CELL * 3 + GAP * 2 + BOX_GAP) + (c % 3) * (CELL + GAP);
@@ -152,27 +152,27 @@ export default function App() {
 
   return (
     <div style={{
-      minHeight: "100vh",
       background: "radial-gradient(ellipse at 35% 15%, #0f1729, #080d18 55%, #050810)",
       color: "white",
       fontFamily: "'Outfit', sans-serif",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      padding: "40px 16px 56px",
-      gap: 24,
+      padding: "24px 14px 24px",
+      gap: 14,
+      borderRadius: 16,
     }}>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
       {/* Title */}
       <div style={{ textAlign: "center", maxWidth: 520 }}>
         <h1 style={{
-          fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: "-0.02em",
+          fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: "-0.02em",
           background: "linear-gradient(135deg, #82b4ff, #a78bfa, #7defa0)",
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
         }}>Discrete Flow Matching on Sudoku</h1>
         <p style={{
-          fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 8, lineHeight: 1.6,
+          fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 6, lineHeight: 1.45,
           fontFamily: "'DM Mono', monospace",
         }}>
           Transporting <span style={{ color: "#82b4ff" }}>x{"\u2080"}</span> (fully masked)
@@ -184,7 +184,7 @@ export default function App() {
       {/* Seed controls */}
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
         <span style={{
-          fontFamily: "'DM Mono', monospace", fontSize: 11,
+          fontFamily: "'DM Mono', monospace", fontSize: 10,
           color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.1em",
         }}>Seed</span>
         <input
@@ -193,26 +193,26 @@ export default function App() {
           onChange={e => setInputSeed(e.target.value)}
           onKeyDown={e => e.key === "Enter" && handleApplyInputSeed()}
           style={{
-            width: 72, padding: "6px 10px",
+            width: 64, padding: "5px 8px",
             background: "rgba(255,255,255,0.04)",
             border: "1px solid rgba(167,139,250,0.2)",
             borderRadius: 8,
             color: "#a78bfa",
             fontFamily: "'DM Mono', monospace",
-            fontSize: 13,
+            fontSize: 12,
             outline: "none",
           }}
         />
         <button
           onClick={handleGenerate}
           style={{
-            padding: "7px 16px",
+            padding: "6px 12px",
             background: "rgba(167,139,250,0.12)",
             border: "1.5px solid rgba(167,139,250,0.25)",
             borderRadius: 8,
             color: "#a78bfa",
             fontFamily: "'Outfit', sans-serif",
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: 500,
             cursor: "pointer",
           }}
@@ -220,22 +220,22 @@ export default function App() {
           Generate new grid
         </button>
         <span style={{
-          fontFamily: "'DM Mono', monospace", fontSize: 11,
+          fontFamily: "'DM Mono', monospace", fontSize: 10,
           color: "rgba(255,255,255,0.2)",
         }}>active: {activeSeed}</span>
       </div>
 
       {/* Grid label */}
       <div style={{
-        fontFamily: "'DM Mono', monospace", fontSize: 11,
+        fontFamily: "'DM Mono', monospace", fontSize: 10,
         color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em", textTransform: "uppercase",
       }}>{label}</div>
 
       {/* Sudoku Grid */}
       <div style={{
         position: "relative", width: GRID_SIZE, height: GRID_SIZE,
-        borderRadius: 14, overflow: "hidden",
-        boxShadow: "0 0 0 1px rgba(167,139,250,0.1), 0 24px 80px rgba(0,0,0,0.4)",
+        borderRadius: 12, overflow: "hidden",
+        boxShadow: "0 0 0 1px rgba(167,139,250,0.1), 0 18px 52px rgba(0,0,0,0.34)",
       }}>
         <svg width={GRID_SIZE} height={GRID_SIZE} style={{ position: "absolute", top: 0, left: 0 }}>
           {[0, 1, 2].map(br => [0, 1, 2].map(bc => {
@@ -243,7 +243,7 @@ export default function App() {
             const y = br * (CELL * 3 + GAP * 2 + BOX_GAP);
             return <rect key={`${br}-${bc}`} x={x} y={y}
               width={CELL * 3 + GAP * 2} height={CELL * 3 + GAP * 2}
-              rx={8} fill="none" stroke="rgba(167,139,250,0.07)" strokeWidth={1.5} />;
+              rx={7} fill="none" stroke="rgba(167,139,250,0.07)" strokeWidth={1.5} />;
           }))}
         </svg>
 
@@ -255,11 +255,11 @@ export default function App() {
           return (
             <div key={`${r}-${c}`} style={{
               position: "absolute", left: x, top: y, width: CELL, height: CELL,
-              borderRadius: 6,
+              borderRadius: 5,
               background: isMasked ? "rgba(0,0,0,0.6)" : "rgba(125,239,160,0.1)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontFamily: isMasked ? "'DM Mono', monospace" : "'Outfit', sans-serif",
-              fontSize: isMasked ? 13 : 19,
+              fontSize: isMasked ? 11 : 16,
               fontWeight: 500,
               color: isMasked ? "rgba(130,180,255,0.4)" : "#7defa0",
               transition: "all 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
@@ -272,30 +272,30 @@ export default function App() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: "flex", gap: 32, justifyContent: "center" }}>
+      <div style={{ display: "flex", gap: 26, justifyContent: "center" }}>
         {[
           { label: "Masked", value: masked, color: "#82b4ff" },
           { label: "Generated", value: revealed, color: "#7defa0" },
           { label: "Total", value: total, color: "rgba(255,255,255,0.4)" },
         ].map(s => (
-          <div key={s.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 22, fontWeight: 600, color: s.color }}>{s.value}</span>
+          <div key={s.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 18, fontWeight: 600, color: s.color }}>{s.value}</span>
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{s.label}</span>
           </div>
         ))}
       </div>
 
       {/* Slider */}
-      <div style={{ display: "flex", alignItems: "center", gap: 16, width: "100%", maxWidth: 500 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", maxWidth: 440 }}>
         <button onClick={() => {
           if (t >= 0.995) setT(0);
           setPlaying(p => !p);
         }} style={{
-          width: 42, height: 42, borderRadius: "50%",
+          width: 34, height: 34, borderRadius: "50%",
           border: "1.5px solid rgba(167,139,250,0.25)",
           background: playing ? "rgba(167,139,250,0.12)" : "rgba(255,255,255,0.03)",
           color: "#a78bfa", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16,
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
           flexShrink: 0,
         }}>{playing ? "\u275A\u275A" : "\u25B6"}</button>
 
@@ -321,13 +321,13 @@ export default function App() {
         </div>
 
         <span style={{
-          fontFamily: "'DM Mono', monospace", fontSize: 13, color: "#a78bfa",
-          minWidth: 50, textAlign: "right", fontWeight: 500,
+          fontFamily: "'DM Mono', monospace", fontSize: 12, color: "#a78bfa",
+          minWidth: 46, textAlign: "right", fontWeight: 500,
         }}>t={t.toFixed(2)}</span>
       </div>
 
       {/* Legend */}
-      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
         {[
           { color: "rgba(130,180,255,0.5)", label: "Masked [M]" },
           { color: "#7defa0", label: "Generated" },

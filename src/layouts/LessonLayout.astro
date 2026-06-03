@@ -15,7 +15,7 @@ const { title, description, pubDate, updatedDate, heroImage, tags } = Astro.prop
 const beta = (tags ?? []).includes('beta');
 
 resetDefines();
-const onload = ['fig', 'def', 'lemma', 'prop', 'thm', 'cor'].map((type) => jsOnLoadSetupCounters(type)).join('\n');
+const onload = ['fig', 'table', 'def', 'lemma', 'prop', 'thm', 'cor', 'example'].map((type) => jsOnLoadSetupCounters(type)).join('\n');
 const equationRefsOnload = `
 (() => {
 	let equationTooltip;

@@ -268,6 +268,15 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
     text-align: inherit;
   }
 
+  .dfm-comparison-table caption {
+    caption-side: bottom;
+    margin-top: 0.5em;
+    color: rgb(var(--gray));
+    font-size: 16.2px;
+    font-style: italic;
+    text-align: center;
+  }
+
   @media (max-width: 720px) {
     .dfm-local-example {
       grid-template-columns: 4rem minmax(22rem, 1fr);
@@ -858,13 +867,6 @@ We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$. From @eq:factorized
 While $u_t$ outputs a vector in $\mathbb{R}^8$, $u_t^1, u_t^2$ and $u_t^3$ output vectors in $\mathbb{R}^2$ (as $|\mathcal{V}| = 2$).
 </Statement>
 
-<figure>
-  <DFMSampling client:load />
-  <figcaption>
-    <strong>Figure <Counter label="fig:dfm-sampling" />:</strong> Generation process of a sequence of length $S=4$ with known probability velocity $u_t$. Key observations: 1) At each step, all tokens are updated independently 2) The probability of drawing the mask token $m$ decreases at each step, while the probability of drawing other tokens increases. 3) Once a token is unmasked, it stays at its current value until the end. 4) Different samples can be generated from the same initial sequence (change the seed!), because sampling is stochastic at each step.
-  </figcaption>
-</figure>
-
 Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of discrete flow matching, going from source to target distribution!
 
 #### Building the probability path
@@ -1443,10 +1445,19 @@ $$
 </div>
 </details>
 
+<figure>
+  <DFMSampling showModeToggle={false} client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:dfm-sampling" />:</strong> Generation process of a sequence of length $S=4$ with a learned probability velocity $u_{\theta,t}$ or denoiser $P_{\theta,t}(X_1^i | X_t)$.
+    **Key facts**: 1) At each step, all tokens are updated independently 2) Different samples can be generated from the same initial sequence (change the seed!), because sampling is stochastic at each step.
+    **Key empirical observations**: 3) The probability of drawing the mask token $m$ decreases at each step, while the probability of drawing other tokens increases. 4) Once a token is unmasked, it stays at its current value until the end.
+  </figcaption>
+</figure>
 
 To wrap up, we end this section with a table summarizing the important steps in discrete flow matching, put in parallel with their equivalent for continuous flow matching.
 
 <table className="dfm-comparison-table" style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '2em', marginBottom: '1.25em'}}>
+  <caption><strong>Table <Counter label="table:continuous-discrete-flow-matching" />:</strong> Continuous and discrete flow matching side by side.</caption>
   <colgroup>
     <col style={{ width: '47%' }} />
     <col style={{ width: '53%' }} />
@@ -1526,10 +1537,10 @@ To wrap up, we end this section with a table summarizing the important steps in 
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        Numerical Integration (Euler ODE): <br /> $\mathbf{x}_{k+1} = \mathbf{x}_k + \frac{1}{N} u_{\theta,k/N}(\mathbf{x}_k)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,k/N}(\mathbf{x}) = \frac{1}{1-k/N}\!\left(\mathbb{E}_\theta[X_1 | X_{k/N} = \mathbf{x}] - \mathbf{x}\right)$
+        Numerical Integration (Euler ODE): <br /> $\mathbf{x}_{k+1} = \mathbf{x}_k + \frac{1}{N} u_{\theta,k/N}(\mathbf{x}_k)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}(\mathbf{x}) = \frac{1}{1-t}\!\left(\mathbb{E}_\theta[X_1 | X_t = \mathbf{x}] - \mathbf{x}\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        Continuous Time Markov Chain: <br /> $x_{k+1}^i \sim \text{Cat}\!\left(\mathbf{e}_{x_k^i} + \frac{1}{N} u_{\theta,k/N}^i(\mathbf{x}_k)\right)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,k/N}^i(\mathbf{x}) = \frac{1}{1-k/N}\!\left(P_{\theta,k/N}(X_1^i | \mathbf{x}) - \mathbf{e}_{x^i}\right)$
+        Continuous Time Markov Chain: <br /> $x_{k+1}^i \sim \text{Cat}\!\left(\mathbf{e}_{x_k^i} + \frac{1}{N} u_{\theta,k/N}^i(\mathbf{x}_k)\right)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}^i(\mathbf{x}) = \frac{1}{1-t}\!\left(P_{\theta,t}(X_1^i | \mathbf{x}) - \mathbf{e}_{x^i}\right)$
       </td>
     </tr>
 
@@ -1670,16 +1681,19 @@ $$
 </details>
 
 <figure>
-  <MaskedDiffusion initialShowDiscrete={true} initialShowContinuous={false} client:load />
+  <MaskedDiffusion showVariational={true} showScore={false} client:load />
   <figcaption>
     <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Discrete masked forward with T steps as in @eq:mdm-step. At step $t$, an unmasked token gets masked with probability $\beta_t$; after masking, this probability is 1. The blue bar shows the one-step forward probability $q(x_t=x_0 | x_{t-1}=x_0)=1-\beta_t$ (@eq:forward-transition), and the grey bar shows $q(x_t=x_0 | x_0) = \alpha_t$. The trajectories are stochastic: changing the seed changes the step at which the clean token transitions to the mask token.
     <br /> The “Show $N$ trajectories” button switches to an aggregate view that samples $N$ independent trajectories with the same transition rule; at step $t$, the plotted proportion of still-unmasked trajectories approaches the schedule $\alpha_t$ as $T$ and $N$ grow.
   </figcaption>
 </figure>
 
+<ParagraphAccent>
+
 In summary, the forward process masks each token independently and irreversibly: a token remains unmasked until time $t$ with probability $\alpha_t$, and once it reaches the mask state $m$, it stays masked.
 The user-defined schedule $\alpha_t$ therefore controls how quickly clean data is transformed into pure mask noise.
 We now turn to reversing this process, in order to generate data from noise.
+</ParagraphAccent>
 
 #### Reverse process
 
@@ -1699,7 +1713,7 @@ Equivalently:
 $$
 \begin{equation}
 \label{eq:bridge-mask-sampling}
-x_s = \begin{cases}
+x_s | x_t=m, x_0 = \begin{cases}
 x_0, & \text{with probability } \dfrac{\alpha_s - \alpha_t}{1 - \alpha_t} \\
 m, & \text{with probability } \dfrac{1 - \alpha_s}{1 - \alpha_t}
 \end{cases}
@@ -1724,12 +1738,16 @@ We conclude using that $x_s$ is either at state $x_0$ or at state $m$ with proba
 </div>
 </details>
 
+The reverse process conditioned on $x_0$, namely sampling from $q(x_s | x_t, x_0)$ in @eq:bridge-mask, can also be simulated in Figure <Ref label="fig:masked-forward-discrete" /> by clicking the reverse button.
+
+{/*
 <figure>
-  <MaskedDiffusion initialShowDiscrete={true} initialShowContinuous={false} initialDirection="reverse" client:load />
+  <MaskedDiffusion showVariational={true} showScore={false} initialDirection="reverse" client:load />
   <figcaption>
     <strong>Figure <Counter label="fig:masked-reverse-discrete" />:</strong> Discrete masked reverse with T steps as in @eq:masked-diffusion-denoiser-sampling (or equivalently @eq:bridge-mask when the denoiser puts all mass on the true $x_0$). At step $k$, a masked token is unmasked with probability $(\alpha_{k-1}-\alpha_k)/(1-\alpha_k)$; after unmasking, it stays fixed at $x_0$. The blue bar shows $q(x_{t-1}=x_0 | x_t=m, x_0)$ (@eq:bridge-mask), and the grey bar shows $q(x_t=x_0 | x_0)=\alpha_t$. The “Show N trajectories” button switches to the same empirical aggregation as in Figure <Ref label="fig:masked-forward-discrete" />, but with the reverse process.
   </figcaption>
 </figure>
+*/}
 
 However, during generation, the clean token $x_0$ is unknown: the quantity we actually need in order to sample backward is the reverse transition $q(x_s | x_t)$, not $q(x_s | x_t, x_0)$. We obtain the former by marginalizing the latter over all possible clean tokens, weighted by their probability $\mathbb{P}(X_0 = v | X_t=x_t)$.
 
@@ -2197,6 +2215,7 @@ $$
 </details>
 
 <table className="dfm-comparison-table" style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.9rem', marginTop: '2em', marginBottom: '1.25em'}}>
+  <caption><strong>Table <Counter label="table:continuous-masked-diffusion" />:</strong> Continuous-space diffusion and masked discrete diffusion side by side.</caption>
   <colgroup>
     <col style={{ width: '46%' }} />
     <col style={{ width: '54%' }} />
@@ -2549,7 +2568,7 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 
 {/*
 <figure>
-  <MaskedDiffusion initialShowDiscrete={false} initialShowContinuous={true} client:load />
+  <MaskedDiffusion showVariational={false} showScore={true} client:load />
   <figcaption>
     <strong>Figure <Counter label="fig:masked-forward-continuous" />:</strong> Euler simulation of the infinitesimal forward transition @eq:forward-rate. The next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y | x_t) = \mathbb{I}(y=x_t) + [\dot{Q}_t(x_t)]_y\Delta t + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. The aggregate view reports the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
   </figcaption>
@@ -2559,7 +2578,7 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 #### Reverse process
 
 In the previous section, we have described the forward process of score-based discrete diffusion models. To generate new data samples, we need to reverse the forward process.
-In continuous-space Diffusion, the reverse process is obtained by reversing the forward SDE: $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $, where $\bar{W}_t$ is a time-reversed Brownian motion. In discrete space, we similarly reverse the forward Markov chain to obtain the reverse process, which is also a continuous-time Markov chain.
+Similarly to continuous-space diffusion, where the reverse process is obtained by reversing the forward process, in discrete space, the reverse process is obtained by reversing the forward Markov chain, and is also a continuous-time Markov chain.
 
 <Statement kind="Proposition" label="reverse-rate" title="Reverse rate $\dot{R}_t$">
 Interestingly, the reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
@@ -2583,7 +2602,7 @@ $$
 $$
 </Statement>
 
-<a href="#reverse-euler" class="dfm-note-ref"></a>
+{/* <a href="#reverse-euler" class="dfm-note-ref"></a> */}
 
 <details>
 <summary>Proof</summary>
@@ -2606,7 +2625,7 @@ For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a v
 
 {/*
 <figure>
-  <MaskedDiffusion initialShowDiscrete={false} initialShowContinuous={true} initialDirection="reverse" client:load />
+  <MaskedDiffusion showVariational={false} showScore={true} initialDirection="reverse" client:load />
   <figcaption>
     <strong>Figure <Counter label="fig:masked-reverse-continuous" />:</strong> Euler simulation of the infinitesimal reverse transition @eq:reverse-rate, conditioned on the clean token as in @eq:reverse-kernel-mask. The previous state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t-\Delta t}=y | x_t, x_0) = \mathbb{I}(y=x_t) + \Delta t[\dot{R}_t(x_t | x_0)]_y + o(\Delta t)$, giving a discretized continuous-time reverse process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-reverse-discrete" />. The aggregate view is analogous to the continuous-time forward case.
   </figcaption>
@@ -2614,9 +2633,8 @@ For $y = x_t$, we use the fact that probabilities sum to one, so the rows of a v
 */}
 
 
-In continuous-space Diffusion, the score function $\nabla \log p_t(x)$ governs the reverse SDE $ dx_t = \left(f_t(x_t) - g_t^2 \nabla \log p_t(x_t)\right)dt + g_t\,d\bar{W}_t $. Thus, to sample from the reverse process, we only need to learn the score function $s_{\theta,t}(x_t) = \nabla \log p_t(x_t)$. This is at the core of score-based diffusion models.
-
-We define the discrete space analog as the **concrete score**, that is the ratio of marginal probabilities between a candidate destination state and the current state:
+In continuous-space diffusion, the score function $\nabla_x \log p_t(x_t)$ governs the reverse SDE, i.e. the generative process.
+In the discrete space, the analog to the score function is the **concrete score** $s_t(x_t)_y$, defined as the ratio of marginal probabilities between a candidate destination state and the current state:
 $$
 s_t(x_t)_y \;=\; \frac{q(X_t = y)}{q(X_t = x_t)} \quad (y \neq x_t).
 $$
@@ -2646,12 +2664,15 @@ x_{t-h} &\sim \mathrm{Cat}\left(
 \end{align}
 $$
 
-where $\odot$ denotes the elementwise product. The forward rate $\dot{Q}_t$ is known because it is a design choice of the noising process. The concrete score $s_t$ (or equivalently the reverse rate $\dot{R}_t$), however, depends on the noisy-data marginals $q(X_t=\cdot)$ which are unknown. This is why, in practice, we approximate $s_t$ with a neural network $s_{\theta, t}$.
+where $\odot$ denotes the elementwise product. The forward rate $\dot{Q}_t$ is known because it is a design choice of the noising process.
+However, the concrete score $s_t(x_t)_y$ (or equivalently the reverse rate $\dot{R}_t$) depends on the noisy-data marginals $q(X_t=\cdot)$ which are unknown and untractable.
+This is why, in practice, we learn a neural approximation of it, denoted by $s_{\theta, t}(x_t)_y$.
 
 
 #### Training
 
-It remains to design a tractable training loss for the concrete score. As in continuous-space Diffusion, where denoising score matching exploits that the marginal score is a conditional expectation of the (tractable) conditional score: $\nabla \log p_t(x_t) = \mathbb{E}_{x_0 \sim q(\cdot | x_t)}[\nabla \log p_t(x_t | x_0)]$, the same identity holds here. Defining the (tractable) conditional concrete score $s_t(x_t | x_0)_y \;:=\; p_t(y | x_0)/p_t(x_t | x_0)$, we have for $y \neq x_t$ <a href="#conditional-expectation" class="dfm-note-ref"></a>:
+In the  forward and backward processes sections, we showed how these processes can be simulated with respectively the forward rate $\dot{Q}_t$ and the reverse rate $\dot{R}_t$, and that the unknown quantity connecting them is the concrete score $s_t(x_t)_y$.
+However, this last is untractable and therefore we need to rewritte it before approximating it with a neural network $s_{\theta,t}$. To do so, we apply the _marginalisation trick_, meaning we express the concrete score $s_t(x_t)_y$ as a conditional expectation of the conditional concrete score $s_t(x_t | x_0)_y$ over $x_0$:
 
 $$
 \begin{align}
@@ -2672,7 +2693,8 @@ s_t \;=\; \underset{s}{\operatorname{argmin}}\ \mathbb{E}_{\substack{x_0 \sim p_
 \end{equation}
 $$
 
-Approximating $s_t$ by a neural network $s_{\theta,t}$ and weighting each term by the forward rate $[\dot{Q}_t(x_t)]_y$ (which leaves the minimizer unchanged) yields the loss:
+{/* Approximating $s_t$ by a neural network $s_{\theta,t}$ and weighting each term by the forward rate $[\dot{Q}_t(x_t)]_y$ (which leaves the minimizer unchanged) yields the loss: */}
+By weighting each term by the forward rate $[\dot{Q}_t(x_t)]_y$ (which leaves the minimizer unchanged), we can derived a new loss function to train the concrete score approximation $s_{\theta,t}$:
 
 $$
 \begin{equation}
@@ -2681,7 +2703,7 @@ L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q(\cdot|x_0)}} \Big
 \end{equation}
 $$
 
-Expanding the KL and dropping $\theta$-independent terms gives the equivalent explicit form:
+Finally, by expanding the KL divergence and dropping $\theta$-independent terms, we obtain an explicit form for the score-based discrete diffusion loss:
 
 <Statement kind="Proposition" label="concrete-score-matching" title="Concrete score matching $s_t$">
 The concrete score $s_t$ is the minimizer (over $s_{\theta,t}$) of
@@ -2689,12 +2711,13 @@ $$
 \begin{equation}
 \label{eq:score-loss-prop}
 L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \Bigg[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y \bigg( s_{\theta,t}(x_t)_y - \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \log s_{\theta,t}(x_t)_y \bigg) \Bigg] + C
-\end{equation}
+\end{equation},
 $$
 where $C$ is a constant independent of $\theta$.
 </Statement>
 
 <table className="dfm-comparison-table" style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '2em', marginBottom: '1.25em'}}>
+  <caption><strong>Table <Counter label="table:continuous-masked-score" />:</strong> Continuous-space and masked discrete score-based diffusion side by side.</caption>
   <colgroup>
     <col style={{ width: '50%' }} />
     <col style={{ width: '50%' }} />

@@ -551,14 +551,14 @@ function AggregateFigure({ T, alpha, alphaDot, N, seed, showDiscrete, showContin
           <g>
             <circle cx={9} cy={20} r={3.2} fill={COLOR_DISCRETE} />
             <text x={22} y={23} fontSize={10} fill={COLOR_DISCRETE}
-              fontFamily="'DM Mono', monospace">discrete</text>
+              fontFamily="'DM Mono', monospace">Empirical</text>
           </g>
         )}
         {showContinuous && (
           <g>
             <circle cx={9} cy={showDiscrete ? 32 : 20} r={3.2} fill={COLOR_CONTINUOUS} />
             <text x={22} y={(showDiscrete ? 32 : 20) + 3} fontSize={10} fill={COLOR_CONTINUOUS}
-              fontFamily="'DM Mono', monospace">continuous</text>
+              fontFamily="'DM Mono', monospace">Empirical</text>
           </g>
         )}
       </g>
@@ -568,15 +568,16 @@ function AggregateFigure({ T, alpha, alphaDot, N, seed, showDiscrete, showContin
 
 // ── Main component ─────────────────────────────────────────────────
 export default function MaskedDiffusionForward({
-  initialShowDiscrete = true,
-  initialShowContinuous = true,
+  showVariational = true,
+  showScore = true,
   initialDirection = "forward",
+  showDirectionControls = true,
 }) {
   const [scheduleKey, setScheduleKey] = useState("linear");
   const [T, setT] = useState(10);
   const [seed, setSeed] = useState(51);
-  const [showDiscrete, setShowDiscrete] = useState(initialShowDiscrete);
-  const [showContinuous, setShowContinuous] = useState(initialShowContinuous);
+  const showDiscrete = showVariational;
+  const showContinuous = showScore;
   const [N, setN] = useState(1000);
   const [aggSeed, setAggSeed] = useState(0);
   const [direction, setDirection] = useState(initialDirection);
@@ -722,72 +723,54 @@ export default function MaskedDiffusionForward({
       >
         {isForward ? "Masked Diffusion: Forward Process" : "Masked Diffusion: Reverse Process (cond. on x₀)"}
       </h2>
-      <div style={{
-        fontSize: 11, color: "rgba(255,255,255,0.4)",
-        fontFamily: "'DM Mono', monospace", margin: 0, textAlign: "center", maxWidth: 560,
-        lineHeight: 1.5,
-      }}>
-        {isForward ? (
-          <>
-            {showDiscrete && (
-              <div>discrete view: β<sub>i</sub> = 1 − α<sub>i/T</sub> / α<sub>(i−1)/T</sub></div>
-            )}
-            {showContinuous && (
-              <div>continuous view: Euler step on rate −α̇<sub>t</sub>/α<sub>t</sub></div>
-            )}
-          </>
-        ) : (
-          <>
-            {showDiscrete && (
-              <div>discrete view: β<sub>i</sub><sup>rev</sup> = (α<sub>(i−1)/T</sub> − α<sub>i/T</sub>) / (1 − α<sub>i/T</sub>)</div>
-            )}
-            {showContinuous && (
-              <div>continuous view: Euler step on rate −α̇<sub>t</sub>/(1 − α<sub>t</sub>)</div>
-            )}
-          </>
-        )}
-      </div>
-
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
-        <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,255,255,0.12)" }}>
-          {[
-            { value: "forward", label: "▶ forward" },
-            { value: "reverse", label: "◀ reverse" },
-          ].map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => changeDirection(opt.value)}
-              style={{
-                padding: "4px 12px",
-                fontSize: 11,
-                fontFamily: "'DM Mono', monospace",
-                fontWeight: direction === opt.value ? 600 : 400,
-                background: direction === opt.value
-                  ? "rgba(167,139,250,0.20)"
-                  : "rgba(255,255,255,0.03)",
-                color: direction === opt.value ? "#a78bfa" : "rgba(255,255,255,0.55)",
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-              }}
-            >
-              {opt.label}
-            </button>
-          ))}
+        {showDirectionControls && (
+          <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,255,255,0.12)" }}>
+            {[
+              { value: "forward", label: "▶ forward" },
+              { value: "reverse", label: "◀ reverse" },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => changeDirection(opt.value)}
+                style={{
+                  padding: "4px 12px",
+                  fontSize: 11,
+                  fontFamily: "'DM Mono', monospace",
+                  fontWeight: direction === opt.value ? 600 : 400,
+                  background: direction === opt.value
+                    ? "rgba(167,139,250,0.20)"
+                    : "rgba(255,255,255,0.03)",
+                  color: direction === opt.value ? "#a78bfa" : "rgba(255,255,255,0.55)",
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+          <span style={{
+            fontFamily: "'DM Mono', monospace",
+            fontSize: 11,
+            color: "rgba(255,255,255,0.55)",
+            fontWeight: 600,
+          }}>
+            α<sub>t</sub> =
+          </span>
+          <ToggleButton
+            options={[
+              { value: "linear", label: "1−t" },
+              { value: "quadratic", label: "1−t²" },
+              { value: "cosine", label: "cos(tπ/2)" },
+            ]}
+            value={scheduleKey}
+            onChange={setScheduleKey}
+          />
         </div>
-        <ToggleButton
-          options={[
-            { value: "linear", label: "1−t" },
-            { value: "quadratic", label: "1−t²" },
-            { value: "cosine", label: "cos(tπ/2)" },
-          ]}
-          value={scheduleKey}
-          onChange={setScheduleKey}
-        />
-        <ToggleCheck label="discrete (βᵢ)" checked={showDiscrete}
-          onChange={setShowDiscrete} color={COLOR_DISCRETE} />
-        <ToggleCheck label="continuous (Euler)" checked={showContinuous}
-          onChange={setShowContinuous} color={COLOR_CONTINUOUS} />
       </div>
 
       {!showAggregate && (

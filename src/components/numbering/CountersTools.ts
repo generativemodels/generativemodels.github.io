@@ -6,10 +6,13 @@ type Counter = {
 
 let counters = {} as Record<string, Counter>;
 
-const statementTypes = new Set(['def', 'lemma', 'prop', 'thm', 'cor'])
+const statementTypes = new Set(['def', 'lemma', 'prop', 'thm', 'cor', 'example'])
+const figureTypes = new Set(['fig', 'table', 'tab', 'tbl'])
 
 function getCounterGroup(type: string) {
-  return statementTypes.has(type) ? 'statement' : type
+  if (statementTypes.has(type)) return 'statement'
+  if (figureTypes.has(type)) return 'figure'
+  return type
 }
 
 function getCounterGroupKey(type: string, scope: string) {
@@ -58,8 +61,13 @@ export function resetCounter(type: string, scope = 'global') {
 
 export const jsSetupCounteurs = function(type: string) {
   const texts = {} as Record<string, string>;
-  const statementTypes = ['def', 'lemma', 'prop', 'thm', 'cor'];
-  const types = statementTypes.includes(type) ? statementTypes : [type];
+  const statementTypes = ['def', 'lemma', 'prop', 'thm', 'cor', 'example'];
+  const figureTypes = ['fig', 'table', 'tab', 'tbl'];
+  const types = statementTypes.includes(type)
+    ? statementTypes
+    : figureTypes.includes(type)
+      ? figureTypes
+      : [type];
   const counterSelector = types.map((t) => `.counter--${t}`).join(',');
   const refSelector = types.map((t) => `.counter-ref--${t}`).join(',');
 
