@@ -1561,7 +1561,7 @@ To wrap up, we end this section with a table summarizing the important steps in 
 
 ### Variational discrete diffusion
 
-Continuous-space diffusion models learn to generate data, e. g. images, by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
+Continuous-space diffusion models learn to generate data, e.g. images, by reversing a forward process that gradually corrupts data into pure noise through the addition of Gaussian noise.
 In discrete diffusion, an analogous approach generates sequences by reversing a masking process that progressively replaces tokens with a mask token.
 
 <figure>
@@ -1608,33 +1608,53 @@ m, & \text{with probability } \beta_t
 \end{cases}
 \end{equation}
 $$
-
+{/* 
 **Forward Marginal**:
 In continuous-space diffusion, considering the result $x_t \in \mathbb{R}^d$ after $t$ forward steps naturally makes the cumulative schedule $\alpha_t := \prod_{i=1}^{t}(1 - \beta_i)$ appear.
 Indeed, one has that the law of $x_t$ given its starting point $x_0$, namely the *forward marginal*, $q(x_t | x_0)$, equals $\mathcal{N}(x_t;\ \sqrt{\alpha_t}\, x_0,\ (1 - \alpha_t) I)$.
-The cumulative schedule controls the signal-to-noise ratio, i.e how much of the clean data $x_0$ remains after $t$ steps.
+The cumulative schedule controls the signal-to-noise ratio, i.e how much of the clean data $x_0$ remains after $t$ steps. */}
+
+The above equation illustrates the discrete masking process from $x_0$ to $x_t$. 
+However, we want to be able to sample $x_t$ directly from $x_0$, without simulating all the intermediate steps. 
+In continuous-space diffusion models, one can use the _cumulative noise schedule_ $\alpha_t$ to sample $x_t$ directly from $x_0$ as follows: $x_t = \sqrt{\alpha_t}\, x_0 + \sqrt{1 - \alpha_t}\, \varepsilon$, where $\varepsilon \sim \mathcal{N}(0, I)$.
+
+
+
+
 We derive its analogous counterpart in discrete space, where the same product gives the *survival probability* of a token.
 Fix a step $t \in \{1,\ldots,T\}$.
-We define $\alpha_t$ as the probability that a token has survived up to step $t$:
+We define $\alpha_t$ as the probability that a token has survived up to step $t$, i.e. $x_t$ is still $x_0$ and was not replaced by $m$:
+
+$$
+\alpha_t := q(x_t = x_0 | x_0) = \prod_{i=1}^{t} (1-\beta_i)
+$$
+
+
+<details>
+<summary>Proof</summary>
+<div>
 
 $$
 \begin{align}
 \alpha_t := q(x_t = x_0 | x_0)
 &= \underbrace{q(x_t = x_0 | x_{t-1} = x_0, x_0)}_{
-   \substack{=\,q(x_t = x_0 | x_{t-1} = x_0)\\\text{by the Markov property}}}\,
-   q(x_{t-1} = x_0 | x_0) \label{eq:survival-prob-2} \\
+   \substack{=\,q(x_t = x_0 | x_{t-1} = x_0)\text{ by the Markov property}}}\,
+   q(x_{t-1} = x_0 | x_0) \\
 &= (1-\beta_t)\,
-   q(x_{t-1} = x_0 | x_0) \label{eq:survival-prob-3} \\
-&= \prod_{i=1}^{t} (1-\beta_i) \qquad \text{by recursion} \label{eq:survival-prob-4}
+   q(x_{t-1} = x_0 | x_0) \\
+&= \prod_{i=1}^{t} (1-\beta_i) \qquad \text{by recursion} 
 \end{align}
 $$
+</div>
+</details>
 
-The schedule $\alpha_t$ is decreasing in $t$: as the step index increases, the probability of a token remaining unmasked decreases.
-It turns out that we can then compute the transition probabilities between any two steps $s < t$, and obtain:
+As expected, the schedule $\alpha_t$ decreases in $t$: as the step index $t$ increases, the probability of a token remaining unmasked decreases.
+You can observe this trend in Figure <Ref label="fig:masked-forward-discrete" /> when selecting "Show N trajectories".
+It turns out that we can then compute the transition probabilities between any two steps $s < t$ as follows:
 $$
 \begin{equation}
 \label{eq:forward-transition}
-x_t = \begin{cases}
+x_t \mid x_s = \begin{cases}
 x_s, & \text{with probability } \frac{\alpha_t}{\alpha_s} \\
 m, & \text{with probability } 1 - \frac{\alpha_t}{\alpha_s}
 \end{cases}
@@ -1696,7 +1716,7 @@ We now turn to reversing this process, in order to generate data from noise.
 #### Reverse process
 
 
-Generating data requires a reverse process that progressively unmasks tokens to produce a clean sequence. We first derive the exact reverse transition conditioned on the initial clean token $x_0$, namely what is denoted $q(x_s | x_t, x_0)$.
+Generating data requires a reverse process that progressively unmasks tokens to produce samples from the discrete data distribution. We first derive the exact reverse transition conditioned on the initial clean token $x_0$, namely what is denoted $q(x_s | x_t, x_0)$.
 
 
 <Statement kind="Lemma" label="masked-diffusion-bridge" title="Conditional reverse transitions $q(x_s | x_t,x_0)$">
