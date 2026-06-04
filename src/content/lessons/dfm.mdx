@@ -17,6 +17,7 @@ import InlineSvg from '../../components/InlineSvg.astro'
 import Counter from '../../components/numbering/Counter.astro'
 import Ref from '../../components/numbering/Ref.astro'
 import Statement from '../../components/numbering/Statement.astro'
+import Algorithm from '../../components/numbering/Algorithm.astro'
 import SudokuFlowMatching from '../../components/sudoku_flow_matching_generative.jsx';
 import DFMSampling from '../../components/DFMSampling.jsx';
 import MaskedDiffusion from '../../components/MaskedDiffusion.jsx';
@@ -2224,6 +2225,8 @@ t \sim \mathcal{U}(0,1) \\
 \end{equation}
 $$
 
+To wrap up, we end this section with a table summarizing the important steps in variational masked discrete diffusion, put in parallel with their equivalent for continuous space diffusion (DDPM).
+
 </div>
 </details>
 
@@ -2732,6 +2735,8 @@ L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \B
 $$
 where $C$ is a constant independent of $\theta$.
 </Statement>
+
+To wrap up, we end this section with a table summarizing the important steps in score-based diffusion, put in parallel with their equivalent for continuous-space diffusion.
 
 <table className="dfm-comparison-table" style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '2em', marginBottom: '1.25em'}}>
   <caption><strong>Table <Counter label="table:continuous-masked-score" />:</strong> Continuous-space and masked discrete score-based diffusion side by side.</caption>
@@ -3462,9 +3467,10 @@ $$
 
 In other words, given a denoised candidate $\mathbf{z}$ produced by the denoiser from a partially masked sequence $\mathbf{x}_k$, the planner indicates, for each position $i$ in the sequence, the probability of denoising that token. If the token is already denoised, this probability is zero. For example, if $\mathbf{x}_k=(m,A,m)$ and $\mathbf{z}=(B,A,A)$, then a possible value of $G_\phi(\mathbf{z}, \mathbf{x}_k)$ is $(0.7,0,0.3)$, which means revealing position $1$ with probability $70\%$ and position $3$ with probability $30\%$.
 
-**Algorithm: Planner-Guided Sampling**
+<Algorithm label="planner-guided-sampling" title="Planner-Guided Sampling">
 
 **Input:** Planner $G_\phi$, trained denoiser $D_\theta$, total number of sampling steps $N$, schedule $f$ mapping step index to number of tokens to reveal at that step, e.g., $f(k) = S/N$ for all $k$ when $N$ divides $S$.
+
 1. **Initialize:** $\mathbf{x}_0 \leftarrow (m, \dots, m)$ (a sequence of $S$ mask tokens).
 2. **For** $k = 0, 1, \dots, N - 1$:
     * **Plan:** Sample candidate tokens $\mathbf{z} \sim D_{\theta,k}(\mathbf{x}_k)$.
@@ -3475,6 +3481,8 @@ In other words, given a denoised candidate $\mathbf{z}$ produced by the denoiser
             * Add it to the set: $\mathcal{I}\leftarrow \mathcal{I}\cup\{i_\ell\}$.
     * **Denoise:** Create $\mathbf{x}_{k+1}$ by setting $x_{k+1}^i = z^i$ for all $i \in \mathcal{I}$, and leaving all other positions unchanged.
 3. **Return** fully generated sequence $\mathbf{x}_N$.
+
+</Algorithm>
 
 In the rest of this section, we suppose that the denoiser does not need to know the current time in its predictions, i.e. for any step $k$ and any given sequence $\mathbf{x}$, $D_{\theta,k}(\mathbf{x}) = D_{\theta}(\mathbf{x})$.
 
@@ -3614,12 +3622,15 @@ Introducing a planner-aware sampling process creates a mismatch between training
 This difference matters because uniform masking can put training weight on mask patterns that the planner would almost never visit in practice. For example, in a structured sequence where the last token is only predictable after the first two have been revealed, uniform masking may still train the model to predict that last token from $(m,m,m)$ or from $(m,m,B)$, even though a confidence-based planner would first reveal easier positions and avoid asking for that token with so little context. These hard denoising tasks can inject extra error into the learned denoiser, and those errors can then be amplified during sampling when early wrong predictions become part of the context.
 
 A fix is to reweight the training loss toward the positions the planner would select. This gives the Planner-Aware Path Learning (PAPL) objective:
+<PinkEquation>
 $$
 \begin{equation}
 \label{eq:papl-loss}
 \mathcal{L}_{\text{PAPL}}(\theta) = - \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \mathbb{I}(x_t^i = m) \frac{1}{1-t}(1 + \alpha \operatorname{sg}[w^i]) \log D_{\theta,t}^i(\mathbf{x}_t)_{x_1^i} \right]
 \end{equation}
 $$
+</PinkEquation>
+
 Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weight for position $i$, and $\alpha$ controls the strength of this guidance. The stop-gradient $\operatorname{sg}[\cdot]$ detaches these weights: for example, soft greedy weights depend on $\theta$ through $\operatorname{softmax}_i\left(\frac{1}{\tau}\log D_\theta^i(\mathbf{x}_t)_{z^i}\right)$, but gradients are not propagated through this dependence.
 
 ### References
