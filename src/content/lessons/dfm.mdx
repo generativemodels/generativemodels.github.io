@@ -1310,7 +1310,7 @@ $$
 The indicator $\mathbb{I}(x^i = m)=0$, so $u_t^i(x^i | x_1^i)_v = 0$ for all $x_1^i, v$
 and hence $u_t^i(x)_v = 0$.
 
-It remains to check that the target formula also gives zero. By Bayes' rule,
+It remains to check that @eq:velocity-posterior also gives zero. By Bayes' rule,
 $$
 \begin{equation}
 \label{eq:posterior-bayes}
@@ -1320,13 +1320,13 @@ $$
 {\mathbb{P}(X_t = \mathbf{x})}.
 \end{equation}
 $$
-Under the conditional probability path,
+Under the conditional probability path @eq:mask-path-1,
 $$
 \begin{equation}
 \label{eq:mask-token-path}
 q_t(x^i | x_1^i)
 =
-t\,\mathbb{I}(x^i = x_1^i) + (1-t)\,\mathbb{I}(x^i = m) = t\,\mathbb{I}(x^i = x_1^i)
+t\,\mathbb{I}(x^i = x_1^i) + \underbrace{(1-t)\,\mathbb{I}(x^i = m)}_{=0} = t\,\mathbb{I}(x^i = x_1^i)
 \end{equation}
 $$
 since $x^i \neq m$.
@@ -1347,7 +1347,7 @@ $$
 \mathbb{P}(X_1^i = v |X_t = \mathbf{x})=\mathbb{I}(v = x^i).
 \end{equation}
 $$
-Substituting into the target formula gives
+Substituting @eq:posterior-copy into @eq:velocity-posterior gives
 $$
 \begin{equation}
 \label{eq:velocity-zero}
@@ -2367,12 +2367,14 @@ Finally, we learn a neural network to predict the concrete score and use it to g
 In continuous-space score-based diffusion, we model the forward process as the solution of the SDE $dx_t = f_t(x_t)\,dt + g_t\,dW_t$, where we fix the drift $f_t$ and the diffusion coefficient $g_t$, and $W_t$ is a Wiener process.
 We follow a similar approach in discrete space: we model the forward process as a continuous-time Markov chain (CTMC), which can be written as
 
+<PinkEquation>
 $$
 \begin{equation}
 \label{eq:forward-rate}
 q(x_{t+\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + [\dot{Q}_t(x_t)]_y \Delta t + o(\Delta t),
 \end{equation}
 $$
+</PinkEquation>
 
 where we choose the forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$.
 In the above equation and in what follows, $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$.
@@ -2686,8 +2688,8 @@ This is why, in practice, we learn a neural approximation of it, denoted by $s_{
 
 #### Training
 
-In the  forward and backward processes sections, we showed how these processes can be simulated with respectively the forward rate $\dot{Q}_t$ and the reverse rate $\dot{R}_t$, and that the unknown quantity connecting them is the concrete score $s_t(x_t)_y$.
-However, this last is untractable and therefore we need to rewritte it before approximating it with a neural network $s_{\theta,t}$. To do so, we apply the _marginalisation trick_, meaning we express the concrete score $s_t(x_t)_y$ as a conditional expectation of the conditional concrete score $s_t(x_t | x_0)_y$ over $x_0$:
+In the forward and reverse process sections, we showed how these processes can be simulated with respectively the forward rate $\dot{Q}_t$ @eq:forward-rate and the reverse rate $\dot{R}_t$ @eq:reverse-rate, and that the unknown quantity connecting them is the concrete score $s_t(x_t)_y$ @eq:concrete-score.
+However, this last is untractable and therefore we need to rewrite it before approximating it with a neural network $s_{\theta,t}$. To do so, we apply the _marginalisation trick_, meaning we express the concrete score $s_t(x_t)_y$ as a conditional expectation of the conditional concrete score $s_t(x_t | x_0)_y$ over $x_0$:
 
 $$
 \begin{align}
