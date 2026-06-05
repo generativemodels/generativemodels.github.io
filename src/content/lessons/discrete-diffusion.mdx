@@ -514,10 +514,11 @@ This blog post is a __pedagogical introduction__ to the adaptation of diffusion 
 
 As continuous-space diffusion models have been developed into two major branches, namely the *variational* [<a class="cite-ref" href="#NonequilibriumThermodynamics">10</a>, <a class="cite-ref" href="#DDPM">11</a>] and the *score-based* ones [<a class="cite-ref" href="#GenerativeScore">9</a>, <a class="cite-ref" href="#SDEDiffusion">12</a>], we present discrete diffusion through these two formalisms. In [section 1](#variational-discrete-diffusion), we show how the variational perspective leverages *discrete-time* transitions and variational principles to frame data generation [<a class="cite-ref" href="#ref-1">1</a>, <a class="cite-ref" href="#ref-2">2</a>, <a class="cite-ref" href="#NonequilibriumThermodynamics">10</a>]. In [section 2](#score-based-discrete-diffusion), we focus on *continuous-time* transitions and score-based methods for discrete data [<a class="cite-ref" href="#ref-4">4</a>]. Finally, in [section 3](#equivalence-between-viewpoints), we first show how these two different viewpoints are in fact equivalent from both the training and sampling perspectives. We then show the equivalence of discrete diffusion and discrete flow matching.<a href="#dfm-blog" class="dfm-note-ref"></a>
 
-
 In this blog post, we deal with discrete data: the space on which the probability distributions are defined is $\mathcal{S} := \mathcal{V}^S$, namely the space of sequences of length $S \in \mathbb{N}$ over a given vocabulary $\mathcal{V}$.
 A sequence $\mathbf{x}$ in $\mathcal{S}$ is denoted as $\mathbf{x} = x^1 \dots x^S$, the $x^i$'s being called *tokens*.
 In the vocabulary, we add a special token: the mask token, denoted as $m$.
+
+We first introduce [variational discrete diffusion](#variational-discrete-diffusion); the reader already familiar with this technique can jump directly to the [score-based perspective](#score-based-discrete-diffusion).
 
 ### Variational discrete diffusion
 
@@ -1339,7 +1340,7 @@ $$
 where we choose the forward rate matrix $\dot{Q}_t \in \mathbb{R}^{|\mathcal{V}| \times |\mathcal{V}|}$.
 In the above equation and in what follows, $[\dot{Q}_t(x_t)]_y$ denotes the entry of $\dot{Q}_t$ at row $x_t$ and column $y$.
 
-For continuous-space diffusion models, the forward SDE means that over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $[\dot{Q}_t(x_t)]_y\Delta t$ to first order.<a href="#forward-euler" class="dfm-note-ref"></a>
+For continuous-space diffusion models, the forward SDE means that over an infinitesimal time $dt$, a particle at $x_t$ moves by a deterministic drift $f_t(x_t)\,dt$ plus an independent Gaussian increment of standard deviation $g_t\sqrt{dt}$. Here, $[\dot{Q}_t(x_t)]_y$ is the instantaneous rate at which a particle at state $x_t$ jumps to state $y$: over a small interval $\Delta t$, the probability of such a jump is $[\dot{Q}_t(x_t)]_y\Delta t$ to first order.
 
 {/* A common instantiation of the continuous SDE is the variance-preserving Gaussian diffusion: the coefficients are chosen as $f_t(x_t) = -\frac{1}{2}\beta(t)x_t$ and $g_t = \sqrt{\beta(t)}$, where $\beta(t)$ is a noise schedule.  */}
 Then, we need to specify the forward rate matrix $\dot{Q}_t$ that governs the masking process.
@@ -2568,12 +2569,12 @@ Data Distribution</strong> <strong><a href="https://openreview.net/pdf?id=B1lcYr
   </div>
 </div>
 
-<div class="dfm-note-entry">
+{/* <div class="dfm-note-entry">
   <span id="forward-euler"></span>
   <div class="dfm-note-main">
     If you click on continuous in Figure <Ref label="fig:masked-forward-discrete" />, you can see the corresponding continuous-time forward process. It shows the Euler simulation of the infinitesimal forward transition @eq:forward-rate. The next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y | x_t) = \mathbb{I}(y=x_t) + [\dot{Q}_t(x_t)]_y\Delta t + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. The aggregate view reports the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
   </div>
-</div>
+</div> */}
 
 <div class="dfm-note-entry">
   <span id="generalized-kl"></span>
