@@ -12,18 +12,13 @@ typst: ['del', 'code']
 import T from '../../components/typst/TypstMath.astro'
 import Cetz from '../../components/typst/TypstCetz.astro'
 import { Image } from 'astro:assets'
-import diffusion from '../../assets/diffusion.svg'
-import InlineSvg from '../../components/InlineSvg.astro'
 import Counter from '../../components/numbering/Counter.astro'
 import Ref from '../../components/numbering/Ref.astro'
 import Statement from '../../components/numbering/Statement.astro'
 import Algorithm from '../../components/numbering/Algorithm.astro'
 import SudokuFlowMatching from '../../components/sudoku_flow_matching_generative.jsx';
 import DFMSampling from '../../components/DFMSampling.jsx';
-import MaskedDiffusion from '../../components/MaskedDiffusion.jsx';
 import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
-import ddpmMaskedDiffusion from '../../components/ddpm_masked_diffusion.gif';
-import DiffusionDiscreteContinuous from '../../components/discrete_continuous_diffusion.png';
 
 <T defines='
 #let anno(t) = $text(#luma(100), size: #10pt, (#t))$;
@@ -518,14 +513,14 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
 
 In recent years, flow matching and diffusion models have emerged as the state-of-the-art frameworks for continuous data generation, enabling the synthesis of high-quality data, such as images, audio and video [<a class="cite-ref" href="#SD3">6</a>, <a class="cite-ref" href="#SD-video">7</a>].
 Their strong generation performance, training stability and flexibility motivated their extension to discrete data,  including texts, graphs, or molecule sequences [<a class="cite-ref" href="#ref-2">1</a>, <a class="cite-ref" href="#ref-5">2</a>, <a class="cite-ref" href="#DiGress">5</a>].
-This blog post is a __pedagogical introduction__ to the adaptation of flow matching and diffusion models for discrete data.
+This blog post is a __pedagogical introduction__ to the adaptation of flow matching for discrete data.
 
 We start with a gentle introduction to discrete data generation, that paves the ground for the remaining of the post, then introduce in [section 2](#discrete-flow-matching) discrete flow matching [<a class="cite-ref" href="#ref-5">2</a>, <a class="cite-ref" href="#ref-6">3</a>].
 
 ### Generating discrete data
 
-Like their continuous analogs, discrete flow matching and discrete diffusion aim at mapping a simple *source* probability distribution to a complex *target* distribution (the one of the data we want to generate).
-To do so, they create a sequence of intermediate probability distributions $(p_t)_{t}$ that progressively evolve from source to target distribution.
+Like its continuous analog, discrete flow matching aims at mapping a simple *source* probability distribution to a complex *target* distribution (the one of the data we want to generate).
+To do so, it creates a sequence of intermediate probability distributions $(p_t)_{t}$ that progressively evolve from source to target distribution.
 
 In this blog post, we deal with discrete data: the space on which the probability distributions are defined is $\mathcal{S} := \mathcal{V}^S$, namely the space of sequences of length $S \in \mathbb{N}$ over a given vocabulary $\mathcal{V}$.
 A sequence $\mathbf{x}$ in $\mathcal{S}$ is denoted as $\mathbf{x} = x^1 \dots x^S$, the $x^i$'s being called *tokens*.
@@ -538,13 +533,13 @@ The source distribution acts as our starting point for generation and is typical
 For simplicity *we will use the mask distribution ($p_{\text{mask}}$) as our running example*; adaptations in the case of other distributions are available as toggleable content.
 
 As a first example, consider generating Sudoku grids. The vocabulary is $\mathcal{V} = \{1, 2, \ldots, 9, m\}$, and the sequence length is 81, as there are 81 cases in a grid.
-Discrete flow matching and discrete diffusion start from a sample from the source distribution, i.e. a fully masked grid here.
+Discrete flow matching starts from a sample from the source distribution, i.e. a fully masked grid here.
 The model then iteratively fills this grid, step-by-step, finally reaching a sample from the target distribution (a valid, completed Sudoku board).
 
 <figure>
   <SudokuFlowMatching client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:sudoku-sampling" />:</strong> Visualisation of the sampling process for discrete flow matching/discrete diffusion: a sample from the source distribution (here a fully masked sudoku grid) is transformed into a sample from the target distribution (here a valid sudoku grid).
+    <strong>Figure <Counter label="fig:sudoku-sampling" />:</strong> Visualisation of the sampling process for discrete flow matching: a sample from the source distribution (here a fully masked sudoku grid) is transformed into a sample from the target distribution (here a valid sudoku grid).
   </figcaption>
 </figure>
 
@@ -1540,13 +1535,13 @@ To wrap up, we end this section with a table summarizing the important steps in 
 
 #### Sampling with a planner
 
-In this section, we introduce planners as a way to make sampling more efficient in masked diffusion, and explain why using a planner also requires adapting the training loss.
+In this section, we introduce planners as a way to make masked flow-matching sampling more efficient, and explain why using a planner also requires adapting the training loss.
 {/* We follow the [discrete flow matching](#discrete-flow-matching) convention: $p_0$ is the source distribution, corresponding here to the fully masked sequence $mm...m$, and $p_1$ is the target distribution, corresponding to the clean data distribution. For the complete theoretical treatment, see [<a class="cite-ref" href="#ref-7">4</a>]. */}
 
-Vanilla sampling in Masked Diffusion is computationally expensive. It requires $(1/h) \times S$ sequential steps, where $h$ is the time step size and $S$ is the length of the sequence. At every single micro-step, we must compute and draw from probability vectors of size $|\mathcal{V}|$ for all tokens. For example, with a step size of $h = 0.01$ and a sequence length of $S = 3000$, we would need $300,000$ steps to generate a single sample.
+Vanilla sampling in masked flow matching is computationally expensive. It requires $(1/h) \times S$ sequential steps, where $h$ is the time step size and $S$ is the length of the sequence. At every single micro-step, we must compute and draw from probability vectors of size $|\mathcal{V}|$ for all tokens. For example, with a step size of $h = 0.01$ and a sequence length of $S = 3000$, we would need $300,000$ steps to generate a single sample.
 We can parallelize the sampling of all tokens at each step, so the number of forward passes through the model is $1/h = 100$ steps rather than $S/h$, but it requires more memory.
 
-To make generation tractable, the standard approach used for large Masked Diffusion models is **planner-guided sampling**. Instead of relying on infinitesimal continuous-time steps, we fix the total generation steps $N$ and directly use the denoiser to reveal tokens at each step.
+To make generation tractable, the standard approach used for large masked flow-matching models is **planner-guided sampling**. Instead of relying on infinitesimal continuous-time steps, we fix the total generation steps $N$ and directly use the denoiser to reveal tokens at each step.
 
 <Statement kind="Definition" label="planner" title="Planner $G_\phi$">
 A planner $G_\phi$ maps a candidate sequence $\mathbf{z}$ sampled from the denoiser and the current partially masked sequence $\mathbf{x}_k$ to a distribution over positions to reveal. At step $k$, with $\mathcal{M}_k = \{i : x_k^i = m\}$, we write:
