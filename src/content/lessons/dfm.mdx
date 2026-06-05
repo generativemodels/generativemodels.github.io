@@ -1715,17 +1715,17 @@ Introducing a planner-aware sampling process creates a mismatch between training
 
 This difference matters because uniform masking can put training weight on mask patterns that the planner would almost never visit in practice. For example, in a structured sequence where the last token is only predictable after the first two have been revealed, uniform masking may still train the model to predict that last token from $(m,m,m)$ or from $(m,m,B)$, even though a confidence-based planner would first reveal easier positions and avoid asking for that token with so little context. These hard denoising tasks can inject extra error into the learned denoiser, and those errors can then be amplified during sampling when early wrong predictions become part of the context.
 
-A fix is to reweight the training loss toward the positions the planner would select. This gives the Planner-Aware Path Learning (PAPL) objective:
+A fix is to reweight the denoising loss @eq:cdm-loss toward the positions the planner would select. With the shorthand $P_{\theta,t}^i(x_1^i | \mathbf{x}_t) := P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}_t)$, this gives the Planner-Aware Path Learning (PAPL) objective:
 <PinkEquation>
 $$
 \begin{equation}
 \label{eq:papl-loss}
-\mathcal{L}_{\text{PAPL}}(\theta) = - \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \mathbb{I}(x_t^i = m) \frac{1}{1-t}(1 + \alpha \operatorname{sg}[w^i]) \log D_{\theta,t}^i(\mathbf{x}_t)_{x_1^i} \right]
+\mathcal{L}_{\text{PAPL}}(\theta) = - \mathbb{E}_{t,\mathbf{x}_1,\mathbf{x}_t} \left[ \sum_{i=1}^S \mathbb{I}(x_t^i = m)(1 + \alpha \operatorname{sg}[w^i]) \log P_{\theta,t}^i(x_1^i | \mathbf{x}_t) \right]
 \end{equation}
 $$
 </PinkEquation>
 
-Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weight for position $i$, and $\alpha$ controls the strength of this guidance. The stop-gradient $\operatorname{sg}[\cdot]$ detaches these weights: for example, soft greedy weights depend on $\theta$ through $\operatorname{softmax}_i\left(\frac{1}{\tau}\log D_\theta^i(\mathbf{x}_t)_{z^i}\right)$, but gradients are not propagated through this dependence.
+Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weight for position $i$, and $\alpha$ controls the strength of this guidance. The stop-gradient $\operatorname{sg}[\cdot]$ detaches these weights: for example, soft greedy weights depend on $\theta$ through $\operatorname{softmax}_i\left(\frac{1}{\tau}\log P_{\theta,t}(X_1^i = z^i | X_t = \mathbf{x}_t)\right)$, but gradients are not propagated through this dependence.
 
 ### References
 
