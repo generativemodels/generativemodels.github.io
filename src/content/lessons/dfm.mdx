@@ -1539,7 +1539,7 @@ In this section, we introduce planners as a way to make masked flow-matching sam
 {/* We follow the [discrete flow matching](#discrete-flow-matching) convention: $p_0$ is the source distribution, corresponding here to the fully masked sequence $mm...m$, and $p_1$ is the target distribution, corresponding to the clean data distribution. For the complete theoretical treatment, see [<a class="cite-ref" href="#ref-7">4</a>]. */}
 
 Vanilla sampling in masked flow matching is computationally expensive. It requires $(1/h) \times S$ sequential steps, where $h$ is the time step size and $S$ is the length of the sequence. At every single micro-step, we must compute and draw from probability vectors of size $|\mathcal{V}|$ for all tokens. For example, with a step size of $h = 0.01$ and a sequence length of $S = 3000$, we would need $300,000$ steps to generate a single sample.
-We can parallelize the sampling of all tokens at each step, so the number of forward passes through the model is $1/h = 100$ steps rather than $S/h$, but it requires more memory.
+{/* We can parallelize the sampling of all tokens at each step, so the number of forward passes through the model is $1/h = 100$ steps rather than $S/h$, but it requires more memory.*/}
 
 To make generation tractable, the standard approach used for large masked flow-matching models is **planner-guided sampling**. Instead of relying on infinitesimal continuous-time steps, we fix the total generation steps $N$ and directly use the denoiser to reveal tokens at each step.
 
@@ -1576,7 +1576,7 @@ In other words, given a denoised candidate $\mathbf{z}$ produced by the denoiser
 In the rest of this section, we suppose that the denoiser does not need to know the current time in its predictions, i.e. for any step $k$ and any given sequence $\mathbf{x}$, $D_{\theta,k}(\mathbf{x}) = D_{\theta}(\mathbf{x})$.
 
 <Statement kind="Proposition" label="sampling-scheme-equivalence" title="Sampling-scheme equivalence with $G$">
-If we choose the uniform random planner that selects positions uniformly at random among the masked tokens, i.e. $G(\mathbf{z}, \mathbf{x}_k)_i = \frac{1}{|\mathcal{M}_k|}$ for each $i \in \mathcal{M}_k$, then planner-guided sampling with $N = S$ steps and $f(k) = 1$ token per step is exactly equivalent to the sampling procedure given @eq:reverse-rate as $\Delta t \to 0$.
+If we choose the uniform random planner that selects positions uniformly at random among the masked tokens, i.e. $G(\mathbf{z}, \mathbf{x}_k)_i = \frac{1}{|\mathcal{M}_k|}$ for each $i \in \mathcal{M}_k$, then planner-guided sampling with $N = S$ steps and $f(k) = 1$ token per step is exactly equivalent to the Euler sampling procedure given in @eq:euler-sampling as $h \to 0$.
 </Statement>
 
 However, we rarely decide to unmask tokens by picking a random position at each step. Instead, we can use heuristic or learned planners that rank positions according to how reliable or informative they seem to reveal.
