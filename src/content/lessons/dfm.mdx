@@ -18,6 +18,7 @@ import Statement from '../../components/numbering/Statement.astro'
 import Algorithm from '../../components/numbering/Algorithm.astro'
 import SudokuFlowMatching from '../../components/sudoku_flow_matching_generative.jsx';
 import DFMSampling from '../../components/DFMSampling.jsx';
+import DiscreteDataIntro from '../../components/DiscreteDataIntro.jsx';
 import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 
 <T defines='
@@ -531,6 +532,13 @@ The source distribution acts as our starting point for generation and is typical
 - The **uniform distribution ($p_{\text{unif}}$):** All tokens in the starting sequence are sampled uniformly across the vocabulary $\mathcal{V}$.
 
 For simplicity *we will use the mask distribution ($p_{\text{mask}}$) as our running example*; adaptations in the case of other distributions are available as toggleable content.
+
+<figure>
+  <DiscreteDataIntro client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:discrete-data-setup" />:</strong> The discrete data setup on a toy example: vocabulary $\mathcal{V} = \{A, B, m\}$ and sequences of length $S = 4$. Top: the vocabulary and a sequence $\mathbf{x} = x^1 x^2 x^3 x^4$, with their one-hot encodings (toggleable). Bottom: the transport from the source $p_0$ to the target $p_1 = p_{\text{data}}$ through the intermediate distributions $p_t$, as $t$ goes from $0$ to $1$, shown as the per-position marginals of $p_t$ in the 3D view (white indicates probability zero, a fully colored cell probability one, and depth the position $s$ in the sequence), and/or as samples $\mathbf{x}_t \sim p_t$ (toogleable).
+  </figcaption>
+</figure>
 
 As a first example, consider generating Sudoku grids. The vocabulary is $\mathcal{V} = \{1, 2, \ldots, 9, m\}$, and the sequence length is 81, as there are 81 cases in a grid.
 Discrete flow matching starts from a sample from the source distribution, i.e. a fully masked grid here.
