@@ -266,13 +266,15 @@ function CubeView({ t, source }) {
   );
 }
 
-export default function DiscreteDataIntro() {
+// `row` lays the two sections (notations | transport) side by side instead of
+// stacked — used in the slides where horizontal space is the one available.
+export default function DiscreteDataIntro({ samples = false, cube = true, onehot = false, row = false }) {
   const [seed, setSeed] = useState(26);
   const [source, setSource] = useState("mask"); // "mask" | "unif"
   // which transport views are shown (both can be active at once)
-  const [showSamples, setShowSamples] = useState(false);
-  const [showCube, setShowCube] = useState(true);
-  const [showOneHot, setShowOneHot] = useState(false);
+  const [showSamples, setShowSamples] = useState(!!samples);
+  const [showCube, setShowCube] = useState(!!cube);
+  const [showOneHot, setShowOneHot] = useState(!!onehot);
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
 
@@ -333,8 +335,9 @@ export default function DiscreteDataIntro() {
   }, [t]);
 
   return (
-    <div className="ddi-card">
+    <div className={`ddi-card${row ? " ddi-card--row" : ""}`}>
       <style>{css}</style>
+      <div className={`ddi-body${row ? " ddi-body--row" : ""}`}>
 
       {/* ── 1. Vocabulary and sequence, with aligned one-hot encodings ── */}
       <div className="ddi-section">
@@ -561,6 +564,7 @@ export default function DiscreteDataIntro() {
           </button>
         </div>
       </div>
+      </div>
     </div>
   );
 }
@@ -585,6 +589,33 @@ const css = `
   align-items: center;
   gap: 10px;
   width: 100%;
+}
+.ddi-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  width: 100%;
+}
+.ddi-card--row {
+  max-width: 1200px;
+}
+.ddi-body--row {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 36px;
+}
+.ddi-body--row .ddi-section {
+  width: auto;
+  flex: 0 1 auto;
+}
+.ddi-body--row .ddi-cube-svg {
+  max-width: 420px;
+}
+/* room for the absolutely-positioned "tokens" label hanging left of the grid */
+.ddi-body--row .ddi-section:first-child {
+  padding-left: 40px;
 }
 .ddi-section-title {
   font-size: 15px;

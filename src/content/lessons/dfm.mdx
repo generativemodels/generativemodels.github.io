@@ -19,6 +19,7 @@ import Algorithm from '../../components/numbering/Algorithm.astro'
 import SudokuFlowMatching from '../../components/sudoku_flow_matching_generative.jsx';
 import DFMSampling from '../../components/DFMSampling.jsx';
 import DiscreteDataIntro from '../../components/DiscreteDataIntro.jsx';
+import EulerStepAnalogy from '../../components/EulerStepAnalogy.jsx';
 import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 
 <T defines='
@@ -529,9 +530,9 @@ In the vocabulary, we add a special token: the mask token, denoted as $m$.
 
 The source distribution acts as our starting point for generation and is typically chosen to be either:
 - The **mask distribution ($p_{\text{mask}} := \delta_{m\ldots m}$):** All sequences start entirely filled with the mask token $m$; $\delta$ is the Dirac delta distribution.
+With this choice, the model can always tell noisy (masked) tokens apart from clean ones, which also makes training simple: the model only needs to learn to fill in blanks, much like masked language modeling. The downside is that once a token is unmasked during sampling, it is never revisited, so the model cannot correct its own mistakes.
 - The **uniform distribution ($p_{\text{unif}}$):** All tokens in the starting sequence are sampled uniformly across the vocabulary $\mathcal{V}$.
-
-For simplicity *we will use the mask distribution ($p_{\text{mask}}$) as our running example*; adaptations in the case of other distributions are available as toggleable content.
+Here, a corrupted token looks just like any other token, so the model must learn both where the errors are and how to fix them, which makes training harder in practice. In exchange, any position can be revised at any point during sampling, so the model gets the ability to correct itself.
 
 <figure>
   <DiscreteDataIntro client:load />
@@ -539,6 +540,8 @@ For simplicity *we will use the mask distribution ($p_{\text{mask}}$) as our run
     <strong>Figure <Counter label="fig:discrete-data-setup" />:</strong> The discrete data setup on a toy example: vocabulary $\mathcal{V} = \{A, B, m\}$ and sequences of length $S = 4$. Top: the vocabulary and a sequence $\mathbf{x} = x^1 x^2 x^3 x^4$, with their one-hot encodings (toggleable). Bottom: the transport from the source $p_0$ to the target $p_1 = p_{\text{data}}$ through the intermediate distributions $p_t$, as $t$ goes from $0$ to $1$, shown as the per-position marginals of $p_t$ in the 3D view (white indicates probability zero, a fully colored cell probability one, and depth the position $s$ in the sequence), and/or as samples $\mathbf{x}_t \sim p_t$ (toogleable).
   </figcaption>
 </figure>
+
+For simplicity *we will use the mask distribution ($p_{\text{mask}}$) as our running example*; adaptations in the case of other distributions are available as toggleable content.
 
 As a first example, consider generating Sudoku grids. The vocabulary is $\mathcal{V} = \{1, 2, \ldots, 9, m\}$, and the sequence length is 81, as there are 81 cases in a grid.
 Discrete flow matching starts from a sample from the source distribution, i.e. a fully masked grid here.
@@ -565,14 +568,30 @@ $$
 \label{eq:flow-ode}
 \begin{cases}
 x(0) = x_0 \\
-\partial_t x(t) = u(x(t), t), \quad \forall t \in [0,1]
+\partial_t x(t) = u_t(x(t)), \quad \forall t \in [0,1]
 \end{cases}
 \end{equation}
 $$
 and if $p_t$ is defined as the law of the ODE solution $x(t)$ at time $t \in [0, 1]$ when $x_0 \sim p_0$, we say that $u$ generates the probability path $(p_t)_{t \in [0, 1]}$.<a href="#cfm-blog" class="dfm-note-ref"></a>
 
-Here comes the first distinction between discrete and continuous FM: as solving an ODE when the state space is discrete is not possible, discrete FM relies on a different type of object: the *probability velocity*.
+Here comes the first distinction between discrete and continuous FM: as solving an ODE when the state space is discrete is not possible, discrete FM relies on a different type of object: the *probability velocity*. To overcome this challenge and give an intuition of a discrete analog of the ODE, we reason with the discretized version of the ODE @eq:flow-ode, which reads $x(t+h) = x(t) + h u_t(x(t)) + o(h)$. Because we cannot add two sequences in $\mathcal{S}$, we can interpret the term $u_t(\mathbf{x}(t))$ as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$. In both settings, $u$ plays the same role: one Euler step of size $h u_t(x)$ moves the current sample $\mathbf{x}_t$ towards a less noisy $\mathbf{x}_{t+h}$ — in our masked setting, by putting higher rates on sequences with fewer masked tokens (see Figure <Ref label="fig:euler-analogy" />).
+This leads us to define the sampling in discrete flow matching as follows:
+$$
+\begin{equation}
+\label{eq:euler-sampling}
+\mathbf{x}_{t + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_t} + h u_t(\mathbf{x}_t)\right ) + o(h),
+\end{equation}
+$$
+where $\mathbf{e}_{\mathbf{x}} \in \mathbb{R}^{|\mathcal{S}|}$ is the one-hot vector corresponding to state $\mathbf{x} \in \mathcal{S}$, and $\text{Cat}$ denotes the categorical distribution, and $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$ is called the *probability velocity*.
 
+<figure>
+  <EulerStepAnalogy client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:euler-analogy" />:</strong> One Euler step of size $h$ in continuous and discrete flow matching, on a sample (global view) and on the states (local view, toggleable): the deterministic update $x(t) + h u_t(x(t))$ becomes a *sampling* step $\mathbf{x}_{t+h} \sim \text{Cat}(\mathbf{e}_{\mathbf{x}_t} + h u_t(\mathbf{x}_t))$ in the discrete case.
+  </figcaption>
+</figure>
+
+We now define more formally the probability velocity.
 <Statement kind="Definition" label="probability-velocity" title="Probability velocity $u_t$">
 Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, let $(X_t)_{t\in[0,1]}$ be random variables taking values in the space of sequences $\mathcal{S}$, and having laws $(p_t)_{t \in [0, 1]}$.
 Denote $u_t := u(\cdot, t)$.
@@ -640,18 +659,6 @@ $$
 </div>
 </details>
 
-
-We can interpret $u_t(\mathbf{x})_{\mathbf{y}}$ as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
-Much like the ODE @eq:flow-ode can be discretized with Euler's method, the sampling process @eq:prob-velocity can be discretized for a fixed finite stepsize $h>0$, as
-$$
-\begin{equation}
-\label{eq:euler-sampling}
-\mathbf{x}_{t + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_t} + h u_t(\mathbf{x}_t)\right)
-\end{equation}
-$$
-where $\mathbf{e}_{\mathbf{x}} \in \mathbb{R}^{|\mathcal{S}|}$ is the one-hot vector corresponding to state $\mathbf{x} \in \mathcal{S}$, and $\text{Cat}$ denotes the categorical distribution.
-
-
 In continuous flow matching, we have the guarantee that a velocity field $u_t$ generates a probability path $(p_t)_{t \in [0, 1]}$ if the pair $(p_t, u_t)$ satisfies the continuity equation $\partial_t p_t + \nabla \cdot (u_t p_t) = 0$.
 The equivalent result in the discrete setting relies on the so-called Kolmogorov Equation:
 
@@ -697,7 +704,8 @@ Now that we are equipped with adequate definitions of probability paths and velo
 Before embarking on this task, we make an **important modelling choice**.
 Learning probability velocities taking values in the full sequence space $\mathcal{S}=\mathcal{V}^S$ is cumbersome, as the cardinality of the latter is $|\mathcal{V}|^S$, e.g. $10^{81}$ for the sudoku example!
 To make computations tractable, discrete flow matching makes a **factorization assumption**: the probability path it builds updates each token in the sequence independently.
-As the next proposition shows, this has a fundamental consequence: the probability velocity that generates it can be written as a sum of token-wise contributions.
+Consequently, each transition is applied to every token of the sequence independently, according to a token-wise velocity $u_t^i$: it predicts the rate of probability change of the current sample $\mathbf{x}_t$ at its $i$-th token, that still depends on the whole noisy sequence.
+The next proposition shows that the probability velocity $u_t$ that generates the path can be written as a sum of these token-wise contributions $u_t^i$.
 
 <Statement kind="Proposition" label="factorization" title="Factorized velocity">
 Let $(X_t)$ be random variables of laws $p_t$, and assume that the transition probabilities factorize over tokens, namely for $\mathbf{x}, \mathbf{y} \in \mathcal{S}$:
@@ -709,7 +717,7 @@ $$
 $$
 
 Suppose that there is a probability velocity $u_t$ generating $(p_t)$.
-Then, the probability velocity writes as a sum of $S$ *tokenwise* probability velocities $u_t^i$, from $\mathcal{V}^S$ to $\mathcal{V}$:
+Then, the probability velocity writes as a sum of $S$ *tokenwise* probability velocities $u_t^i$, from $\mathcal{S}$ to $\mathcal{V}$:
 
 $$
 \begin{equation}
