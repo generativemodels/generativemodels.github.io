@@ -513,26 +513,36 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 </div>
 
 
-In recent years, flow matching and diffusion models have emerged as the state-of-the-art frameworks for continuous data generation, enabling the synthesis of high-quality data, such as images, audio and video [<a class="cite-ref" href="#SD3">6</a>, <a class="cite-ref" href="#SD-video">7</a>].
-Their strong generation performance, training stability and flexibility motivated their extension to discrete data,  including texts, graphs, or molecule sequences [<a class="cite-ref" href="#ref-2">1</a>, <a class="cite-ref" href="#ref-5">2</a>, <a class="cite-ref" href="#DiGress">5</a>].
-This blog post is a __pedagogical introduction__ to the adaptation of flow matching for discrete data.
+Flow matching and diffusion have emerged as the state-of-the-art techniques for generation of continuous data modalities, in particular images, audio and video [<a class="cite-ref" href="#SD3">6</a>, <a class="cite-ref" href="#SD-video">7</a>].
+Their strong generation performance, training stability and flexibility motivated their extension to *discrete* data, including texts, graphs, or molecule sequences [<a class="cite-ref" href="#ref-2">1</a>, <a class="cite-ref" href="#ref-5">2</a>, <a class="cite-ref" href="#DiGress">5</a>].
+This blog post is an introduction to flow matching for discrete data.
+A second part TODO link is dedicated to discrete diffusion.
 
-We start with a gentle introduction to discrete data generation, that paves the ground for the remaining of the post, then introduce in [section 2](#discrete-flow-matching) discrete flow matching [<a class="cite-ref" href="#ref-5">2</a>, <a class="cite-ref" href="#ref-6">3</a>].
+The first section is an introduction to discrete data generation, and discrete flow matching is introduced in [Section 2](#discrete-flow-matching).
+
+
+TODO move those later [<a class="cite-ref" href="#ref-5">2</a>, <a class="cite-ref" href="#ref-6">3</a>].
 
 ### Generating discrete data
-
-Like its continuous analog, discrete flow matching aims at mapping a simple *source* probability distribution to a complex *target* distribution (the one of the data we want to generate).
-To do so, it creates a sequence of intermediate probability distributions $(p_t)_{t}$ that progressively evolve from source to target distribution.
-
-In this blog post, we deal with discrete data: the space on which the probability distributions are defined is $\mathcal{S} := \mathcal{V}^S$, namely the space of sequences of length $S \in \mathbb{N}$ over a given vocabulary $\mathcal{V}$.
-A sequence $\mathbf{x}$ in $\mathcal{S}$ is denoted as $\mathbf{x} = x^1 \dots x^S$, the $x^i$'s being called *tokens*.
+In this blog post, by discrete data we mean sequences $\mathbf{x} = x^1 \dots x^S$ of length $S \in \mathbb{N}$, where each element $x^i$ takes values in a finite set $\mathcal{V}$, the *vocabulary*.
+Elements of the vocabulary are called *tokens*.
+For example, for text data, tokens could be the letters: $\mathcal{V} = \{a, b, c, \dots, z \}$, while DNA sequences would correspond to $\mathcal{V}=\{A, T, C, G\}$.
 In the vocabulary, we add a special token: the mask token, denoted as $m$.
 
-The source distribution acts as our starting point for generation and is typically chosen to be either:
-- The **mask distribution ($p_{\text{mask}} := \delta_{m\ldots m}$):** All sequences start entirely filled with the mask token $m$; $\delta$ is the Dirac delta distribution.
-With this choice, the model can always tell noisy (masked) tokens apart from clean ones, which also makes training simple: the model only needs to learn to fill in blanks, much like masked language modeling. The downside is that once a token is unmasked during sampling, it is never revisited, so the model cannot correct its own mistakes.
-- The **uniform distribution ($p_{\text{unif}}$):** All tokens in the starting sequence are sampled uniformly across the vocabulary $\mathcal{V}$.
-Here, a corrupted token looks just like any other token, so the model must learn both where the errors are and how to fix them, which makes training harder in practice. In exchange, any position can be revised at any point during sampling, so the model gets the ability to correct itself.
+TODO sep fig en 2 and put first part here (without the one hot).
+
+
+
+Like its continuous analog, discrete flow matching progressively transforms samples from a simple *source* probability distribution $p_0$ into samples from the *target* distribution $p_1$ (the one of the data we want to generate).
+
+
+The source distribution is typically chosen to be either:
+- The **mask distribution** ($p_0 = \delta_{m\ldots m}$): All tokens in the starting sequence are equal to the mask token $m$; $\delta$ is the Dirac delta distribution.
+{/* With this choice, the model can always tell noisy (masked) tokens apart from clean ones, which also makes training simple: the model only needs to learn to fill in blanks, much like masked language modeling. The downside is that once a token is unmasked during sampling, it is never revisited, so the model cannot correct its own mistakes. */}
+- The **uniform distribution** ($p_0 = p_{\text{unif}}$): All tokens in the starting sequence are sampled uniformly across the vocabulary $\mathcal{V}$.
+{/* Here, a corrupted token looks just like any other token, so the model must learn both where the errors are and how to fix them, which makes training harder in practice. In exchange, any position can be revised at any point during sampling, so the model gets the ability to correct itself. */}
+
+For simplicity *we will use the mask distribution as running example*; adaptations in the case of other distributions are available as toggleable content.
 
 <figure>
   <DiscreteDataIntro client:load />
@@ -541,40 +551,55 @@ Here, a corrupted token looks just like any other token, so the model must learn
   </figcaption>
 </figure>
 
-For simplicity *we will use the mask distribution ($p_{\text{mask}}$) as our running example*; adaptations in the case of other distributions are available as toggleable content.
-
-As a first example, consider generating Sudoku grids. The vocabulary is $\mathcal{V} = \{1, 2, \ldots, 9, m\}$, and the sequence length is 81, as there are 81 cases in a grid.
-Discrete flow matching starts from a sample from the source distribution, i.e. a fully masked grid here.
-The model then iteratively fills this grid, step-by-step, finally reaching a sample from the target distribution (a valid, completed Sudoku board).
+TODO qbe repasser
+*Example of generation on Sudoku*.
+As an example of how discrete flow matching generate discrete data, consider Sudoku grids. The vocabulary is $\mathcal{V} = \{1, 2, \ldots, 9, m\}$, and the sequence length is $S=81$, as there are 81 cases in a grid.
+Discrete flow matching starts from a fully masked grid.
+The model then iteratively fills this grid with non-mask tokens $\{1, 2, \ldots, 9\}$, step-by-step, finally reaching a sample from the target distribution (a valid, completed Sudoku board).
+ {/* (the source distribution). */}
 
 <figure>
   <SudokuFlowMatching client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:sudoku-sampling" />:</strong> Visualisation of the sampling process for discrete flow matching: a sample from the source distribution (here a fully masked sudoku grid) is transformed into a sample from the target distribution (here a valid sudoku grid).
+    <strong>Figure <Counter label="fig:sudoku-sampling" />:</strong> Visualization of the sampling process for discrete flow matching: a sample from the source distribution (a fully masked Sudoku grid) is transformed into a sample from the target distribution (a valid Sudoku grid).
   </figcaption>
 </figure>
 
-We now introduce discrete flow matching.
+[Section 2](#discrete-flow-matching) provides the details on to generate discrete data with discrete flow matching.
+{/* We now explain how discrete flow matching is able to achieve such generation. */}
 
 ### Discrete flow matching
 
 #### Setup: probability velocities
 
-In this section we adopt the Flow Matching convention: time goes from $t=0$ (source) to $t=1$ (target): the source distribution is thus denoted $p_0$ while the target distribution is $p_1.$
+{/* In this section we adopt the Flow Matching convention: time goes from $t=0$ (source) to $t=1$ (target): the source distribution is thus denoted $p_0$ while the target distribution is $p_1.$ */}
 
-In *continuous* flow matching, a central object is the *velocity field* $u: \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d$, that drives the generating process: samples are obtained as solutions at time $t=1$ of the Ordinary Differential Equation (ODE)
+In *continuous* flow matching, generated samples are obtained by solving the following Ordinary Differential Equation (ODE)
 $$
 \begin{equation}
-\label{eq:flow-ode}
-\begin{cases}
-x(0) = x_0 \\
-\partial_t x(t) = u_t(x(t)), \quad \forall t \in [0,1]
-\end{cases}
+  \label{eq:flow-ode}
+  \begin{cases}
+  x(0) = x_0 \\
+  \partial_t x(t) = u_t(x(t)), \quad \forall t \in [0,1]
+  \end{cases}
 \end{equation}
 $$
-and if $p_t$ is defined as the law of the ODE solution $x(t)$ at time $t \in [0, 1]$ when $x_0 \sim p_0$, we say that $u$ generates the probability path $(p_t)_{t \in [0, 1]}$.<a href="#cfm-blog" class="dfm-note-ref"></a>
+which is driven by the so-called *velocity field* $u: \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d$.
 
-Here comes the first distinction between discrete and continuous FM: as solving an ODE when the state space is discrete is not possible, discrete FM relies on a different type of object: the *probability velocity*. To overcome this challenge and give an intuition of a discrete analog of the ODE, we reason with the discretized version of the ODE @eq:flow-ode, which reads $x(t+h) = x(t) + h u_t(x(t)) + o(h)$. Because we cannot add two sequences in $\mathcal{S}$, we can interpret the term $u_t(\mathbf{x}(t))$ as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$. In both settings, $u$ plays the same role: one Euler step of size $h u_t(x)$ moves the current sample $\mathbf{x}_t$ towards a less noisy $\mathbf{x}_{t+h}$ — in our masked setting, by putting higher rates on sequences with fewer masked tokens (see Figure <Ref label="fig:euler-analogy" />).
+{/* and if $p_t$ is defined as the law of the ODE solution $x(t)$ at time $t \in [0, 1]$ when $x_0 \sim p_0$, we say that $u$ generates the probability path $(p_t)_{t \in [0, 1]}$.<a href="#cfm-blog" class="dfm-note-ref"></a> */}
+
+As solving an ODE on a discrete space is not possible, the generation process in discrete flow matching is different.
+It is defined as
+$$
+\begin{equation}
+\label{eq:euler-sampling}
+\mathbf{x}_{t + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_t} + h u_t(\mathbf{x}_t)\right ) + o(h),
+\end{equation}
+$$
+where $u_t TODO from to$ is called the *probability velocity*. TODO check if this is standard naming.
+
+
+To overcome this challenge and give an intuition of a discrete analog of the ODE, we reason with the discretized version of the ODE @eq:flow-ode, which reads $x(t+h) = x(t) + h u_t(x(t)) + o(h)$. Because we cannot add two sequences in $\mathcal{S}$, we can interpret the term $u_t(\mathbf{x}(t))$ as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$. In both settings, $u$ plays the same role: one Euler step of size $h u_t(x)$ moves the current sample $\mathbf{x}_t$ towards a less noisy $\mathbf{x}_{t+h}$ — in our masked setting, by putting higher rates on sequences with fewer masked tokens (see Figure <Ref label="fig:euler-analogy" />).
 This leads us to define the sampling in discrete flow matching as follows:
 $$
 \begin{equation}
