@@ -394,8 +394,8 @@ function FanArrows() {
         segs={[
           { t: "1 + h " },
           ...SEG_U_XT,
-          { t: "y", b: 1, lvl: 3.5, fs: 8 },
-          { t: "3", lvl: 5.5, fs: 6.5 },
+          { t: "y", b: 1, lvl: 3.5, fs: 10.5 },
+          { t: "3", lvl: 6, fs: 8.5 },
         ]}
       />
       <g transform={`translate(${lx.toFixed(1)}, ${ly.toFixed(1)}) rotate(${angle.toFixed(1)})`}>
@@ -407,8 +407,8 @@ function FanArrows() {
           segs={[
             { t: "h " },
             ...SEG_U_XT,
-            { t: "y", b: 1, lvl: 3.5, fs: 8 },
-            { t: STATES[last].idx, lvl: 5.5, fs: 6.5 },
+            { t: "y", b: 1, lvl: 3.5, fs: 10.5 },
+            { t: STATES[last].idx, lvl: 6, fs: 8.5 },
           ]}
         />
       </g>
@@ -459,7 +459,7 @@ function DiscreteLocal() {
             anchor="end"
             className="esa-svg-faint"
             fill={st.cur ? "#a78bfa" : st.next ? "#7defa0" : undefined}
-            segs={[{ t: `${st.name} = ` }, { t: "y", b: 1 }, { t: st.idx, lvl: 3, fs: 8 }]}
+            segs={[{ t: `${st.name} = ` }, { t: "y", b: 1 }, { t: st.idx, lvl: 3.5, fs: 10 }]}
           />
         ),
       )}
@@ -803,11 +803,11 @@ const css = `
   fill: rgba(255,255,255,0.85);
 }
 .esa-svg-small {
-  font-size: 10.9px;
+  font-size: 14px;
   fill: rgba(255,255,255,0.85);
 }
 .esa-svg-faint {
-  font-size: 11.5px;
+  font-size: 14px;
   fill: rgba(255,255,255,0.55);
 }
 .esa-svg-cell {
