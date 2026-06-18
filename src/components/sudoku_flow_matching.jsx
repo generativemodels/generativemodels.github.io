@@ -86,7 +86,7 @@ function getGrid(t) {
       if (GIVEN_MASK[r][c]) return { value: PUZZLE[r][c], state: "given" };
       const thresh = THRESHOLDS.get(`${r}-${c}`);
       if (t >= thresh) return { value: val, state: "revealed" };
-      return { value: "M", state: "masked" };
+      return { value: "m", state: "masked" };
     })
   );
 }
@@ -140,25 +140,23 @@ export default function App() {
       minHeight: "100vh",
       background: "radial-gradient(ellipse at 35% 15%, #0f1729, #080d18 55%, #050810)",
       color: "white",
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
       padding: "40px 16px 56px",
       gap: 24,
     }}>
-      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-
       {/* Title */}
       <div style={{ textAlign: "center", maxWidth: 520 }}>
         <h1 style={{
-          fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: "-0.02em",
+          fontSize: 27.6, fontWeight: 700, margin: 0, letterSpacing: "-0.02em",
           background: "linear-gradient(135deg, #82b4ff, #a78bfa, #7defa0)",
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
         }}>Discrete Flow Matching on Sudoku</h1>
         <p style={{
-          fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 8, lineHeight: 1.6,
-          fontFamily: "'DM Mono', monospace",
+          fontSize: 14.5, color: "rgba(255,255,255,0.5)", marginTop: 8, lineHeight: 1.6,
+          fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
         }}>
           Transporting <span style={{ color: "#82b4ff" }}>x{"\u2080"}</span> (initial puzzle)
           {" \u2192 "}<span style={{ color: "#a78bfa" }}>x{"\u209C"}</span> (intermediate puzzle at t)
@@ -169,7 +167,7 @@ export default function App() {
 
       {/* Grid label */}
       <div style={{
-        fontFamily: "'DM Mono', monospace", fontSize: 11,
+        fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 12.6,
         color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em", textTransform: "uppercase",
       }}>{label}</div>
 
@@ -203,8 +201,8 @@ export default function App() {
                 : isMasked ? "rgba(0,0,0,0.6)"
                 : "rgba(125,239,160,0.1)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontFamily: isMasked ? "'DM Mono', monospace" : "'Outfit', sans-serif",
-              fontSize: isMasked ? 13 : 19,
+              fontFamily: isMasked ? "'KaTeX_Main', 'STIX Two Math', serif" : "'KaTeX_Main', 'STIX Two Math', serif",
+              fontSize: isMasked ? 15 : 22,
               fontWeight: isGiven ? 600 : 500,
               color: isGiven ? "rgba(255,255,255,0.8)"
                 : isMasked ? "rgba(130,180,255,0.4)"
@@ -212,7 +210,7 @@ export default function App() {
               transition: "all 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
               boxShadow: isRevealed ? "inset 0 0 16px rgba(125,239,160,0.08)" : "none",
             }}>
-              {isMasked ? "M" : cell.value}
+              {isMasked ? "m" : cell.value}
             </div>
           );
         }))}
@@ -226,8 +224,8 @@ export default function App() {
           { label: "Total unknowns", value: total, color: "rgba(255,255,255,0.4)" },
         ].map(s => (
           <div key={s.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-            <span style={{ fontFamily: "'Outfit', sans-serif", fontSize: 22, fontWeight: 600, color: s.color }}>{s.value}</span>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{s.label}</span>
+            <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 25.3, fontWeight: 600, color: s.color }}>{s.value}</span>
+            <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 10.3, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{s.label}</span>
           </div>
         ))}
       </div>
@@ -242,7 +240,7 @@ export default function App() {
           border: "1.5px solid rgba(167,139,250,0.25)",
           background: playing ? "rgba(167,139,250,0.12)" : "rgba(255,255,255,0.03)",
           color: "#a78bfa", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16,
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18.4,
           flexShrink: 0,
         }}>{playing ? "\u275A\u275A" : "\u25B6"}</button>
 
@@ -268,7 +266,7 @@ export default function App() {
         </div>
 
         <span style={{
-          fontFamily: "'DM Mono', monospace", fontSize: 13, color: "#a78bfa",
+          fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 14.9, color: "#a78bfa",
           minWidth: 50, textAlign: "right", fontWeight: 500,
         }}>t={t.toFixed(2)}</span>
       </div>
@@ -282,7 +280,7 @@ export default function App() {
         ].map(it => (
           <div key={it.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <div style={{ width: 10, height: 10, borderRadius: 3, background: it.color }} />
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.3)" }}>{it.label}</span>
+            <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 11.5, color: "rgba(255,255,255,0.3)" }}>{it.label}</span>
           </div>
         ))}
       </div>

@@ -138,8 +138,8 @@ function ToggleButton({ options, value, onChange, color = "#a78bfa" }) {
           onClick={() => onChange(opt.value)}
           style={{
             padding: "4px 10px",
-            fontSize: 10,
-            fontFamily: "'DM Mono', monospace",
+            fontSize: 11.5,
+            fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
             fontWeight: value === opt.value ? 600 : 400,
             background: value === opt.value ? `${color}33` : "rgba(255,255,255,0.03)",
             color: value === opt.value ? color : "rgba(255,255,255,0.4)",
@@ -165,8 +165,8 @@ function ToggleCheck({ label, checked, onChange, color }) {
         border: `1px solid ${checked ? color : "rgba(255,255,255,0.12)"}`,
         background: checked ? `${color}1f` : "rgba(255,255,255,0.03)",
         color: checked ? color : "rgba(255,255,255,0.4)",
-        cursor: "pointer", fontFamily: "'DM Mono', monospace",
-        fontSize: 11, fontWeight: checked ? 600 : 400,
+        cursor: "pointer", fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
+        fontSize: 12.6, fontWeight: checked ? 600 : 400,
         transition: "all 0.2s ease",
       }}
     >
@@ -184,7 +184,7 @@ function NumberInput({ label, value, onApply, color = "#82b4ff", min, max, step 
   useEffect(() => { setText(String(value)); }, [value]);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+      <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 12.6, color: "rgba(255,255,255,0.45)" }}>
         {label}
       </span>
       <input
@@ -200,8 +200,8 @@ function NumberInput({ label, value, onApply, color = "#82b4ff", min, max, step 
           width, padding: "4px 6px", borderRadius: 6,
           border: "1px solid rgba(255,255,255,0.15)",
           background: "rgba(255,255,255,0.06)",
-          color, fontFamily: "'DM Mono', monospace",
-          fontSize: 12, fontWeight: 600, textAlign: "center", outline: "none",
+          color, fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
+          fontSize: 13.8, fontWeight: 600, textAlign: "center", outline: "none",
         }}
       />
     </div>
@@ -359,15 +359,15 @@ function TrajectoryFigure({
       <line x1={padL} y1={padT + plotH} x2={padL + plotW} y2={padT + plotH}
         stroke="rgba(255,255,255,0.18)" />
 
-      <text x={padL - 8} y={yClean + 4} textAnchor="end" fontSize={12}
-        fill={COLOR_CLEAN} fontFamily="'DM Mono', monospace" fontWeight={600}>x₀</text>
-      <text x={padL - 8} y={yMask + 4} textAnchor="end" fontSize={12}
-        fill={COLOR_MASK} fontFamily="'DM Mono', monospace" fontWeight={600}>m</text>
+      <text x={padL - 8} y={yClean + 4} textAnchor="end" fontSize={13.8}
+        fill={COLOR_CLEAN} fontFamily="'KaTeX_Main', 'STIX Two Math', serif" fontWeight={600}>x₀</text>
+      <text x={padL - 8} y={yMask + 4} textAnchor="end" fontSize={13.8}
+        fill={COLOR_MASK} fontFamily="'KaTeX_Main', 'STIX Two Math', serif" fontWeight={600}>m</text>
 
-      <text x={padL} y={padT + plotH + 16} textAnchor="middle" fontSize={10}
-        fill="rgba(255,255,255,0.45)" fontFamily="'DM Mono', monospace">t=0</text>
-      <text x={padL + plotW} y={padT + plotH + 16} textAnchor="middle" fontSize={10}
-        fill="rgba(255,255,255,0.45)" fontFamily="'DM Mono', monospace">t=1</text>
+      <text x={padL} y={padT + plotH + 16} textAnchor="middle" fontSize={11.5}
+        fill="rgba(255,255,255,0.45)" fontFamily="'KaTeX_Main', 'STIX Two Math', serif">t=0</text>
+      <text x={padL + plotW} y={padT + plotH + 16} textAnchor="middle" fontSize={11.5}
+        fill="rgba(255,255,255,0.45)" fontFamily="'KaTeX_Main', 'STIX Two Math', serif">t=1</text>
       {Array.from({ length: T + 1 }, (_, i) => (
         <line key={`tick${i}`} x1={xAt(i)} y1={padT + plotH} x2={xAt(i)} y2={padT + plotH + 3}
           stroke="rgba(255,255,255,0.25)" />
@@ -433,8 +433,8 @@ function TrajectoryFigure({
               <rect x={x} y={barTop + (barAreaH - h)} width={barW} height={h}
                 fill={COLOR_DISCRETE} opacity={0.85} rx={2} />
             )}
-            <text x={x + barW / 2} y={barTop + barAreaH + 12} textAnchor="middle" fontSize={9}
-              fill={COLOR_DISCRETE} fontFamily="'DM Mono', monospace">{p.toFixed(2)}</text>
+            <text x={x + barW / 2} y={barTop + barAreaH + 12} textAnchor="middle" fontSize={10.3}
+              fill={COLOR_DISCRETE} fontFamily="'KaTeX_Main', 'STIX Two Math', serif">{p.toFixed(2)}</text>
           </g>
         );
       })()}
@@ -451,8 +451,8 @@ function TrajectoryFigure({
               <rect x={x} y={barTop + (barAreaH - h)} width={barW} height={h}
                 fill={COLOR_CONTINUOUS} opacity={0.85} rx={2} />
             )}
-            <text x={x + barW / 2} y={barTop + barAreaH + 12} textAnchor="middle" fontSize={9}
-              fill={COLOR_CONTINUOUS} fontFamily="'DM Mono', monospace">{p.toFixed(2)}</text>
+            <text x={x + barW / 2} y={barTop + barAreaH + 12} textAnchor="middle" fontSize={10.3}
+              fill={COLOR_CONTINUOUS} fontFamily="'KaTeX_Main', 'STIX Two Math', serif">{p.toFixed(2)}</text>
           </g>
         );
       })()}
@@ -467,8 +467,8 @@ function TrajectoryFigure({
               <rect x={unconditionalBarX} y={barTop + (barAreaH - h)} width={barW} height={h}
                 fill={COLOR_UNCONDITIONAL} opacity={0.85} rx={2} />
             )}
-            <text x={unconditionalBarX + barW / 2} y={barTop + barAreaH + 12} textAnchor="middle" fontSize={9}
-              fill={COLOR_UNCONDITIONAL} fontFamily="'DM Mono', monospace">{p.toFixed(2)}</text>
+            <text x={unconditionalBarX + barW / 2} y={barTop + barAreaH + 12} textAnchor="middle" fontSize={10.3}
+              fill={COLOR_UNCONDITIONAL} fontFamily="'KaTeX_Main', 'STIX Two Math', serif">{p.toFixed(2)}</text>
           </g>
         );
       })()}
@@ -512,21 +512,21 @@ function AggregateFigure({ T, alpha, alphaDot, N, seed, showDiscrete, showContin
         <g key={`hg${g}`}>
           <line x1={padL} y1={yAt(g)} x2={padL + plotW} y2={yAt(g)}
             stroke="rgba(255,255,255,0.06)" strokeDasharray="2 3" />
-          <text x={padL - 6} y={yAt(g) + 3} textAnchor="end" fontSize={9}
-            fill="rgba(255,255,255,0.4)" fontFamily="'DM Mono', monospace">{g.toFixed(2)}</text>
+          <text x={padL - 6} y={yAt(g) + 3} textAnchor="end" fontSize={10.3}
+            fill="rgba(255,255,255,0.4)" fontFamily="'KaTeX_Main', 'STIX Two Math', serif">{g.toFixed(2)}</text>
         </g>
       ))}
       {[0, 0.25, 0.5, 0.75, 1].map((g) => (
-        <text key={`vt${g}`} x={xAt(g)} y={padT + plotH + 14} textAnchor="middle" fontSize={9}
-          fill="rgba(255,255,255,0.4)" fontFamily="'DM Mono', monospace">{g.toFixed(2)}</text>
+        <text key={`vt${g}`} x={xAt(g)} y={padT + plotH + 14} textAnchor="middle" fontSize={10.3}
+          fill="rgba(255,255,255,0.4)" fontFamily="'KaTeX_Main', 'STIX Two Math', serif">{g.toFixed(2)}</text>
       ))}
       <line x1={padL} y1={padT} x2={padL} y2={padT + plotH} stroke="rgba(255,255,255,0.18)" />
       <line x1={padL} y1={padT + plotH} x2={padL + plotW} y2={padT + plotH} stroke="rgba(255,255,255,0.18)" />
 
-      <text x={padL + plotW / 2} y={H - 6} textAnchor="middle" fontSize={11}
-        fill="rgba(255,255,255,0.55)" fontFamily="'DM Mono', monospace">t</text>
-      <text x={padL - 38} y={padT + plotH / 2} fontSize={11}
-        fill="rgba(255,255,255,0.55)" fontFamily="'DM Mono', monospace"
+      <text x={padL + plotW / 2} y={H - 6} textAnchor="middle" fontSize={12.6}
+        fill="rgba(255,255,255,0.55)" fontFamily="'KaTeX_Main', 'STIX Two Math', serif">t</text>
+      <text x={padL - 38} y={padT + plotH / 2} fontSize={12.6}
+        fill="rgba(255,255,255,0.55)" fontFamily="'KaTeX_Main', 'STIX Two Math', serif"
         textAnchor="middle" dominantBaseline="central"
         transform={`rotate(-90 ${padL - 38} ${padT + plotH / 2})`}>
         fraction unmasked
@@ -545,20 +545,20 @@ function AggregateFigure({ T, alpha, alphaDot, N, seed, showDiscrete, showContin
 
       <g transform={`translate(${padL + plotW - 130}, ${padT + 8})`}>
         <line x1={0} y1={6} x2={18} y2={6} stroke={COLOR_ALPHA} strokeWidth={2} />
-        <text x={22} y={9} fontSize={10} fill="rgba(255,255,255,0.7)"
-          fontFamily="'DM Mono', monospace">αₜ</text>
+        <text x={22} y={9} fontSize={11.5} fill="rgba(255,255,255,0.7)"
+          fontFamily="'KaTeX_Main', 'STIX Two Math', serif">αₜ</text>
         {showDiscrete && (
           <g>
             <circle cx={9} cy={20} r={3.2} fill={COLOR_DISCRETE} />
-            <text x={22} y={23} fontSize={10} fill={COLOR_DISCRETE}
-              fontFamily="'DM Mono', monospace">Empirical</text>
+            <text x={22} y={23} fontSize={11.5} fill={COLOR_DISCRETE}
+              fontFamily="'KaTeX_Main', 'STIX Two Math', serif">Empirical</text>
           </g>
         )}
         {showContinuous && (
           <g>
             <circle cx={9} cy={showDiscrete ? 32 : 20} r={3.2} fill={COLOR_CONTINUOUS} />
-            <text x={22} y={(showDiscrete ? 32 : 20) + 3} fontSize={10} fill={COLOR_CONTINUOUS}
-              fontFamily="'DM Mono', monospace">Empirical</text>
+            <text x={22} y={(showDiscrete ? 32 : 20) + 3} fontSize={11.5} fill={COLOR_CONTINUOUS}
+              fontFamily="'KaTeX_Main', 'STIX Two Math', serif">Empirical</text>
           </g>
         )}
       </g>
@@ -690,8 +690,8 @@ export default function MaskedDiffusionForward({
     background: "rgba(255,255,255,0.04)",
     color: "#fff",
     cursor: "pointer",
-    fontFamily: "'DM Mono', monospace",
-    fontSize: 12,
+    fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
+    fontSize: 13.8,
   };
 
   return (
@@ -699,7 +699,7 @@ export default function MaskedDiffusionForward({
       style={{
         background: "radial-gradient(ellipse at 35% 15%, #0f1729, #080d18 55%, #050810)",
         color: "white",
-        fontFamily: "'Outfit', sans-serif",
+        fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -709,14 +709,9 @@ export default function MaskedDiffusionForward({
         minWidth: 540,
       }}
     >
-      <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap"
-        rel="stylesheet"
-      />
-
       <h2
         style={{
-          fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: "-0.02em",
+          fontSize: 23, fontWeight: 700, margin: 0, letterSpacing: "-0.02em",
           background: "linear-gradient(135deg, #82b4ff, #a78bfa, #DD8452)",
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
         }}
@@ -735,8 +730,8 @@ export default function MaskedDiffusionForward({
                 onClick={() => changeDirection(opt.value)}
                 style={{
                   padding: "4px 12px",
-                  fontSize: 11,
-                  fontFamily: "'DM Mono', monospace",
+                  fontSize: 12.6,
+                  fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
                   fontWeight: direction === opt.value ? 600 : 400,
                   background: direction === opt.value
                     ? "rgba(167,139,250,0.20)"
@@ -754,8 +749,8 @@ export default function MaskedDiffusionForward({
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
           <span style={{
-            fontFamily: "'DM Mono', monospace",
-            fontSize: 11,
+            fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
+            fontSize: 12.6,
             color: "rgba(255,255,255,0.55)",
             fontWeight: 600,
           }}>
@@ -776,15 +771,15 @@ export default function MaskedDiffusionForward({
       {!showAggregate && (
         <>
           <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: "#a78bfa", fontWeight: 500 }}>
+            <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 14.9, color: "#a78bfa", fontWeight: 500 }}>
               {isFinished ? "Done!" : step === 0 ? "Start" : `Step ${step}/${T}`}
             </span>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: "#82b4ff" }}>
+            <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 14.9, color: "#82b4ff" }}>
               t = {currentT.toFixed(2)}
             </span>
             {ghost && (
               <span style={{
-                fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.35)",
+                fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 12.6, color: "rgba(255,255,255,0.35)",
                 fontStyle: "italic",
               }}>
                 {ghost.direction} run shown in background
@@ -805,7 +800,7 @@ export default function MaskedDiffusionForward({
               marginBottom: 4,
             }}>
               <span style={{
-                fontFamily: "'DM Mono', monospace", fontSize: 12, color: "#a78bfa", fontWeight: 500,
+                fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 13.8, color: "#a78bfa", fontWeight: 500,
               }}>
                 single trajectory
               </span>
@@ -872,7 +867,7 @@ export default function MaskedDiffusionForward({
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>slow</span>
+              <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 11.5, color: "rgba(255,255,255,0.35)" }}>slow</span>
               <input
                 type="range"
                 min={150} max={1500} step={50}
@@ -880,7 +875,7 @@ export default function MaskedDiffusionForward({
                 onChange={(e) => setSpeed(1650 - Number(e.target.value))}
                 style={{ width: 100, accentColor: "#a78bfa" }}
               />
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>fast</span>
+              <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 11.5, color: "rgba(255,255,255,0.35)" }}>fast</span>
             </div>
 
             {/* Step progress dots */}
@@ -938,7 +933,7 @@ export default function MaskedDiffusionForward({
             marginBottom: 4,
           }}>
             <span style={{
-              fontFamily: "'DM Mono', monospace", fontSize: 12, color: "#82b4ff", fontWeight: 500,
+              fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 13.8, color: "#82b4ff", fontWeight: 500,
             }}>
               N trajectories
             </span>
@@ -950,7 +945,7 @@ export default function MaskedDiffusionForward({
                 padding: "5px 12px", borderRadius: 6,
                 border: "1px solid rgba(255,255,255,0.15)",
                 background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.7)",
-                cursor: "pointer", fontFamily: "'DM Mono', monospace", fontSize: 11,
+                cursor: "pointer", fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 12.6,
               }}
             >
               ↻ resample

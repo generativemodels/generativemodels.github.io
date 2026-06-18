@@ -10,9 +10,9 @@ const H = 16;
 const V = 3;
 const NUM_LAYERS = 3;
 const MASK = V - 1;
-const TOKEN_LABELS = ["A", "B", "M"];
-const TOKEN_COLORS = { A: "#5b8def", B: "#5bbf6f", M: "#888" };
-const BAR_COLORS = [TOKEN_COLORS.A, TOKEN_COLORS.B, TOKEN_COLORS.M];
+const TOKEN_LABELS = ["A", "B", "m"];
+const TOKEN_COLORS = { A: "#5b8def", B: "#5bbf6f", m: "#888" };
+const BAR_COLORS = [TOKEN_COLORS.A, TOKEN_COLORS.B, TOKEN_COLORS.m];
 
 // ── Math helpers ────────────────────────────────────────────────────
 
@@ -312,9 +312,9 @@ function TokenBox({ token, highlight, label, selected }) {
           alignItems: "center",
           justifyContent: "center",
           background: bg,
-          fontSize: 20,
+          fontSize: 23,
           fontWeight: 700,
-          fontFamily: "'DM Mono', monospace",
+          fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
           color: "#fff",
           boxShadow: highlight
             ? "0 0 14px " + bg
@@ -334,9 +334,9 @@ function TokenBox({ token, highlight, label, selected }) {
       {label && (
         <span
           style={{
-            fontSize: 9,
+            fontSize: 10.3,
             color: "rgba(255,255,255,0.35)",
-            fontFamily: "'DM Mono', monospace",
+            fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
           }}
         >
           {label}
@@ -359,9 +359,9 @@ function BarChart({ values, labels, colors, title, height = 110, highlightIdx = 
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, opacity: dimmed ? 0.3 : 1, transition: "opacity 0.3s ease" }}>
       <span
         style={{
-          fontSize: 10,
+          fontSize: 11.5,
           color: "rgba(255,255,255,0.5)",
-          fontFamily: "'DM Mono', monospace",
+          fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
           letterSpacing: "0.04em",
         }}
       >
@@ -406,9 +406,9 @@ function BarChart({ values, labels, colors, title, height = 110, highlightIdx = 
                 x={x + barW / 2}
                 y={diverging ? (v >= 0 ? y - 3 : y + barH + 11) : y - 3}
                 textAnchor="middle"
-                fontSize={9}
+                fontSize={10.3}
                 fill="rgba(255,255,255,0.6)"
-                fontFamily="'DM Mono', monospace"
+                fontFamily="'KaTeX_Main', 'STIX Two Math', serif"
               >
                 {v.toFixed(2)}
               </text>
@@ -416,9 +416,9 @@ function BarChart({ values, labels, colors, title, height = 110, highlightIdx = 
                 x={x + barW / 2}
                 y={chartH + 16}
                 textAnchor="middle"
-                fontSize={10}
+                fontSize={11.5}
                 fill="rgba(255,255,255,0.5)"
-                fontFamily="'DM Mono', monospace"
+                fontFamily="'KaTeX_Main', 'STIX Two Math', serif"
                 fontWeight={600}
               >
                 {labels[i]}
@@ -459,9 +459,9 @@ function ToggleButton({ options, value, onChange }) {
           key={opt.value}
           onClick={() => onChange(opt.value)}
           style={{
-            padding: "4px 10px",
-            fontSize: 10,
-            fontFamily: "'DM Mono', monospace",
+            padding: "6px 13px",
+            fontSize: 14,
+            fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
             fontWeight: value === opt.value ? 600 : 400,
             background: value === opt.value ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.03)",
             color: value === opt.value ? "#a78bfa" : "rgba(255,255,255,0.4)",
@@ -638,9 +638,9 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
   const stepLabel = isFinished ? "Done!" : `Step ${data.step + 1}/${N_STEPS}`;
   const phaseLabel = isFinished
     ? `Final: ${FINAL_XT.join("")}`
-    : isPlannerMode
-      ? phase === 0 ? "Plan: sample z, select positions" : "Denoise: unmask selected"
-      : phase === 0 ? (leftView === "velocity" ? "Velocity u_t" : "Denoiser P(x\u2081|x_t)") : "Sample \u2192 next x_t";
+    : phase === 1
+      ? isPlannerMode ? "Denoise: unmask selected" : "Sample \u2192 next x_t"
+      : "";
 
   const btnBase = {
     padding: "8px 16px",
@@ -649,8 +649,8 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
     background: "rgba(255,255,255,0.04)",
     color: "#fff",
     cursor: "pointer",
-    fontFamily: "'DM Mono', monospace",
-    fontSize: 13,
+    fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
+    fontSize: 14.9,
   };
 
   // Planner-specific data for the current step
@@ -662,7 +662,7 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
       style={{
         background: "radial-gradient(ellipse at 35% 15%, #0f1729, #080d18 55%, #050810)",
         color: "white",
-        fontFamily: "'Outfit', sans-serif",
+        fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -672,15 +672,10 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
         minWidth: 420,
       }}
     >
-      <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap"
-        rel="stylesheet"
-      />
-
       {/* Title */}
       <h2
         style={{
-          fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: "-0.02em",
+          fontSize: 23, fontWeight: 700, margin: 0, letterSpacing: "-0.02em",
           background: "linear-gradient(135deg, #82b4ff, #a78bfa, #7defa0)",
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
         }}
@@ -690,8 +685,8 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
 
       <p
         style={{
-          fontSize: 11, color: "rgba(255,255,255,0.35)",
-          fontFamily: "'DM Mono', monospace", margin: 0, textAlign: "center",
+          fontSize: 15, color: "rgba(255,255,255,0.45)",
+          fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", margin: 0, textAlign: "center",
         }}
       >
         S={S}, V=&#123;{TOKEN_LABELS.join(", ")}&#125;, mask source, {numSteps} {isPlannerMode ? "planner" : "Euler"} steps (dt={(1/numSteps).toFixed(3)}) &middot; sample #{sampleCount}
@@ -723,20 +718,22 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
 
       {/* Step + time indicator */}
       <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
-        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: "#a78bfa", fontWeight: 500 }}>
+        <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 14.9, color: "#a78bfa", fontWeight: 500 }}>
           {stepLabel}
         </span>
-        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: "#82b4ff" }}>
+        <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 14.9, color: "#82b4ff" }}>
           t = {tDisplay}
         </span>
-        <span
-          style={{
-            fontFamily: "'DM Mono', monospace", fontSize: 11,
-            color: isFinished ? "#7defa0" : phase === 0 ? "#a78bfa" : "#DD8452",
-          }}
-        >
-          {phaseLabel}
-        </span>
+        {phaseLabel && (
+          <span
+            style={{
+              fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 14,
+              color: isFinished ? "#7defa0" : "#DD8452",
+            }}
+          >
+            {phaseLabel}
+          </span>
+        )}
       </div>
 
       {/* Current sequence */}
@@ -770,7 +767,7 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
             transition: "border 0.3s ease",
           }}
         >
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: "#a78bfa", fontWeight: 500 }}>
+          <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 13.8, color: "#a78bfa", fontWeight: 500 }}>
             {leftView === "velocity"
               ? <span>velocity u<sub>t</sub>(x<sub>t</sub>)</span>
               : <span>P(x<sub>1</sub>|x<sub>t</sub>)</span>}
@@ -823,11 +820,11 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
         >
           {isPlannerMode ? (
             <>
-              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: "#DD8452", fontWeight: 500 }}>
+              <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 13.8, color: "#DD8452", fontWeight: 500 }}>
                 Planner G<sub>&phi;</sub>
               </span>
               {plannerData && (
-                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.45)" }}>
+                <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 11.5, color: "rgba(255,255,255,0.45)" }}>
                   demasking {plannerData.posPerStep} position{plannerData.posPerStep > 1 ? "s" : ""} (S/N = {S}/{numSteps})
                 </span>
               )}
@@ -844,8 +841,8 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
                         background: plannerData.masked[i]
                           ? (TOKEN_COLORS[tok] || "#555")
                           : "rgba(255,255,255,0.08)",
-                        fontSize: 14, fontWeight: 600,
-                        fontFamily: "'DM Mono', monospace",
+                        fontSize: 16.1, fontWeight: 600,
+                        fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
                         color: plannerData.masked[i] ? "#fff" : "rgba(255,255,255,0.25)",
                         border: phase === 1 && plannerData.selected[i]
                           ? "2px solid rgba(255,200,50,0.8)"
@@ -854,7 +851,7 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
                       }}>
                         {tok}
                       </div>
-                      <span style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", fontFamily: "'DM Mono', monospace" }}>
+                      <span style={{ fontSize: 9.2, color: "rgba(255,255,255,0.3)", fontFamily: "'KaTeX_Main', 'STIX Two Math', serif" }}>
                         z<sub>{i+1}</sub>
                       </span>
                     </div>
@@ -863,7 +860,7 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
               )}
               {/* Planner distribution G_phi^tau */}
               {plannerData && (
-                <div style={{ marginTop: 18 }}>
+                <div style={{ marginTop: 12 }}>
                   <BarChart
                     values={plannerData.plannerDist}
                     labels={Array.from({ length: S }, (_, i) => `p${i+1}`)}
@@ -876,7 +873,7 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
               )}
               {/* Fallback when finished */}
               {!plannerData && (
-                <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "#7defa0" }}>
+                <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 12.6, color: "#7defa0" }}>
                   All positions demasked
                 </span>
               )}
@@ -885,7 +882,7 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
             <>
               <span
                 style={{
-                  fontFamily: "'DM Mono', monospace", fontSize: 12,
+                  fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 13.8,
                   color: phase === 1 ? "#DD8452" : "rgba(255,255,255,0.4)",
                   fontWeight: 500, transition: "color 0.3s ease",
                 }}
@@ -980,7 +977,7 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
       {/* Controls row: steps + speed */}
       <div style={{ display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+          <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 12.6, color: "rgba(255,255,255,0.45)" }}>
             steps
           </span>
           <input
@@ -995,18 +992,18 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
               width: 52, padding: "4px 6px", borderRadius: 6,
               border: "1px solid rgba(255,255,255,0.15)",
               background: "rgba(255,255,255,0.06)",
-              color: "#82b4ff", fontFamily: "'DM Mono', monospace",
-              fontSize: 12, fontWeight: 600, textAlign: "center", outline: "none",
+              color: "#82b4ff", fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
+              fontSize: 13.8, fontWeight: 600, textAlign: "center", outline: "none",
             }}
           />
           {isPlannerMode && (
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: "rgba(255,255,255,0.3)" }}>
+            <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 10.3, color: "rgba(255,255,255,0.3)" }}>
               (max {S})
             </span>
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+          <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 12.6, color: "rgba(255,255,255,0.45)" }}>
             seed
           </span>
           <input
@@ -1019,14 +1016,14 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
               width: 72, padding: "4px 6px", borderRadius: 6,
               border: "1px solid rgba(255,255,255,0.15)",
               background: "rgba(255,255,255,0.06)",
-              color: "#82b4ff", fontFamily: "'DM Mono', monospace",
-              fontSize: 12, fontWeight: 600, textAlign: "center", outline: "none",
+              color: "#82b4ff", fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
+              fontSize: 13.8, fontWeight: 600, textAlign: "center", outline: "none",
             }}
           />
         </div>
         {isPlannerMode && (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+            <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 12.6, color: "rgba(255,255,255,0.45)" }}>
               &tau;
             </span>
             <input
@@ -1040,14 +1037,14 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
                 width: 52, padding: "4px 6px", borderRadius: 6,
                 border: "1px solid rgba(255,255,255,0.15)",
                 background: "rgba(255,255,255,0.06)",
-                color: "#DD8452", fontFamily: "'DM Mono', monospace",
-                fontSize: 12, fontWeight: 600, textAlign: "center", outline: "none",
+                color: "#DD8452", fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
+                fontSize: 13.8, fontWeight: 600, textAlign: "center", outline: "none",
               }}
             />
           </div>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>slow</span>
+          <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 11.5, color: "rgba(255,255,255,0.35)" }}>slow</span>
           <input
             type="range"
             min={200} max={2000} step={100}
@@ -1055,7 +1052,7 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
             onChange={(e) => setSpeed(2200 - Number(e.target.value))}
             style={{ width: 100, accentColor: "#a78bfa" }}
           />
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>fast</span>
+          <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 11.5, color: "rgba(255,255,255,0.35)" }}>fast</span>
         </div>
       </div>
 
@@ -1095,11 +1092,11 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
         {[
           { color: TOKEN_COLORS.A, label: "A" },
           { color: TOKEN_COLORS.B, label: "B" },
-          { color: TOKEN_COLORS.M, label: "M (mask)" },
+          { color: TOKEN_COLORS.m, label: "m (mask)" },
         ].map((it) => (
           <div key={it.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
             <div style={{ width: 10, height: 10, borderRadius: 3, background: it.color }} />
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
+            <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 11.5, color: "rgba(255,255,255,0.35)" }}>
               {it.label}
             </span>
           </div>

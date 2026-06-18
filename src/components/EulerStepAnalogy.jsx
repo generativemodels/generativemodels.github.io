@@ -54,24 +54,24 @@ function MText({ x, y, segs, anchor = "middle", className = "esa-svg-label", fil
 }
 
 // x_t, x_{t+h}, e_{x_t}, e_{x_{t+h}}, u_t(x_t) as label segments
-const SEG_XT = [{ t: "x", b: 1 }, { t: "t", lvl: 3, fs: 8 }];
-const SEG_XTH = [{ t: "x", b: 1 }, { t: "t+h", lvl: 3, fs: 8 }];
+const SEG_XT = [{ t: "x", b: 1 }, { t: "t", lvl: 3, fs: 10.5 }];
+const SEG_XTH = [{ t: "x", b: 1 }, { t: "t+h", lvl: 3, fs: 10.5 }];
 const SEG_E_XT = [
   { t: "e", b: 1 },
-  { t: "x", b: 1, lvl: 3, fs: 8.5 },
-  { t: "t", lvl: 5, fs: 7 },
+  { t: "x", b: 1, lvl: 3.5, fs: 12.5 },
+  { t: "t", lvl: 6, fs: 10.5 },
 ];
 const SEG_E_XTH = [
   { t: "e", b: 1 },
-  { t: "x", b: 1, lvl: 3, fs: 8.5 },
-  { t: "t+h", lvl: 5, fs: 7 },
+  { t: "x", b: 1, lvl: 3.5, fs: 12.5 },
+  { t: "t+h", lvl: 6, fs: 10.5 },
 ];
 const SEG_U_XT = [
   { t: "u" },
-  { t: "t", lvl: 3, fs: 8 },
+  { t: "t", lvl: 3, fs: 10.5 },
   { t: "(", lvl: 0 },
   { t: "x", b: 1 },
-  { t: "t", lvl: 3, fs: 8 },
+  { t: "t", lvl: 3, fs: 10.5 },
   { t: ")", lvl: 0 },
 ];
 
@@ -138,7 +138,7 @@ function Block({ token, size = 32, glow = false }) {
       style={{
         width: size,
         height: size,
-        fontSize: size * 0.5,
+        fontSize: size * 0.575,
         background: tokenColor(token),
       }}
     >
@@ -308,7 +308,7 @@ function VecCell({ x, y, v, accent }) {
         className="esa-svg-cell"
         x={x + CW / 2}
         y={y + CH / 2 + 0.5}
-        fontSize={v > 0 && v < 1 ? 8 : 9.5}
+        fontSize={v > 0 && v < 1 ? 13 : 15}
         fill={on ? "white" : "rgba(255,255,255,0.3)"}
       >
         {v > 0 && v < 1 ? v.toFixed(2) : v}
@@ -341,7 +341,7 @@ function VecColumn({ x, field, accent, header, caption }) {
             x={x + CW / 2}
             y={rowCenter(i) + 4}
             textAnchor="middle"
-            fontSize="13"
+            fontSize="14.9"
           >
             ⋮
           </text>
@@ -447,7 +447,7 @@ function DiscreteLocal() {
             x={68}
             y={rowCenter(i) + 4}
             textAnchor="end"
-            fontSize="13"
+            fontSize="14.9"
           >
             ⋮
           </text>
@@ -507,7 +507,7 @@ export default function EulerStepAnalogy({ local = false }) {
             setShowGlobal(!showGlobal);
           }}
         >
-          Global view
+          Samples
         </button>
         <button
           className={`esa-toggle-btn${showLocal ? " active" : ""}`}
@@ -516,7 +516,7 @@ export default function EulerStepAnalogy({ local = false }) {
             setShowLocal(!showLocal);
           }}
         >
-          Local view
+          States
         </button>
       </div>
 
@@ -631,7 +631,7 @@ const css = `
 .esa-card {
   background: radial-gradient(ellipse at 35% 15%, #0f1729, #080d18 55%, #050810);
   color: white;
-  font-family: 'Outfit', sans-serif;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -659,8 +659,8 @@ const css = `
   border: none;
   background: rgba(255,255,255,0.04);
   color: rgba(255,255,255,0.4);
-  font-family: 'DM Mono', monospace;
-  font-size: 13px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 14.9px;
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
 }
@@ -674,10 +674,16 @@ const css = `
 }
 .esa-row {
   display: flex;
+  flex-direction: column;
   justify-content: center;
-  align-items: flex-start;
-  gap: 30px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 28px;
+  width: 100%;
+}
+/* Give the stacked panels a definite width so the SVGs' width:100% /
+   max-width actually resolve (otherwise the panel shrink-to-fits and the
+   discrete figure collapses to ~intrinsic size, making the vectors tiny). */
+.esa-row .esa-panel {
   width: 100%;
 }
 .esa-panel {
@@ -687,15 +693,15 @@ const css = `
   gap: 8px;
 }
 .esa-panel-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 13px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 14.9px;
   color: rgba(255,255,255,0.85);
 }
 .esa-panel-label sup {
-  font-size: 9px;
+  font-size: 10.3px;
 }
 .esa-panel-label sub {
-  font-size: 9px;
+  font-size: 10.3px;
 }
 .esa-cal {
   font-family: 'KaTeX_Caligraphic', 'STIX Two Math', serif;
@@ -717,12 +723,12 @@ const css = `
   gap: 6px;
 }
 .esa-itemlabel {
-  font-family: 'DM Mono', monospace;
-  font-size: 13px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 14.9px;
   color: rgba(255,255,255,0.7);
 }
 .esa-itemlabel sub {
-  font-size: 9px;
+  font-size: 10.3px;
 }
 .esa-cur { color: #a78bfa; }
 .esa-next { color: #7defa0; }
@@ -743,7 +749,7 @@ const css = `
   justify-content: center;
   border-radius: 6px;
   color: white;
-  font-family: 'DM Mono', monospace;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
   font-weight: 600;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 2px 5px rgba(0,0,0,0.35);
 }
@@ -759,24 +765,24 @@ const css = `
   padding: 0 4px;
 }
 .esa-arrow-formula {
-  font-family: 'DM Mono', monospace;
-  font-size: 12px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 13.8px;
   color: rgba(255,255,255,0.85);
   white-space: nowrap;
 }
 .esa-arrow-formula sub {
-  font-size: 8.5px;
+  font-size: 9.8px;
 }
 .esa-arrow-formula sub sub {
-  font-size: 7px;
+  font-size: 8px;
 }
 .esa-arrow-svg {
   width: 90px;
   height: 10px;
 }
 .esa-arrow-nature {
-  font-family: 'DM Mono', monospace;
-  font-size: 11px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 12.6px;
 }
 .esa-det { color: #7defa0; }
 .esa-sto { color: #dd8452; }
@@ -787,21 +793,21 @@ const css = `
   display: block;
 }
 .esa-local-svg-disc {
-  max-width: 410px;
+  max-width: 80%;
 }
 .esa-local-svg text {
-  font-family: 'DM Mono', monospace;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
 }
 .esa-svg-label {
-  font-size: 12px;
+  font-size: 13.8px;
   fill: rgba(255,255,255,0.85);
 }
 .esa-svg-small {
-  font-size: 9.5px;
+  font-size: 10.9px;
   fill: rgba(255,255,255,0.85);
 }
 .esa-svg-faint {
-  font-size: 10px;
+  font-size: 11.5px;
   fill: rgba(255,255,255,0.55);
 }
 .esa-svg-cell {
@@ -810,7 +816,7 @@ const css = `
   dominant-baseline: central;
 }
 .esa-svg-caption {
-  font-size: 11.5px;
+  font-size: 15.5px;
   fill: rgba(255,255,255,0.8);
 }
 `;

@@ -529,9 +529,12 @@ Elements of the vocabulary are called *tokens*.
 For example, for text data, tokens could be the letters: $\mathcal{V} = \{a, b, c, \dots, z \}$, while DNA sequences would correspond to $\mathcal{V}=\{A, T, C, G\}$.
 In the vocabulary, we add a special token: the mask token, denoted as $m$.
 
-TODO sep fig en 2 and put first part here (without the one hot).
-
-
+<figure>
+  <DiscreteDataIntro client:load transport={false} onehotToggle={false} />
+  <figcaption>
+    <strong>Figure <Counter label="fig:discrete-data-notation" />:</strong> A toy vocabulary and an example sequence.
+  </figcaption>
+</figure>
 
 Like its continuous analog, discrete flow matching progressively transforms samples from a simple *source* probability distribution $p_0$ into samples from the *target* distribution $p_1$ (the one of the data we want to generate).
 
@@ -545,9 +548,9 @@ The source distribution is typically chosen to be either:
 For simplicity *we will use the mask distribution as running example*; adaptations in the case of other distributions are available as toggleable content.
 
 <figure>
-  <DiscreteDataIntro client:load />
+  <DiscreteDataIntro client:load notation={false} />
   <figcaption>
-    <strong>Figure <Counter label="fig:discrete-data-setup" />:</strong> The discrete data setup on a toy example: vocabulary $\mathcal{V} = \{A, B, m\}$ and sequences of length $S = 4$. Top: the vocabulary and a sequence $\mathbf{x} = x^1 x^2 x^3 x^4$, with their one-hot encodings (toggleable). Bottom: the transport from the source $p_0$ to the target $p_1 = p_{\text{data}}$ through the intermediate distributions $p_t$, as $t$ goes from $0$ to $1$, shown as the per-position marginals of $p_t$ in the 3D view (white indicates probability zero, a fully colored cell probability one, and depth the position $s$ in the sequence), and/or as samples $\mathbf{x}_t \sim p_t$ (toogleable).
+    <strong>Figure <Counter label="fig:discrete-data-setup" />:</strong> The transport from the source $p_0$ to the target $p_1 = p_{\text{data}}$ shown as, for each position, the probability $p_t$ of drawing each token at time $t$ (white indicates probability zero, a fully colored cell probability one, and depth the position $s$ in the sequence), and/or as samples $\mathbf{x}_t \sim p_t$ (toogleable).
   </figcaption>
 </figure>
 
@@ -596,27 +599,24 @@ $$
 \mathbf{x}_{t + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_t} + h u_t(\mathbf{x}_t)\right ) + o(h),
 \end{equation}
 $$
-where $u_t TODO from to$ is called the *probability velocity*. TODO check if this is standard naming.
+where $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$ is the velocity field, $\mathbf{e}_{\mathbf{x}} \in \mathbb{R}^{|\mathcal{S}|}$ is the one-hot vector corresponding to state $\mathbf{x} \in \mathcal{S}$, and $\text{Cat}$ denotes the categorical distribution.
+The velocity $u_t(\mathbf{x})$ can be seen as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
 
+{/* To overcome this challenge and give an intuition of a discrete analog of the ODE, we reason with the discretized version of the ODE @eq:flow-ode, which reads $x(t+h) = x(t) + h u_t(x(t)) + o(h)$. Because we cannot add two sequences in $\mathcal{S}$, we can interpret the term $u_t(\mathbf{x}(t))$ as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$. In both settings, $u$ plays the same role: one Euler step of size $h u_t(x)$ moves the current sample $\mathbf{x}_t$ towards a less noisy $\mathbf{x}_{t+h}$. In our masked setting, this is done by putting higher rates on sequences with fewer masked tokens (see Figure <Ref label="fig:euler-analogy" />). */}
 
-To overcome this challenge and give an intuition of a discrete analog of the ODE, we reason with the discretized version of the ODE @eq:flow-ode, which reads $x(t+h) = x(t) + h u_t(x(t)) + o(h)$. Because we cannot add two sequences in $\mathcal{S}$, we can interpret the term $u_t(\mathbf{x}(t))$ as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$. In both settings, $u$ plays the same role: one Euler step of size $h u_t(x)$ moves the current sample $\mathbf{x}_t$ towards a less noisy $\mathbf{x}_{t+h}$ — in our masked setting, by putting higher rates on sequences with fewer masked tokens (see Figure <Ref label="fig:euler-analogy" />).
-This leads us to define the sampling in discrete flow matching as follows:
-$$
-\begin{equation}
-\label{eq:euler-sampling}
-\mathbf{x}_{t + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_t} + h u_t(\mathbf{x}_t)\right ) + o(h),
-\end{equation}
-$$
-where $\mathbf{e}_{\mathbf{x}} \in \mathbb{R}^{|\mathcal{S}|}$ is the one-hot vector corresponding to state $\mathbf{x} \in \mathcal{S}$, and $\text{Cat}$ denotes the categorical distribution, and $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$ is called the *probability velocity*.
+<note-orel>**Q**: *Peut être qu'on peut enlever dans le texte le lien avec la version discrétisée vu que c'est expliqué dans la figure ? Est ce qu'on garde "one Euler step of size $h u_t(x)$ moves the current sample $\mathbf{x}_t$ towards a less noisy $\mathbf{x}_{t+h}$." avant la figure ?*</note-orel>
 
 <figure>
   <EulerStepAnalogy client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:euler-analogy" />:</strong> One Euler step of size $h$ in continuous and discrete flow matching, on a sample (global view) and on the states (local view, toggleable): the deterministic update $x(t) + h u_t(x(t))$ becomes a *sampling* step $\mathbf{x}_{t+h} \sim \text{Cat}(\mathbf{e}_{\mathbf{x}_t} + h u_t(\mathbf{x}_t))$ in the discrete case.
+    <strong>Figure <Counter label="fig:euler-analogy" />:</strong> One Euler step of size $h$ in continuous and discrete flow matching, on the samples and on the states (toggleable): the deterministic update $x(t) + h u_t(x(t))$ becomes a sampling step $\mathbf{x}_{t+h} \sim \text{Cat}(\mathbf{e}_{\mathbf{x}_t} + h u_t(\mathbf{x}_t))$ for discrete data.
   </figcaption>
 </figure>
 
-We now define more formally the probability velocity.
+<note-orel>**Q**: *la def est ok à mon avis mais très formelle et pas indispensable si on a compris le sampling, je suis pour la mettre dans un toogle, cf. what's done below.*</note-orel>
+<details>
+<summary> Formal definition of the probability velocity $u_t$. </summary>
+<div>
 <Statement kind="Definition" label="probability-velocity" title="Probability velocity $u_t$">
 Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, let $(X_t)_{t\in[0,1]}$ be random variables taking values in the space of sequences $\mathcal{S}$, and having laws $(p_t)_{t \in [0, 1]}$.
 Denote $u_t := u(\cdot, t)$.
@@ -647,18 +647,16 @@ $$
 $$
 
 These two equations mean that as $t$ increases to $t+h$, the variable $X_t$ stays in its current state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u_t(\mathbf{x})_{\mathbf{y}}$.
-We reach a fundamental point: unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**.
+</div>
+</details>
+
+A fundamental point is that unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**.
 This explains why we are allowed to take $p_0$ equal to a Dirac $\delta_{m\ldots m}$ and still produce different final outputs, which would not be possible with a deterministic sampling.
 
+<note-orel>**Q**: *On garde la proposition dans le coeur de texte ? Je suis pour.*</note-orel>
 <Statement kind="Proposition" label="probability-velocity-mass-conservation" title="Constraints on $u$">
 The probability velocity $u$ must preserve probability mass: for @eq:prob-velocity to define a valid probability, for every $t\in [0, 1]$ $u_t$ must satisfy:
 1. *Positivity*: $u_t(\mathbf{x})_{\mathbf{y}} \ge 0$ for all $\mathbf{y} \neq \mathbf{x}$.
-$$
-\begin{equation}
-\label{eq:velocity-positivity}
-u_t(\mathbf{x})_{\mathbf{y}} \ge 0, \qquad \mathbf{y} \neq \mathbf{x}.
-\end{equation}
-$$
 2. *Normalization*: $\sum_{\mathbf{y} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} = 0$ for all $\mathbf{x} \in \mathcal{S}$ (and so $u_t(\mathbf{x})_{\mathbf{x}} \le 0$).
 </Statement>
 

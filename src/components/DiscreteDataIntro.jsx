@@ -82,7 +82,7 @@ function Block({ token, size = 34 }) {
       style={{
         width: size,
         height: size,
-        fontSize: size * 0.5,
+        fontSize: size * 0.575,
         background: tokenColor(token),
       }}
     >
@@ -109,7 +109,7 @@ function OneHotCell({ on, token, size = 24 }) {
       style={{
         width: size,
         height: size,
-        fontSize: size * 0.45,
+        fontSize: size * 0.52,
         background: on ? tokenColor(token) : undefined,
       }}
     >
@@ -155,8 +155,8 @@ function Cube({ x = 0, y = 0, z = 0, rgb, label, opacity = 1 }) {
           textAnchor="middle"
           dominantBaseline="central"
           fill="white"
-          fontSize={CUBE * 0.5}
-          fontFamily="'DM Mono', monospace"
+          fontSize={CUBE * 0.575}
+          fontFamily="'KaTeX_Main', 'STIX Two Math', serif"
           fontWeight="600"
         >
           {label}
@@ -208,7 +208,7 @@ function TableLabel({ x, y, sub, highlight = false }) {
       y={y}
     >
       p
-      <tspan dy="4" fontSize="10">
+      <tspan dy="4" fontSize="11.5">
         {sub}
       </tspan>
     </text>
@@ -268,7 +268,9 @@ function CubeView({ t, source }) {
 
 // `row` lays the two sections (notations | transport) side by side instead of
 // stacked — used in the slides where horizontal space is the one available.
-export default function DiscreteDataIntro({ samples = false, cube = true, onehot = false, row = false }) {
+// `notation` / `transport` toggle each section independently, so the figure can
+// be split into two standalone figures (notations panel vs. transport panel).
+export default function DiscreteDataIntro({ samples = false, cube = true, onehot = false, row = false, notation = true, transport: showTransport = true, onehotToggle = true }) {
   const [seed, setSeed] = useState(26);
   const [source, setSource] = useState("mask"); // "mask" | "unif"
   // which transport views are shown (both can be active at once)
@@ -340,6 +342,7 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
       <div className={`ddi-body${row ? " ddi-body--row" : ""}`}>
 
       {/* ── 1. Vocabulary and sequence, with aligned one-hot encodings ── */}
+      {notation && (
       <div className="ddi-section">
         <div className="ddi-notation">
           <div className="ddi-notation-item">
@@ -438,6 +441,7 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
             )}
           </div>
         </div>
+        {onehotToggle && (
         <div className="ddi-toggle-group">
           <button
             className={`ddi-toggle-btn${showOneHot ? " active" : ""}`}
@@ -446,9 +450,12 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
             One-hot encoding
           </button>
         </div>
+        )}
       </div>
+      )}
 
       {/* ── 3. Transport p_0 → p_data ── */}
+      {showTransport && (
       <div className="ddi-section">
         <div className="ddi-section-title">
           Transport p&#8320; to p&#8321; via intermediate distributions p<sub>t</sub>
@@ -564,6 +571,7 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
           </button>
         </div>
       </div>
+      )}
       </div>
     </div>
   );
@@ -573,7 +581,7 @@ const css = `
 .ddi-card {
   background: radial-gradient(ellipse at 35% 15%, #0f1729, #080d18 55%, #050810);
   color: white;
-  font-family: 'Outfit', sans-serif;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -618,7 +626,7 @@ const css = `
   padding-left: 40px;
 }
 .ddi-section-title {
-  font-size: 15px;
+  font-size: 17.2px;
   font-weight: 700;
   letter-spacing: -0.01em;
   background: linear-gradient(135deg, #82b4ff, #a78bfa, #7defa0);
@@ -633,7 +641,7 @@ const css = `
   justify-content: center;
   border-radius: 6px;
   color: white;
-  font-family: 'DM Mono', monospace;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
   font-weight: 600;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 2px 5px rgba(0,0,0,0.35);
 }
@@ -652,8 +660,8 @@ const css = `
   gap: 10px;
 }
 .ddi-pos-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 12px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 13.8px;
   color: rgba(255,255,255,0.55);
   height: 16px;
   line-height: 16px;
@@ -662,24 +670,24 @@ const css = `
   line-height: 0;
 }
 .ddi-vocab-note {
-  font-family: 'DM Mono', monospace;
-  font-size: 12px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 13.8px;
   color: rgba(255,255,255,0.5);
 }
 .ddi-endpoint-label, .ddi-arrow-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 14px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 16.1px;
   color: rgba(255,255,255,0.85);
   margin-bottom: 4px;
 }
 .ddi-oh-caption {
-  font-family: 'DM Mono', monospace;
-  font-size: 15px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 17.2px;
   color: rgba(255,255,255,0.7);
 }
 .ddi-oh-caption sup,
 .ddi-oh-caption sub {
-  font-size: 11px;
+  font-size: 12.6px;
 }
 .ddi-oh-grid {
   position: relative;
@@ -703,8 +711,8 @@ const css = `
   height: 30px;
   display: inline-flex;
   align-items: center;
-  font-family: 'DM Mono', monospace;
-  font-size: 12px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 13.8px;
   color: rgba(255,255,255,0.55);
 }
 .ddi-oh-header {
@@ -712,12 +720,12 @@ const css = `
   line-height: 18px;
   margin-top: 6px;
   text-align: center;
-  font-family: 'DM Mono', monospace;
-  font-size: 12px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 13.8px;
   color: rgba(255,255,255,0.75);
 }
 .ddi-oh-header sub {
-  font-size: 9px;
+  font-size: 10.3px;
   line-height: 0;
 }
 .ddi-oh-rowlabel {
@@ -726,8 +734,8 @@ const css = `
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: 'DM Mono', monospace;
-  font-size: 12px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 13.8px;
   color: rgba(255,255,255,0.55);
 }
 .ddi-oh-cell {
@@ -739,7 +747,7 @@ const css = `
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(255,255,255,0.04);
   color: rgba(255,255,255,0.35);
-  font-family: 'DM Mono', monospace;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
   font-weight: 600;
 }
 .ddi-oh-cell.on {
@@ -791,8 +799,8 @@ const css = `
   display: block;
 }
 .ddi-svg-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 14px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 16.1px;
   fill: rgba(255,255,255,0.7);
   text-anchor: middle;
 }
@@ -801,7 +809,7 @@ const css = `
   font-weight: 600;
 }
 .ddi-svg-poslabel {
-  font-size: 13px;
+  font-size: 14.9px;
   fill: rgba(255,255,255,0.85);
   text-anchor: start;
 }
@@ -824,8 +832,8 @@ const css = `
   border: none;
   background: rgba(255,255,255,0.04);
   color: rgba(255,255,255,0.4);
-  font-family: 'DM Mono', monospace;
-  font-size: 13px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 14.9px;
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
 }
@@ -838,8 +846,8 @@ const css = `
   font-weight: 600;
 }
 .ddi-slider-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 13px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 14.9px;
   color: rgba(255,255,255,0.6);
   display: flex;
   align-items: center;
@@ -878,8 +886,8 @@ const css = `
   background: rgba(255,255,255,0.04);
   color: #fff;
   cursor: pointer;
-  font-family: 'DM Mono', monospace;
-  font-size: 13px;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 14.9px;
   transition: background 0.2s, border-color 0.2s;
 }
 .ddi-play-btn {
