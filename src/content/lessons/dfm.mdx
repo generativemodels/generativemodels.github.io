@@ -905,14 +905,14 @@ All that's left is to learn the global velocity as a simple conditional expectat
 To simplify the exposition, we will use $\mathbf{z} = \mathbf{x}_1$.
 Having chosen $\mathbf{z}$, we chose a conditional probability path. */}
 
-In order to have factorized velocities (simpler to learn) as per @eq:factorized-velocity, we chose a conditional path $p_t(\cdot | \mathbf{x}_1)$ to be factorized:
+In order to have factorized velocities (simpler to learn), we chose a conditional path $p_t(\cdot | \mathbf{x}_1)$ to be factorized:
 $$
 \begin{align}
 & p_t(\mathbf{x} | \mathbf{x_1}) = \prod_{i=1}^S  \big( \underbrace{ t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = m) } _{:= q_t(x^j | x_1^j)} \big)  \label{eq:mask-path-1} \\
 \end{align}
 $$
 
-This choice is similar to the linear interpolation path used in continuous flow matching $p_t(\mathbf{x} | \mathbf{x_0}, \mathbf{x}_1) = t \mathbf{x}_0 + (1 - t) \mathbf{x}_1$, unless we cannot interpolate between two discrete tokens.
+This choice is similar to the linear interpolation path used in continuous flow matching $p_t(x | x_0, x_1) = t x_0 + (1 - t) x_1$, unless we cannot interpolate between two discrete tokens.
 Instead, we use linear interpolation in probability space: at time $t$, the $i$-th token $x^i_t$ equals the target token $x_1^i$ with probability $t$, or the mask token $m$ with probability $1 - t$.
 Therefore, $p_0(\cdot | \mathbf{x}_1)$ is a Dirac at the all-masked sequence, while $p_1(\cdot | \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_1$.
 The interest of this conditional probability path is that we can derive the associated probability velocity in closed-form.
@@ -1289,16 +1289,13 @@ u_t(\mathbf{x}) = \underset{u_t \text{ measurable}}{\operatorname{argmin}}\ \mat
 $$
 In discrete spaces, since we compare nonneg­ative rate vectors that behave like local probabilities, a Kullback-Leibler style objective is more natural.
 More generally, this conditional expectation is the minimizer
-for any Bregman divergence, and KL<a href="#generalized-kl" class="dfm-note-ref"></a> is the Bregman choice adapted to our setting:
+for any Bregman divergence, and KL<a href="#generalized-kl" class="dfm-note-ref"></a> is the Bregman choice adapted to our setting:<a href="#probability-velocity-kl" class="dfm-note-ref"></a>
 $$
 \begin{equation}
 \label{eq:kl-proj}
 u_t(\mathbf{x}) ={} \underset{u}{\operatorname{argmin}}\ \mathbb{E}\!\left[ \mathrm{KL} \left(u(X_t | X_1), u(X_t)\right)  \right]
 \end{equation}
 $$
-
-When applying it to probability velocities, we only compare the off-diagonal entries of $u_t(\mathbf{x})$, i.e. the rates $u_t(\mathbf{x})_{\mathbf{y}}$ for $\mathbf{y}\neq\mathbf{x}$.
-These vectors are indeed positive, and we can skip the diagonal entry since its value is determined by all the other ones due to the zero-sum constraint (Proposition <Ref label="prop:probability-velocity-mass-conservation" />).
 
 The exact conditional expectation of @eq:marginal-velocity-def is approximated by a neural network $u_{\theta,t}$, trained by minimizing over $\theta$:
 <PinkEquation>
@@ -1318,7 +1315,8 @@ $$
 #### Learning with denoiser parameterization
 
 
-In continuous flow matching with straight interpolation paths $x_t := (1-t) x_0 + tx_1$, learning the ideal velocity $\mathbb{E}[x_1 - x_0 | x_t=x]$ is mathematically equivalent to learning the ideal denoiser $\mathbb{E}[x_1 | x_t = x]$, since the two are linked via $\mathbb{E}[x_1 - x_0 | x_t=x] = \frac{1}{1 - t} ( \mathbb{E}[x_1 | x_t = x] - x)$.
+With straight interpolation paths $x_t := (1-t) x_0 + tx_1$, learning the ideal velocity $\mathbb{E}[X_1 - X_0 | X_t=x]$ is mathematically equivalent to learning the ideal denoiser $\mathbb{E}[X_1 | X_t = x]$, since the two are linked via $\mathbb{E}[X_1 - X_0 | X_t=x] = \frac{1}{1 - t} ( \mathbb{E}[X_1 | X_t = x] - x)$.
+The denoiser can be understood as predicting the most plausible clean image $x_1$ given a noisy image $x_t$ at time $t$.
 It turns out the same type of denoiser-velocity equivalence holds in the discrete case:
 $$
 \begin{equation}
@@ -1412,7 +1410,7 @@ where the last equality uses $x^i = m$. Both cases match the claimed formula.
 </div>
 </details>
 
-Because the term $\mathbb{I}(v = x^i)$ is a known constant given the current state, learning the velocity field $u$ is mathematically exactly equivalent to learning the denoiser probability $\mathbb{P}(X_1^i = v | X_t = \mathbf{x})$.
+Because the term $\mathbb{I}(v = x^i)$ is a known constant given the current state, learning the velocity field $u$ is mathematically exactly equivalent to learning the denoiser probability $\mathbb{P}(X_1^i = v | X_t = \mathbf{x})$.<a href="#masked-source-denoiser-equivalence" class="dfm-note-ref"></a>
 Consequently, we can train a denoiser $P_{\theta, t}$ directly. Using the KL divergence between the true clean token distribution and the learned one, the loss simplifies to the standard cross-entropy:
 <PinkEquation>
 
@@ -1849,16 +1847,25 @@ Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weigh
 <div style={{ fontSize: '0.92rem', lineHeight: '1.55' }}>
 
 <div class="dfm-note-entry">
-  <span id="cfm-blog"></span>
+  <span id="generalized-kl"></span>
   <div class="dfm-note-main">
-    For more details, see our [blog post on continuous flow matching](https://dl.heeere.com/cfm).
+    Here $\mathrm{KL}$ denotes the generalized KL divergence between two positive vectors $a,b \in \mathbb{R}_+^d$, $\mathrm{KL}(a,b) = \sum_{j=1}^d a_j \log(a_j/b_j) - a_j + b_j$.
   </div>
 </div>
 
 <div class="dfm-note-entry">
-  <span id="generalized-kl"></span>
+  <span id="probability-velocity-kl"></span>
   <div class="dfm-note-main">
-    Here $\mathrm{KL}$ denotes the generalized KL divergence between two positive vectors $a,b \in \mathbb{R}_+^d$, $\mathrm{KL}(a,b) = \sum_{j=1}^d a_j \log(a_j/b_j) - a_j + b_j$.
+    When applying it to probability velocities, we only compare the off-diagonal entries of $u_t(\mathbf{x})$, i.e. the rates $u_t(\mathbf{x})_{\mathbf{y}}$ for $\mathbf{y}\neq\mathbf{x}$.
+    These vectors are indeed positive, and we can skip the diagonal entry since its value is determined by all the other ones due to the zero-sum constraint (Proposition <Ref label="prop:probability-velocity-mass-conservation" />).
+  </div>
+</div>
+
+<div class="dfm-note-entry">
+  <span id="masked-source-denoiser-equivalence"></span>
+  <div class="dfm-note-main">
+    This exact equivalence relies on the masked source, but does not hold for an arbitrary source distribution $p_0$.
+    However, learning a denoiser is still sufficient to recover the velocity field using @eq:marginal-velocity-def, and therefore to generate data samples.
   </div>
 </div>
 

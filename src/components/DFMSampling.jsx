@@ -867,7 +867,7 @@ export default function DFMSampling({ denoiser = false, planner = false, showMod
                     values={plannerData.plannerDist}
                     labels={Array.from({ length: S }, (_, i) => `p${i+1}`)}
                     colors={plannerData.selected.map((s) => phase === 1 && s ? "#f5c542" : "rgba(255,255,255,0.2)")}
-                    title={<span><Mi>G</Mi><sub><Mi>&phi;</Mi></sub>(<Mi>&tau;</Mi>={tau}) selection prob.</span>}
+                    title={<span style={{ display: "inline-block", transform: "translateY(-6px)" }}><Mi>G</Mi><sub><Mi>&phi;</Mi></sub>(<Mi>&tau;</Mi>={tau}) selection prob.</span>}
                     height={90}
                     diverging={false}
                   />
