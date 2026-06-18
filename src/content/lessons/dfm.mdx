@@ -490,7 +490,6 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 - **$\mathbf{x}^{\neq i}$** sub-sequence of $\mathbf{x}$ at all positions except $i$
 - **$\Delta_k$** for $k \in \mathbb{N}$, $\Delta_k=\{\pi\in\mathbb{R}_+^k:\sum_{\ell=1}^{k}\pi_\ell=1\}$ is the probability simplex
 - **$\text{Cat}$** categorical distribution: $x \sim \text{Cat}(\mathbf{p})$ means $\mathbb{P}(x = v) = \mathbf{p}_v$, for a probability vector $\mathbf{p} \in \Delta_{|\mathcal{V}|}$
-- **$p_{\text{mask}}$** mask distribution: $p_{\text{mask}}(v) = \mathbb{I}(v = m)$
 - **$p_{\text{unif}}$** uniform distribution: $p_{\text{unif}}(v) = \frac{1}{|\mathcal{V}|}$
 - *Convention*: $t=0$: noisy data; $t=1$: clean data.
 - **$p_0$** source distribution (mask or uniform)
@@ -616,7 +615,6 @@ The velocity $u_t(\mathbf{x})$ can be seen as the instantaneous rate at which th
 <note-orel>**Q**: *la def est ok à mon avis mais très formelle et pas indispensable si on a compris le sampling, je suis pour la mettre dans un toogle, cf. what's done below.*</note-orel>
 <details>
 <summary> Formal definition of the probability velocity $u_t$. </summary>
-<div>
 <Statement kind="Definition" label="probability-velocity" title="Probability velocity $u_t$">
 Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, let $(X_t)_{t\in[0,1]}$ be random variables taking values in the space of sequences $\mathcal{S}$, and having laws $(p_t)_{t \in [0, 1]}$.
 Denote $u_t := u(\cdot, t)$.
@@ -647,7 +645,6 @@ $$
 $$
 
 These two equations mean that as $t$ increases to $t+h$, the variable $X_t$ stays in its current state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u_t(\mathbf{x})_{\mathbf{y}}$.
-</div>
 </details>
 
 A fundamental point is that unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**.
@@ -683,7 +680,7 @@ $$
 </details>
 
 In continuous flow matching, we have the guarantee that a velocity field $u_t$ generates a probability path $(p_t)_{t \in [0, 1]}$ if the pair $(p_t, u_t)$ satisfies the continuity equation $\partial_t p_t + \nabla \cdot (u_t p_t) = 0$.
-The equivalent result in the discrete setting relies on the so-called Kolmogorov Equation:
+The equivalent result for discrete data relies on the so-called Kolmogorov Equation:
 
 <Statement kind="Proposition" label="kolmogorov-equation" title="Kolmogorov equation">
 The probability velocity $u_t$ generates $(p_t)$ in the sense of @eq:prob-velocity if and only if the pair $(u_t, p_t)$ satisfies the Kolmogorov equation:
@@ -724,11 +721,20 @@ Now that we are equipped with adequate definitions of probability paths and velo
 2. Build a probability velocity $u_t$ generating $(p_t)$ (@eq:marginal-velocity-def)
 3. Provide an explicit loss to learn $u_t$ with a neural network (@eq:cdfm-2)
 
-Before embarking on this task, we make an **important modelling choice**.
+Before embarking on this task, we make an important modelling choice.
 Learning probability velocities taking values in the full sequence space $\mathcal{S}=\mathcal{V}^S$ is cumbersome, as the cardinality of the latter is $|\mathcal{V}|^S$, e.g. $10^{81}$ for the sudoku example!
-To make computations tractable, discrete flow matching makes a **factorization assumption**: the probability path it builds updates each token in the sequence independently.
-Consequently, each transition is applied to every token of the sequence independently, according to a token-wise velocity $u_t^i$: it predicts the rate of probability change of the current sample $\mathbf{x}_t$ at its $i$-th token, that still depends on the whole noisy sequence.
-The next proposition shows that the probability velocity $u_t$ that generates the path can be written as a sum of these token-wise contributions $u_t^i$.
+To make computations tractable, discrete flow matching makes a *factorization assumption*: each transition is applied to every token of the sequence independently, according to a token-wise velocity $u_t^i : \mathcal{S} \times [0, 1] \to \mathbb{R}^{|\mathcal{V}|}$.
+The quantity $u_t^i(\mathbf{x}_t)_v$ then predicts the rate of probability change from the current token $x_t^i$ toward the token $v$, that still depends on the whole noisy sequence  $\mathbf{x}_t$.
+The proposition in the toogle formalizes this assumption.
+
+{/* shows that the probability velocity $u_t$ that generates the path can be written as a sum of these token-wise contributions $u_t^i$. */}
+
+{/* the probability path it builds updates each token in the sequence independently.
+Consequently,*/}
+
+
+<details>
+<summary>Proposition</summary>
 
 <Statement kind="Proposition" label="factorization" title="Factorized velocity">
 Let $(X_t)$ be random variables of laws $p_t$, and assume that the transition probabilities factorize over tokens, namely for $\mathbf{x}, \mathbf{y} \in \mathcal{S}$:
@@ -793,18 +799,6 @@ $$
 </div>
 </details>
 
-
-Through @eq:factorized-velocity, the modeling assumption has several important consequences:
-- for infinitesimally small time steps, a sequence $\mathbf{x}$  can only transition to states $\mathbf{y}$ differing by at most one token
-- learning-wise, it implies **a substantial computational gain**: instead of learning one transition object $u$ on the full sequence space $\mathcal{S}=\mathcal{V}^S$ (exponential in $S$), we can learn $S$ local transition objects $u^i$, each on the vocabulary space $\mathcal{V}$ (linear in $S$)
-- at each sampling step, we draw each token independently following:
-$$
-\begin{equation}
-\label{eq:token-sampling}
-x_{t+h}^i \sim \text{Cat}\left(\mathbf{e}_{x_t^i} + h u_t^i(\mathbf{x}_t)\right)
-\end{equation}
-$$
-
 <Statement kind="Example" label="example-utoken" title="">
 
 To understand @eq:factorized-velocity, take the vocabulary $\mathcal{V}=\{A,B\}$, sequence length $S=3$, and current sequence $\mathbf{x}=ABA$.
@@ -868,40 +862,60 @@ We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$. From @eq:factorized
         <path d="M 0 0 L 8 4 L 0 8 z" fill="#6b7280" />
       </marker>
     </defs>
-    <path d="M 56 145 C 82 72, 92 58, 104 58" />
-    <path d="M 56 145 C 82 122, 92 124, 104 124" />
-    <path d="M 56 145 C 82 146, 92 157, 104 157" />
-    <path d="M 56 145 C 82 210, 92 248, 104 248" />
+    <g transform="translate(0, 6)">
+      <path d="M 56 145 C 82 72, 92 58, 104 58" />
+      <path d="M 56 145 C 82 122, 92 124, 104 124" />
+      <path d="M 56 145 C 82 146, 92 157, 104 157" />
+      <path d="M 56 145 C 82 210, 92 248, 104 248" />
+    </g>
   </svg>
 </div>
 
 While $u_t$ outputs a vector in $\mathbb{R}^8$, $u_t^1, u_t^2$ and $u_t^3$ output vectors in $\mathbb{R}^2$ (as $|\mathcal{V}| = 2$).
 </Statement>
 
-Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of discrete flow matching, going from source to target distribution!
+</details>
+
+
+{/* Through @eq:factorized-velocity*/}This modeling assumption has several important consequences:
+- for infinitesimally small time steps, a sequence $\mathbf{x}$ can only transition to states $\mathbf{y}$ differing by at most one token (even if we draw all tokens simultaneously, the probability of two or more tokens changing is $o(h)$)
+- learning-wise, it implies *a substantial computational gain*: instead of learning one transition object $u$ on the full sequence space $\mathcal{S}=\mathcal{V}^S$ (exponential in $S$), we can learn $S$ local transition objects $u^i$, each on the vocabulary space $\mathcal{V}$ (linear in $S$)
+- at each sampling step, we draw each token independently following:
+$$
+\begin{equation}
+\label{eq:token-sampling}
+x_{t+h}^i \sim \text{Cat}\left(\mathbf{e}_{x_t^i} + h u_t^i(\mathbf{x}_t)\right)
+\end{equation}
+$$
+
+Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of discrete flow matching, going from source $p_0$ to target $p_1$ distribution!
 
 #### Building the probability path
 
-Similarly to continuous flow matching, there are infinitely many possible choices for a probability path $(p_t)$ going from source $p_0$ to target $p_1$.
-To build a specific one, we borrow the core idea from continuous flow matching: **we first define conditional probability paths for which the exact conditional velocity is known and easy to compute**.
-Then, we show that the resulting global velocity (obtained by marginalizing the conditional velocities) is guaranteed to generate a probability path that transports $p_0$ to $p_1$. All that's left is to learn the global velocity as a simple conditional expectation from data, which neural networks know how to do!
+<note-orel>**Q**: *Je suis pour ici ajouter une figure du style le gif du blogpost continu pour aider à comprendre cette phrase. + J'ai essayé de simplifier et enlever tte mention à z, en parlant directement de x_1, à remettre si vs préférez.*</note-orel>
 
-The conditioning variable $\mathbf{z} \in \mathcal{Z}^S$ that we use to build conditional paths and velocities can be either:
+Similarly to continuous flow matching, there are infinitely many possible choices for a probability path $(p_t)$ going from source $p_0$ to target $p_1$.
+To build a specific one, we borrow the core idea from continuous flow matching: we first choose a choose a conditioning variable $\mathbf{z} = \mathbf{x_1}$ and a conditional probability path $p_t(\cdot | \mathbf{x}_1)$ for which the exact conditional velocity $u_t(\cdot | \mathbf{x}_1)$ that generates this path is known and easy to compute.
+Then, we show that the resulting global velocity (obtained by marginalizing the conditional velocities) is guaranteed to generate a probability path that transports $p_0$ to $p_1$.
+All that's left is to learn the global velocity as a simple conditional expectation from data, which neural networks know how to do!
+
+{/* The conditioning variable $\mathbf{z} \in \mathcal{Z}^S$ that we use to build conditional paths and velocities can be either:
 * **A target sample:** $\mathbf{z} = \mathbf{x}_1$, with $\mathcal{Z} = \mathcal{V}$ (useful when the source $p_0$ is a known, simple distribution like uniform or mask).
 * **A source-target pair:** $\mathbf{z} = (\mathbf{x}_0, \mathbf{x}_1)$, with $\mathcal{Z} = \mathcal{V} \times \mathcal{V}$ (useful when transforming between two arbitrary datasets).
-
 To simplify the exposition, we will use $\mathbf{z} = \mathbf{x}_1$.
-Having chosen $\mathbf{z}$, we chose a conditional probability path.
-In order to have factorized velocities (simpler to learn) as per @eq:factorized-velocity, we pick the conditional path $p_t(\cdot | \mathbf{x}_1)$ to be factorized:
+Having chosen $\mathbf{z}$, we chose a conditional probability path. */}
+
+In order to have factorized velocities (simpler to learn) as per @eq:factorized-velocity, we chose a conditional path $p_t(\cdot | \mathbf{x}_1)$ to be factorized:
 $$
 \begin{align}
 & p_t(\mathbf{x} | \mathbf{x_1}) = \prod_{i=1}^S  \big( \underbrace{ t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = m) } _{:= q_t(x^j | x_1^j)} \big)  \label{eq:mask-path-1} \\
 \end{align}
 $$
-This choice simply means that at time $t$, the $i$-th token $x^i_t$ equals the target token $x_1^i$ with probability $t$, or the mask token $m$ with probability $1 - t$:
-$p_0(\cdot | \mathbf{x}_1)$ is a Dirac at the all-masked sequence, while $p_1(\cdot | \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_1$.
-The interest of this conditional probability path is that we can derive the associated probability velocity in closed-form.
 
+This choice is similar to the linear interpolation path used in continuous flow matching $p_t(\mathbf{x} | \mathbf{x_0}, \mathbf{x}_1) = t \mathbf{x}_0 + (1 - t) \mathbf{x}_1$, unless we cannot interpolate between two discrete tokens.
+Instead, we use linear interpolation in probability space: at time $t$, the $i$-th token $x^i_t$ equals the target token $x_1^i$ with probability $t$, or the mask token $m$ with probability $1 - t$.
+Therefore, $p_0(\cdot | \mathbf{x}_1)$ is a Dirac at the all-masked sequence, while $p_1(\cdot | \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_1$.
+The interest of this conditional probability path is that we can derive the associated probability velocity in closed-form.
 
 
 <Statement kind="Proposition" label="conditional-velocity" title="Closed-form for conditional velocity">
@@ -925,14 +939,15 @@ u_t(\mathbf{x} | \mathbf{x}_1)_{\mathbf{y}} := \sum_{i=1}^S \mathbb{I}(\mathbf{y
 $$
 generates the conditional path $p_t(\mathbf{x} | \mathbf{x}_1)$ in @eq:mask-path-1
 </Statement>
-**Note**: compared to @eq:factorized-velocity, one may be surprised that $u^i$ in @eq:mask-velocity depends only on $x_i$ and not on $\mathbf{x}$. As the proof will show, this is a byproduct of the conditional probability paths factorizing over each token of the conditioning sequence $\mathbf{z}$.
+**Note**: compared to @eq:token-sampling, one may be surprised that $u^i$ in @eq:mask-velocity depends only on $x_i$ and not on $\mathbf{x}$. As the proof will show, this is a byproduct of the conditional probability paths factorizing over each token of the conditioning sequence $\mathbf{x}_1$.
 
 <Statement kind="Example" label="ex-conditional-velocity" title="Example of conditional velocity">
 
-Remember that $u$ is a rate of change of probability: $u_t(x^i | x_1^i)_v$ quantifies the instantaneous probability flow from the current token $x^i$ toward any token $v$.
-In the masked-source setting, the flow progressively removes mass from $m$ and transfers it to the target token $x_1^i$; if $x^i_t$ differs from $m$, then the conditional velocity is 0: the token remains at its value until the end.
-As an example, if the vocabulary has 4 tokens $\{A, B, C, m\}$, and if the conditioning target is $x_1^i = B$, then the conditional velocity field is given by:
-{/* */}
+{/* Remember that $u$ is a rate of change of probability: $u_t(x^i | x_1^i)_v$ quantifies the instantaneous probability flow from the current token $x^i$ toward any token $v$.
+In the masked-source setting, */}
+The velocity $u_t(x^i | x_1^i)$ progressively removes mass from $m$ and transfers it to the target token $x_1^i$.
+If $x^i_t$ is already $x_1^i$, then the conditional velocity is $0$: the token remains at its value until the end.
+As an example, for $\mathcal{V} = \{A, B, C, m\}$, and $x_1^i = B$, then the conditional velocity field is given by:
 $$
 u_t(x^i | x_1^i = B)_v = \begin{array}{c|cccc}
 \begin{matrix} x^i  \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & A & B & C & m \\
@@ -1065,17 +1080,19 @@ The pair $(p_t(\cdot | \mathbf{x}_1), u_t(\cdot | \mathbf{x}_1))$ satisfies the 
 
 
 <details>
-<summary>Values of conditional velocities for source target conditioning, and uniform source</summary>
+<summary>Values of conditional velocities for and uniform source and interpolation between an arbitrary $p_0$ and $p_1$</summary>
 <div>
 
 **Source-Target Conditioning**:
-Here, we condition on both the start and end points, so $z^i = (x_0^i, x_1^i)$. The token $x^i$ at time $t$ is simply chosen to be $x_1^i$ with probability $t$, and $x_0^i$ with probability $1 - t$:
+Here, we condition on both the start and end points, so $z^i = (x_0^i, x_1^i)$. We choose $q_t$ as:
 $$
 \begin{equation}
 \label{eq:pair-path}
 q_t(x^i | x_0^i, x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = x_0^i)
 \end{equation}
 $$
+
+It means at time $t$, the $i$-th token $x_t^i$ equals the target token $x_1^i$ with probability $t$, or the source token $x_0^i$ with probability $1 - t$. Therefore, $p_0(\cdot | \mathbf{x}_0, \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_0$, while $p_1(\cdot | \mathbf{x}_0, \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_1$.
 
 The conditional velocity field driving this transition is:
 $$
@@ -1089,26 +1106,28 @@ u_t(x^i | x_0^i, x_1^i)_v = \begin{cases}
 \end{equation}
 $$
 
-In the source-target setting, the flow moves mass directly from the source token $x_0^i$ toward the target token $x_1^i$, with no mask involved. All rows except the source row are identically zero — once a token is already at a state other than $x_0^i$, no transition occurs.
-Concretely, if the vocabulary has 3 tokens $\{1, 2, 3\}$, and $x_0^i = 1$, $x_1^i = 2$:
+Here, mass moves directly from the source token $x_0^i$ toward the target token $x_1^i$. All rows except the source row are identically zero: once a token is already at state $x_1^i$, no transition occurs.
+Concretely, if $\mathcal{V} = \{A, B, C\}$, $x_0^i = A$, and $x_1^i = B$:
 
 $$
-u_t(x^i | x_0^i = 1,\, x_1^i = 2)_v = \begin{array}{c|ccc}
-\begin{matrix} x^i \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & 1 & 2 & 3 \\
+u_t(x^i | x_0^i = A,\, x_1^i = B)_v = \begin{array}{c|ccc}
+\begin{matrix} x^i \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & A & B & C \\
 \hline
-1 & -\tfrac{1}{1-t} & \tfrac{1}{1-t} & 0 \\[0.3cm]
-2 & 0 & 0 & 0 \\[0.3cm]
-3 & 0 & 0 & 0
+A & -\tfrac{1}{1-t} & \tfrac{1}{1-t} & 0 \\[0.3cm]
+B & 0 & 0 & 0 \\[0.3cm]
+C & 0 & 0 & 0
 \end{array}
 $$
 
-**Uniform Source**: When $p_0$ is the uniform distribution, we can only condition on the target $z^i = x_1^i$. At time $t$, the token is the target $x_1^i$ with probability $t + (1 - t) \frac{1}{|\mathcal{V}|}$, or is drawn uniformly from other tokens in the vocabulary $\mathcal{V}$ with probability $(1 - t) \frac{1}{|\mathcal{V}|}$:
+**Uniform Source**: In this case, we choose $q_t$ as:
 $$
 \begin{equation}
 \label{eq:uniform-path}
 q_t(x^i | x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \frac{1}{|\mathcal{V}|}
 \end{equation}
 $$
+
+It means that at time $t$, the $i$-th token $x_t^i$ equals the target token $x_1^i$ with probability $t + (1 - t)\frac{1}{|\mathcal{V}|}$, while each non-target token in the vocabulary $\mathcal{V}$ has probability $(1 - t)\frac{1}{|\mathcal{V}|}$. Therefore, $p_0(\cdot | \mathbf{x}_1)$ is the uniform distribution over sequences, while $p_1(\cdot | \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_1$.
 
 The conditional velocity field driving this transition is:
 $$
@@ -1122,15 +1141,15 @@ u_t(x^i | x_1^i)_v = \begin{cases}
 \end{equation}
 $$
 
-Unlike the mask source, every non-target token can transition toward $x_1^i$, since the uniform source places initial mass everywhere. Concretely, if the vocabulary has 3 tokens $\{1, 2, 3\}$ and the conditioning target is $x_1^i = 2$:
+Unlike the mask source, every non-target token can transition toward $x_1^i$, since the uniform source places initial mass everywhere. Concretely, if $\mathcal{V} = \{A, B, C\}$ and $x_1^i = B$:
 
 $$
-u_t(x^i | x_1^i = 2)_v = \begin{array}{c|ccc}
-\begin{matrix} x^i \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & 1 & 2 & 3 \\
+u_t(x^i | x_1^i = B)_v = \begin{array}{c|ccc}
+\begin{matrix} x^i \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & A & B & C \\
 \hline
-1 & -\tfrac{1}{1-t} & \tfrac{1}{1-t} & 0 \\[0.1cm]
-2 & 0 & 0 & 0 \\[0.1cm]
-3 & 0 & \tfrac{1}{1-t} & -\tfrac{1}{1-t}
+A & -\tfrac{1}{1-t} & \tfrac{1}{1-t} & 0 \\[0.1cm]
+B & 0 & 0 & 0 \\[0.1cm]
+C & 0 & \tfrac{1}{1-t} & -\tfrac{1}{1-t}
 \end{array}
 $$
 
@@ -1149,15 +1168,14 @@ $$
 #### Building the target velocity
 
 Now that we have defined our conditional probability paths and velocities, we can use them to build global, unconditional ones.
-The overall distribution $p_t$ is obtained by marginalizing the conditional paths over the conditioning variable $\mathbf{z}$:
+The overall distribution $p_t$ is obtained by marginalizing the conditional paths over target samples $\mathbf{x}_1$ drawn from $p_1$:
 $$
 \begin{equation}
 \label{eq:marginal-path}
-p_t(\mathbf{x}) := \sum_{\mathbf{z}} p_t(\mathbf{x} | \mathbf{z}) \pi(\mathbf{z})
+p_t(\mathbf{x}) := \sum_{\mathbf{x}_1} p_t(\mathbf{x} | \mathbf{x}_1) p_1(\mathbf{x}_1)
 \end{equation}
 $$
-where $\pi(\mathbf{z})$ chosen distribution over $\mathbf{z}$.
-In our case, $\mathbf{z} = \mathbf{x}_1$ and $\pi= p_1$; as the proof below shows, the path defined by marginalization indeed goes from $p_0$ to $p_1$.
+As the proof below shows, the path defined by marginalization indeed goes from $p_0$ to $p_1$.
 
 <details>
 <summary>Proof that path $(p_t)$ does go from $p_0$ to $p_1$</summary>
@@ -1166,17 +1184,23 @@ In our case, $\mathbf{z} = \mathbf{x}_1$ and $\pi= p_1$; as the proof below show
 We verify the two boundary conditions separately:
 
 **At $t=0$**:
-Recall the conditional path with $\mathbf{z} = \mathbf{x}_1$ and mask source:
+Recall the conditional path the mask source:
 $$
+\begin{equation}
 q_0(x^i | x_1^i) = \mathbb{I}(x^i = m).
+\end{equation}
 $$
-The value of $x_1^i$ plays no role, so $p_0(\mathbf{x} | \mathbf{z})$ does not depend on $\mathbf{z}$:
+The value of $x_1^i$ plays no role, so $p_0(\mathbf{x} | \mathbf{x}_1)$ does not depend on $\mathbf{x}_1$:
 $$
-p_0(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S \mathbb{I}(x^j = m) = p_{\mathrm{mask}}(\mathbf{x}) = p_0(\mathbf{x}).
+\begin{equation}
+p_0(\mathbf{x} | \mathbf{x}_1) = \prod_{j=1}^S \mathbb{I}(x^j = m) = p_{\mathrm{mask}}(\mathbf{x}) = p_0(\mathbf{x}).
+\end{equation}
 $$
-Marginalizing over $\mathbf{z}$ then gives:
+Marginalizing over $\mathbf{x}_1$ then gives:
 $$
-p_{t=0}(\mathbf{x}) = \sum_{\mathbf{z}} p_0(\mathbf{x} | \mathbf{z})\,\pi(\mathbf{z}) = p_0(\mathbf{x})\sum_{\mathbf{z}} \pi(\mathbf{z}) = p_0(\mathbf{x}).
+\begin{equation}
+p_{t=0}(\mathbf{x}) = \sum_{\mathbf{x}_1} p_0(\mathbf{x} | \mathbf{x}_1)\,p_1(\mathbf{x}_1) = p_0(\mathbf{x})\sum_{\mathbf{x}_1} p_1(\mathbf{x}_1) = p_0(\mathbf{x}).
+\end{equation}
 $$
 
 **At $t=1$**:
@@ -1187,12 +1211,14 @@ q_1(x^i | x_1^i) &= \mathbb{I}(x^i = x_1^i)  \label{eq:endpoint-path-1} \\
 p_1(\mathbf{x} | \mathbf{x}_1) &= \prod_{j=1}^S \mathbb{I}(x^j = x_1^j) = \mathbb{I}(\mathbf{x} = \mathbf{x}_1) \label{eq:endpoint-path-2}
 \end{align}
 $$
-Since $\pi(\mathbf{z}) = p_1(\mathbf{x}_1)$,
-the indicator collapses the sum directly:
+We conclude:
 $$
+\begin{align}
 p_{t=1}(\mathbf{x})
-= \sum_{\mathbf{x}_1} \mathbb{I}(\mathbf{x} = \mathbf{x}_1)\, p_1(\mathbf{x}_1)
-= p_1(\mathbf{x}).
+&= \sum_{\mathbf{x}_1} p_1(\mathbf{x} | \mathbf{x}_1)\,p_1(\mathbf{x}_1) \\
+&= \sum_{\mathbf{x}_1} \mathbb{I}(\mathbf{x} = \mathbf{x}_1)\, p_1(\mathbf{x}_1) \\
+&= p_1(\mathbf{x}).
+\end{align}
 $$
 
 </div>
@@ -1205,11 +1231,11 @@ The probability velocity obtained by taking the conditional expectation of the c
 $$
 \begin{align}
 u_t(\mathbf{x})_{\mathbf{y}}
-:= \mathbb{E}_{\substack{\mathbf{z}}}\!\left[u_t(X_t|\mathbf{z})_{\mathbf{y}} | X_t = \mathbf{x}\right]
-&= \sum_{\mathbf{z}} u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(\mathbf{z} | X_t = \mathbf{x}) \label{eq:marginal-velocity-def}
+:= \mathbb{E}\!\left[u_t(X_t|X_1)_{\mathbf{y}} | X_t = \mathbf{x}\right]
+&= \sum_{\mathbf{x}_1} u_t(\mathbf{x}|\mathbf{x}_1)_{\mathbf{y}}\,\mathbb{P}(X_1 = \mathbf{x}_1 | X_t = \mathbf{x}) \label{eq:marginal-velocity-def}
 \end{align}
 $$
-generates the probability path $p_t(\mathbf{x}) = \sum_{\mathbf{z}} p_t(\mathbf{x}|\mathbf{z})\,\pi(\mathbf{z})$.
+generates the probability path $p_t(\mathbf{x}) = \sum_{\mathbf{x}_1} p_t(\mathbf{x}|\mathbf{x}_1)\,p_1(\mathbf{x}_1)$.
 </Statement>
 
 <details>
@@ -1223,26 +1249,26 @@ $$
 = \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h).
 \end{equation}
 $$
-Introducing $Z$ and using the law of total probability,
+Introducing $X_1$ and using the law of total probability,
 $$
 \begin{align}
 \mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-1}
-&= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}, Z=\mathbf{z}| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-2} \\
-&\hspace{-8em}{}= \sum_{\mathbf{z}} \mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x}, Z=\mathbf{z})\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-3} \\
-&\hspace{-8em}{}= \sum_{\mathbf{z}}\Big(\mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} + o(h)\Big)\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-4} \\
-&\hspace{-8em}{}= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\sum_{\mathbf{z}}u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x}) + o(h) \label{eq:marginal-velocity-proof-5} \\
+&= \sum_{\mathbf{x}_1} \mathbb{P}(X_{t+h}=\mathbf{y}, X_1=\mathbf{x}_1| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-2} \\
+&\hspace{-8em}{}= \sum_{\mathbf{x}_1} \mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x}, X_1=\mathbf{x}_1)\,\mathbb{P}(X_1=\mathbf{x}_1| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-3} \\
+&\hspace{-8em}{}= \sum_{\mathbf{x}_1}\Big(\mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x}|\mathbf{x}_1)_{\mathbf{y}} + o(h)\Big)\,\mathbb{P}(X_1=\mathbf{x}_1| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-4} \\
+&\hspace{-8em}{}= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\sum_{\mathbf{x}_1}u_t(\mathbf{x}|\mathbf{x}_1)_{\mathbf{y}}\,\mathbb{P}(X_1=\mathbf{x}_1| X_t=\mathbf{x}) + o(h) \label{eq:marginal-velocity-proof-5} \\
 &\hspace{-8em}{}= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h). \label{eq:marginal-velocity-proof-6}
 \end{align}
 $$
-where we have used in @eq:marginal-velocity-proof-4 the fact that $u_t(\mathbf{\cdot | \mathbf{z}})$ generate $p_t(\cdot | \mathbf{z})$.
+where we have used in @eq:marginal-velocity-proof-4 the fact that $u_t(\cdot | \mathbf{x}_1)$ generates $p_t(\cdot | \mathbf{x}_1)$.
 
-**Alternative proof**: apply the Kolmogorov equation to each conditional process and average over $\mathbf{z}$:
+**Alternative proof**: apply the Kolmogorov equation to each conditional process and average over $\mathbf{x}_1$:
 $$
 \begin{align}
 \frac{\mathrm{d}}{\mathrm{d}t}p_t(\mathbf{y}) \label{eq:marginal-kolmogorov-1}
-&= \sum_{\mathbf{z}} \pi(\mathbf{z})\,\frac{\mathrm{d}}{\mathrm{d}t}p_t(\mathbf{y}|\mathbf{z})  \label{eq:marginal-kolmogorov-2} \\
-&= \sum_{\mathbf{z}}\pi(\mathbf{z})\sum_{\mathbf{x}}u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,p_t(\mathbf{x}|\mathbf{z})  \label{eq:marginal-kolmogorov-3} \\
-&= \sum_{\mathbf{x}}\left(\sum_{\mathbf{z}}u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}}\,\mathbb{P}(Z=\mathbf{z}| X_t=\mathbf{x})\right)p_t(\mathbf{x})  \label{eq:marginal-kolmogorov-4} \\
+&= \sum_{\mathbf{x}_1} p_1(\mathbf{x}_1)\,\frac{\mathrm{d}}{\mathrm{d}t}p_t(\mathbf{y}|\mathbf{x}_1)  \label{eq:marginal-kolmogorov-2} \\
+&= \sum_{\mathbf{x}_1}p_1(\mathbf{x}_1)\sum_{\mathbf{x}}u_t(\mathbf{x}|\mathbf{x}_1)_{\mathbf{y}}\,p_t(\mathbf{x}|\mathbf{x}_1)  \label{eq:marginal-kolmogorov-3} \\
+&= \sum_{\mathbf{x}}\left(\sum_{\mathbf{x}_1}u_t(\mathbf{x}|\mathbf{x}_1)_{\mathbf{y}}\,\mathbb{P}(X_1=\mathbf{x}_1| X_t=\mathbf{x})\right)p_t(\mathbf{x})  \label{eq:marginal-kolmogorov-4} \\
 &= \sum_{\mathbf{x}} u_t(\mathbf{x})_{\mathbf{y}}\,p_t(\mathbf{x}). \label{eq:marginal-kolmogorov-5}
 \end{align}
 $$
@@ -1258,7 +1284,7 @@ In continuous spaces, this is typically introduced via the $L^2$ projection view
 $$
 \begin{equation}
 \label{eq:l2-proj}
-u_t(\mathbf{x}) = \underset{u_t \text{ measurable}}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})}} \!\left[\left\|u_t(\mathbf{x}_t | \mathbf{z}) - u(\mathbf{x}_t)\right\|^2 \right] .
+u_t(\mathbf{x}) = \underset{u_t \text{ measurable}}{\operatorname{argmin}}\ \mathbb{E}\!\left[\left\|u_t(X_t | X_1) - u(X_t)\right\|^2 \right] .
 \end{equation}
 $$
 In discrete spaces, since we compare nonneg­ative rate vectors that behave like local probabilities, a Kullback-Leibler style objective is more natural.
@@ -1267,12 +1293,12 @@ for any Bregman divergence, and KL<a href="#generalized-kl" class="dfm-note-ref"
 $$
 \begin{equation}
 \label{eq:kl-proj}
-u_t(\mathbf{x}) ={} \underset{u}{\operatorname{argmin}}\ \mathbb{E}_{\substack{\mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})}} \!\left[ \mathrm{KL} \left(u(\mathbf{x}_t | \mathbf{z}), u(\mathbf{x}_t)\right)  \right]
+u_t(\mathbf{x}) ={} \underset{u}{\operatorname{argmin}}\ \mathbb{E}\!\left[ \mathrm{KL} \left(u(X_t | X_1), u(X_t)\right)  \right]
 \end{equation}
 $$
 
 When applying it to probability velocities, we only compare the off-diagonal entries of $u_t(\mathbf{x})$, i.e. the rates $u_t(\mathbf{x})_{\mathbf{y}}$ for $\mathbf{y}\neq\mathbf{x}$.
-These vectors are indeed positive (cf. @eq:velocity-positivity), and we can skip the diagonal entry since its value is determined by all the other ones due to the zero-sum constraint.
+These vectors are indeed positive, and we can skip the diagonal entry since its value is determined by all the other ones due to the zero-sum constraint (Proposition <Ref label="prop:probability-velocity-mass-conservation" />).
 
 The exact conditional expectation of @eq:marginal-velocity-def is approximated by a neural network $u_{\theta,t}$, trained by minimizing over $\theta$:
 <PinkEquation>
@@ -1280,8 +1306,8 @@ The exact conditional expectation of @eq:marginal-velocity-def is approximated b
 $$
 \begin{align}
 L_{\text{CDFM}}(\theta)
-&= \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t( \cdot | \mathbf{z})}}\left[ \mathrm{KL}\left(u_t(\mathbf{x}_t | \mathbf{z}), u_{\theta,t}(\mathbf{x}_t)\right) \right]  \label{eq:cdfm-2} \\
-& =\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t( \cdot | \mathbf{z})}}\left[ \sum_{i=1}^S \mathrm{KL}\left( u_t(x^i_t | z^i), u_{\theta,t}^i(\mathbf{x}_t) \right) \right] \label{eq:cdfm-3}
+&= \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_1 \\ \mathbf{x}_t \sim p_t( \cdot | \mathbf{x}_1)}}\left[ \mathrm{KL}\left(u_t(\mathbf{x}_t | \mathbf{x}_1), u_{\theta,t}(\mathbf{x}_t)\right) \right]  \label{eq:cdfm-2} \\
+& =\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_1 \\ \mathbf{x}_t \sim p_t( \cdot | \mathbf{x}_1)}}\left[ \sum_{i=1}^S \mathrm{KL}\left( u_t(x^i_t | x_1^i), u_{\theta,t}^i(\mathbf{x}_t) \right) \right] \label{eq:cdfm-3}
 \end{align}
 $$
 
@@ -1398,7 +1424,6 @@ L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \math
 $$
 
 </PinkEquation>
-for $x_s \neq m$; if $x_s = m$, then $x_t = x_s = m$.
 
 <details>
 <summary>Derivation</summary>
@@ -1486,10 +1511,10 @@ To wrap up, we end this section with a table summarizing the important steps in 
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $\mathbf{z}=(\mathbf{x}_0, \mathbf{x}_1)$ with  $\pi(\mathbf{z}) = p_0 \times p_{\text{data}}$
+        $\mathbf{z}=(\mathbf{x}_0, \mathbf{x}_1)$ with  $\pi(\mathbf{z}) = p_0 \times p_1$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $\mathbf{z}=\mathbf{x}_1$ with $\pi(\mathbf{z}) = p_{\text{data}}$ <br /> (our choice for simplicity; $\mathbf{z} = (\mathbf{x}_0, \mathbf{x}_1)$ is also possible)
+        $\mathbf{z}=\mathbf{x}_1$ with $\pi(\mathbf{z}) = p_1$ <br /> (our choice for simplicity; $\mathbf{z} = (\mathbf{x}_0, \mathbf{x}_1)$ is also possible)
       </td>
     </tr>
 
@@ -1534,7 +1559,7 @@ To wrap up, we end this section with a table summarizing the important steps in 
         Use $L^2$: <br /> $\min_\theta \mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})}}\!\left[\Vert u_{\theta, t}(\mathbf{x}_t) - (\mathbf{x}_1 - \mathbf{x}_0) \Vert^2\right]$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        Use KL: <br /> $\min_\theta \mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{x}_1)}}\!\left[-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right]$
+        Use KL: <br /> $\min_\theta \mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{x}_1 \sim p_1 \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{x}_1)}}\!\left[-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right]$
       </td>
     </tr>
 

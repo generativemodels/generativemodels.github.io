@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { Mi, svgMath } from "./mathType.jsx";
 
 // ── Schedules ───────────────────────────────────────────────────────
 // alpha_t: [0,1] -> [0,1], with alpha_0 = 1 (clean), alpha_1 = 0 (fully masked).
@@ -360,14 +361,14 @@ function TrajectoryFigure({
         stroke="rgba(255,255,255,0.18)" />
 
       <text x={padL - 8} y={yClean + 4} textAnchor="end" fontSize={13.8}
-        fill={COLOR_CLEAN} fontFamily="'KaTeX_Main', 'STIX Two Math', serif" fontWeight={600}>x₀</text>
+        fill={COLOR_CLEAN} {...svgMath} fontWeight={600}>x₀</text>
       <text x={padL - 8} y={yMask + 4} textAnchor="end" fontSize={13.8}
-        fill={COLOR_MASK} fontFamily="'KaTeX_Main', 'STIX Two Math', serif" fontWeight={600}>m</text>
+        fill={COLOR_MASK} {...svgMath} fontWeight={600}>m</text>
 
       <text x={padL} y={padT + plotH + 16} textAnchor="middle" fontSize={11.5}
-        fill="rgba(255,255,255,0.45)" fontFamily="'KaTeX_Main', 'STIX Two Math', serif">t=0</text>
+        fill="rgba(255,255,255,0.45)" fontFamily="'KaTeX_Main', 'STIX Two Math', serif"><tspan {...svgMath}>t</tspan>=0</text>
       <text x={padL + plotW} y={padT + plotH + 16} textAnchor="middle" fontSize={11.5}
-        fill="rgba(255,255,255,0.45)" fontFamily="'KaTeX_Main', 'STIX Two Math', serif">t=1</text>
+        fill="rgba(255,255,255,0.45)" fontFamily="'KaTeX_Main', 'STIX Two Math', serif"><tspan {...svgMath}>t</tspan>=1</text>
       {Array.from({ length: T + 1 }, (_, i) => (
         <line key={`tick${i}`} x1={xAt(i)} y1={padT + plotH} x2={xAt(i)} y2={padT + plotH + 3}
           stroke="rgba(255,255,255,0.25)" />
@@ -524,7 +525,7 @@ function AggregateFigure({ T, alpha, alphaDot, N, seed, showDiscrete, showContin
       <line x1={padL} y1={padT + plotH} x2={padL + plotW} y2={padT + plotH} stroke="rgba(255,255,255,0.18)" />
 
       <text x={padL + plotW / 2} y={H - 6} textAnchor="middle" fontSize={12.6}
-        fill="rgba(255,255,255,0.55)" fontFamily="'KaTeX_Main', 'STIX Two Math', serif">t</text>
+        fill="rgba(255,255,255,0.55)" {...svgMath}>t</text>
       <text x={padL - 38} y={padT + plotH / 2} fontSize={12.6}
         fill="rgba(255,255,255,0.55)" fontFamily="'KaTeX_Main', 'STIX Two Math', serif"
         textAnchor="middle" dominantBaseline="central"
@@ -546,7 +547,7 @@ function AggregateFigure({ T, alpha, alphaDot, N, seed, showDiscrete, showContin
       <g transform={`translate(${padL + plotW - 130}, ${padT + 8})`}>
         <line x1={0} y1={6} x2={18} y2={6} stroke={COLOR_ALPHA} strokeWidth={2} />
         <text x={22} y={9} fontSize={11.5} fill="rgba(255,255,255,0.7)"
-          fontFamily="'KaTeX_Main', 'STIX Two Math', serif">αₜ</text>
+          {...svgMath}>αₜ</text>
         {showDiscrete && (
           <g>
             <circle cx={9} cy={20} r={3.2} fill={COLOR_DISCRETE} />
@@ -716,7 +717,7 @@ export default function MaskedDiffusionForward({
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
         }}
       >
-        {isForward ? "Masked Diffusion: Forward Process" : "Masked Diffusion: Reverse Process (cond. on x₀)"}
+        {isForward ? "Masked Diffusion: Forward Process" : <>Masked Diffusion: Reverse Process (cond. on <Mi>x</Mi>₀)</>}
       </h2>
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
         {showDirectionControls && (
@@ -754,13 +755,13 @@ export default function MaskedDiffusionForward({
             color: "rgba(255,255,255,0.55)",
             fontWeight: 600,
           }}>
-            α<sub>t</sub> =
+            <Mi>α</Mi><sub><Mi>t</Mi></sub> =
           </span>
           <ToggleButton
             options={[
-              { value: "linear", label: "1−t" },
-              { value: "quadratic", label: "1−t²" },
-              { value: "cosine", label: "cos(tπ/2)" },
+              { value: "linear", label: <span>1−<Mi>t</Mi></span> },
+              { value: "quadratic", label: <span>1−<Mi>t</Mi>²</span> },
+              { value: "cosine", label: <span>cos(<Mi>t</Mi>π/2)</span> },
             ]}
             value={scheduleKey}
             onChange={setScheduleKey}
@@ -775,7 +776,7 @@ export default function MaskedDiffusionForward({
               {isFinished ? "Done!" : step === 0 ? "Start" : `Step ${step}/${T}`}
             </span>
             <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 14.9, color: "#82b4ff" }}>
-              t = {currentT.toFixed(2)}
+              <Mi>t</Mi> = {currentT.toFixed(2)}
             </span>
             {ghost && (
               <span style={{
@@ -804,7 +805,7 @@ export default function MaskedDiffusionForward({
               }}>
                 single trajectory
               </span>
-              <NumberInput label="T" value={T} onApply={applyT} min={2} max={200} color="#a78bfa" width={56} />
+              <NumberInput label={<Mi>T</Mi>} value={T} onApply={applyT} min={2} max={200} color="#a78bfa" width={56} />
               <NumberInput label="seed" value={seed} onApply={applySeed} color="#82b4ff" width={72} />
             </div>
             <TrajectoryFigure
@@ -937,7 +938,7 @@ export default function MaskedDiffusionForward({
             }}>
               N trajectories
             </span>
-            <NumberInput label="N" value={N} onApply={applyN} min={10} max={200000} color="#82b4ff" width={84} />
+            <NumberInput label={<Mi>N</Mi>} value={N} onApply={applyN} min={10} max={200000} color="#82b4ff" width={84} />
             <NumberInput label="seed" value={aggSeed} onApply={applyAggSeed} color="#82b4ff" width={72} />
             <button
               onClick={() => setAggSeed((Date.now() ^ 0x9e3779b9) | 0)}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { Mi, Mb, Mc, svgMath, svgCal, cal } from "./mathType.jsx";
 
 // ── Setup: small vocabulary and short sequences ─────────────────────
 const VOCAB = ["A", "B"]; // "real" tokens; the mask token m is added on top
@@ -156,7 +157,8 @@ function Cube({ x = 0, y = 0, z = 0, rgb, label, opacity = 1 }) {
           dominantBaseline="central"
           fill="white"
           fontSize={CUBE * 0.575}
-          fontFamily="'KaTeX_Main', 'STIX Two Math', serif"
+          fontFamily="'KaTeX_Math', 'STIX Two Math', serif"
+          fontStyle="italic"
           fontWeight="600"
         >
           {label}
@@ -199,16 +201,17 @@ function ProbTable({ probs, x = 0, opacity = 1, highlight = false }) {
   );
 }
 
-// SVG label with a subscript, e.g. p_t, p_data.
-function TableLabel({ x, y, sub, highlight = false }) {
+// SVG label with a subscript, e.g. p_t, p_data. The variable p is italic
+// (math); word/number subscripts stay upright, single-letter ones (t) italic.
+function TableLabel({ x, y, sub, highlight = false, italicSub = false }) {
   return (
     <text
       className={`ddi-svg-label${highlight ? " ddi-svg-label-pt" : ""}`}
       x={x}
       y={y}
     >
-      p
-      <tspan dy="4" fontSize="11.5">
+      <tspan {...svgMath}>p</tspan>
+      <tspan dy="4" fontSize="11.5" {...(italicSub ? svgMath : { fontStyle: "normal" })}>
         {sub}
       </tspan>
     </text>
@@ -221,7 +224,7 @@ function CubeView({ t, source }) {
   const stackX = HB + (S * DEPTH) / CUBE + 1.4;
   const labelY = ROW_ORDER.length * CUBE + 24;
   const width = (stackX + 1) * CUBE + DEPTH + 20;
-  const top = -(S * DEPTH + 48); // room for the moving p_t and x^s labels on top
+  const top = -(S * DEPTH + 30); // room for the slanted x^s labels on top
   return (
     <svg
       className="ddi-cube-svg"
@@ -250,17 +253,23 @@ function CubeView({ t, source }) {
           {`x${"¹²³⁴⁵⁶⁷⁸⁹"[z]}`}
         </text>
       ))}
-      {/* endpoint labels below, moving p_t label above its table */}
-      <TableLabel x={tableCenter} y={labelY} sub="0" />
+      {/* all labels below their tables; p_0 nudged left, p_t tracks its table */}
+      <TableLabel x={tableCenter - 16} y={labelY} sub="0" />
       <TableLabel
         x={t * HB * CUBE + tableCenter}
-        y={-(S * DEPTH) - 30}
+        y={labelY}
         sub="t"
         highlight
+        italicSub
       />
-      <TableLabel x={HB * CUBE + tableCenter} y={labelY} sub="data" />
-      <text className="ddi-svg-label" x={stackX * CUBE + CUBE / 2 + DEPTH / 2} y={labelY}>
-        𝒱
+      <TableLabel x={HB * CUBE + tableCenter} y={labelY} sub="1" />
+      <text
+        className="ddi-svg-label"
+        {...svgCal}
+        x={stackX * CUBE + CUBE / 2 + DEPTH / 2}
+        y={labelY}
+      >
+        {cal.V}
       </text>
     </svg>
   );
@@ -347,7 +356,9 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
         <div className="ddi-notation">
           <div className="ddi-notation-item">
             <div className="ddi-section-title">
-              Vocabulary &#119985; = {"{A, B, m}"}
+              Vocabulary <Mc>{cal.V}</Mc> = {"{"}
+              <Mi>A</Mi>, <Mi>B</Mi>, <Mi>m</Mi>
+              {"}"}
             </div>
             <div className="ddi-oh-grid">
               <span className="ddi-oh-tokenslabel">tokens</span>
@@ -358,7 +369,7 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
                   <span className="ddi-oh-header">&nbsp;</span>
                   {ALL_TOKENS.map((v) => (
                     <span key={v} className="ddi-oh-rowlabel">
-                      {v}
+                      <Mi>{v}</Mi>
                     </span>
                   ))}
                 </div>
@@ -370,8 +381,8 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
                   {showOneHot && (
                     <>
                       <span className="ddi-oh-header">
-                        <b>e</b>
-                        <sub>{tok}</sub>
+                        <Mb>e</Mb>
+                        <sub><Mi>{tok}</Mi></sub>
                       </span>
                       {ALL_TOKENS.map((v) => (
                         <OneHotCell key={v} on={v === tok} token={tok} size={30} />
@@ -383,16 +394,20 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
             </div>
             {showOneHot && (
               <div className="ddi-oh-caption">
-                <b>e</b>
-                <sub>A</sub>, <b>e</b>
-                <sub>B</sub>, <b>e</b>
-                <sub>m</sub> &isin; &#8477;&sup3;
+                <Mb>e</Mb>
+                <sub><Mi>A</Mi></sub>, <Mb>e</Mb>
+                <sub><Mi>B</Mi></sub>, <Mb>e</Mb>
+                <sub><Mi>m</Mi></sub> &isin; &#8477;&sup3;
               </div>
             )}
           </div>
           <div className="ddi-notation-item">
             <div className="ddi-section-title">
-              Sequence <b>x</b> = x&sup1;x&sup2;x&sup3;x&#8308; &nbsp;(S = {S})
+              Sequence <Mb>x</Mb> ={" "}
+              <Mi>
+                x<sup>1</sup>x<sup>2</sup>x<sup>3</sup>x<sup>4</sup>
+              </Mi>
+              &nbsp;(<Mi>S</Mi> = {S})
             </div>
             <div className="ddi-oh-grid">
               {showOneHot && (
@@ -402,7 +417,7 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
                   <span className="ddi-oh-header">&nbsp;</span>
                   {ALL_TOKENS.map((v) => (
                     <span key={v} className="ddi-oh-rowlabel">
-                      {v}
+                      <Mi>{v}</Mi>
                     </span>
                   ))}
                 </div>
@@ -410,14 +425,16 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
               {exampleSequence.map((tok, i) => (
                 <div key={i} className="ddi-oh-col">
                   <span className="ddi-pos-label">
-                    x<sup>{i + 1}</sup>
+                    <Mi>
+                      x<sup>{i + 1}</sup>
+                    </Mi>
                   </span>
                   <Block token={tok} size={30} />
                   {showOneHot && (
                     <>
                       <span className="ddi-oh-header">
-                        <b>e</b>
-                        <sub>x{"¹²³⁴⁵⁶⁷⁸⁹"[i]}</sub>
+                        <Mb>e</Mb>
+                        <sub><Mi>x<sup>{i + 1}</sup></Mi></sub>
                       </span>
                       {ALL_TOKENS.map((v) => (
                         <OneHotCell key={v} on={v === tok} token={tok} size={30} />
@@ -429,13 +446,13 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
             </div>
             {showOneHot && (
               <div className="ddi-oh-caption">
-                <b>e</b>
+                <Mb>e</Mb>
                 <sub>
-                  <b>x</b>
+                  <Mb>x</Mb>
                 </sub>{" "}
-                = (<b>e</b>
-                <sub>x&sup1;</sub> &hellip; <b>e</b>
-                <sub>x&#8308;</sub>) &isin; &#8477;
+                = (<Mb>e</Mb>
+                <sub><Mi>x<sup>1</sup></Mi></sub> &hellip; <Mb>e</Mb>
+                <sub><Mi>x<sup>4</sup></Mi></sub>) &isin; &#8477;
                 <sup>3&times;{S}</sup>
               </div>
             )}
@@ -458,7 +475,12 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
       {showTransport && (
       <div className="ddi-section">
         <div className="ddi-section-title">
-          Transport p&#8320; to p&#8321; via intermediate distributions p<sub>t</sub>
+          Transport <Mi>p</Mi>
+          <sub>0</sub> to <Mi>p</Mi>
+          <sub>1</sub> via intermediate distributions <Mi>p</Mi>
+          <sub>
+            <Mi>t</Mi>
+          </sub>
         </div>
 
         <div className="ddi-toggle-group">
@@ -479,7 +501,7 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
               setShowCube(!showCube);
             }}
           >
-            Distributions (3D)
+            Distributions
           </button>
         </div>
 
@@ -493,7 +515,8 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
           <div className="ddi-transport">
             <div className="ddi-endpoint">
               <div className="ddi-endpoint-label">
-                p&#8320; = p<sub>{source === "mask" ? "mask" : "unif"}</sub>
+                <Mi>p</Mi>
+                <sub>0</sub>
               </div>
               {transport.map(({ srcTokens }, r) => (
                 <SampleRow
@@ -504,7 +527,10 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
             </div>
             <div className="ddi-arrow">
               <div className="ddi-arrow-label">
-                p<sub>t</sub>
+                <Mi>p</Mi>
+                <sub>
+                  <Mi>t</Mi>
+                </sub>
               </div>
               <div className="ddi-pt">
                 {transportRows.map((row, r) => (
@@ -514,7 +540,8 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
             </div>
             <div className="ddi-endpoint">
               <div className="ddi-endpoint-label">
-                p&#8321; = p<sub>data</sub>
+                <Mi>p</Mi>
+                <sub>1</sub>
               </div>
               {transport.map(({ x1 }, r) => (
                 <SampleRow key={r} tokens={x1} />
@@ -539,7 +566,7 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
             </button>
           </div>
           <label className="ddi-slider-label">
-            <span>t = {t.toFixed(2)}</span>
+            <span><Mi>t</Mi> = {t.toFixed(2)}</span>
             <input
               type="range"
               min="0"
@@ -635,13 +662,20 @@ const css = `
   background-clip: text;
   text-align: center;
 }
+.ddi-section-title sup,
+.ddi-oh-header sup {
+  font-size: 0.68em;
+  vertical-align: super;
+  line-height: 0;
+}
 .ddi-block {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
   color: white;
-  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-family: 'KaTeX_Math', 'STIX Two Math', serif;
+  font-style: italic;
   font-weight: 600;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 2px 5px rgba(0,0,0,0.35);
 }
@@ -809,6 +843,8 @@ const css = `
   font-weight: 600;
 }
 .ddi-svg-poslabel {
+  font-family: 'KaTeX_Math', 'STIX Two Math', serif;
+  font-style: italic;
   font-size: 14.9px;
   fill: rgba(255,255,255,0.85);
   text-anchor: start;

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Mi, Mb, MATH_ITALIC } from "./mathType.jsx";
 
 // --- USER'S PUZZLE (0 = unknown) ---
 const PUZZLE = [
@@ -158,9 +159,9 @@ export default function App() {
           fontSize: 14.5, color: "rgba(255,255,255,0.5)", marginTop: 8, lineHeight: 1.6,
           fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
         }}>
-          Transporting <span style={{ color: "#82b4ff" }}>x{"\u2080"}</span> (initial puzzle)
-          {" \u2192 "}<span style={{ color: "#a78bfa" }}>x{"\u209C"}</span> (intermediate puzzle at t)
-          {" \u2192 "}<span style={{ color: "#7defa0" }}>x{"\u2081"}</span> (solved puzzle)
+          Transporting <span style={{ color: "#82b4ff" }}><Mb>x</Mb>{"\u2080"}</span> (initial puzzle)
+          {" \u2192 "}<span style={{ color: "#a78bfa" }}><Mb>x</Mb>{"\u209C"}</span> (intermediate puzzle at <Mi>t</Mi>)
+          {" \u2192 "}<span style={{ color: "#7defa0" }}><Mb>x</Mb>{"\u2081"}</span> (solved puzzle)
         </p>
       </div>
 
@@ -201,11 +202,12 @@ export default function App() {
                 : isMasked ? "rgba(0,0,0,0.6)"
                 : "rgba(125,239,160,0.1)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontFamily: isMasked ? "'KaTeX_Main', 'STIX Two Math', serif" : "'KaTeX_Main', 'STIX Two Math', serif",
-              fontSize: isMasked ? 15 : 22,
+              fontFamily: isMasked ? MATH_ITALIC : "'KaTeX_Main', 'STIX Two Math', serif",
+              fontStyle: isMasked ? "italic" : "normal",
+              fontSize: isMasked ? 18 : 22,
               fontWeight: isGiven ? 600 : 500,
               color: isGiven ? "rgba(255,255,255,0.8)"
-                : isMasked ? "rgba(130,180,255,0.4)"
+                : isMasked ? "rgba(130,180,255,0.55)"
                 : "#7defa0",
               transition: "all 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
               boxShadow: isRevealed ? "inset 0 0 16px rgba(125,239,160,0.08)" : "none",
@@ -268,7 +270,7 @@ export default function App() {
         <span style={{
           fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 14.9, color: "#a78bfa",
           minWidth: 50, textAlign: "right", fontWeight: 500,
-        }}>t={t.toFixed(2)}</span>
+        }}><Mi>t</Mi>={t.toFixed(2)}</span>
       </div>
 
       {/* Legend */}

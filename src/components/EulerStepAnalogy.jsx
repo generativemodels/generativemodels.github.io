@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Mi, Mb, MATH_ITALIC } from "./mathType.jsx";
 
 // Static figure: the Euler step analogy between continuous and discrete flow
 // matching. Global view: one Euler step of size h on a sample (an image / a
@@ -33,8 +34,8 @@ function makeRng(seed) {
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 
 // ── SVG math labels: segments with optional bold and subscript level ──
-// seg = { t: text, b: bold, lvl: baseline offset in px (0 main, ~3 sub,
-// ~5 sub-sub), fs: font size }
+// seg = { t: text, b: bold (\mathbf, upright), it: italic (scalar variable),
+// lvl: baseline offset in px (0 main, ~3 sub, ~5 sub-sub), fs: font size }
 function MText({ x, y, segs, anchor = "middle", className = "esa-svg-label", fill }) {
   let cur = 0;
   return (
@@ -44,7 +45,14 @@ function MText({ x, y, segs, anchor = "middle", className = "esa-svg-label", fil
         const dy = lvl - cur;
         cur = lvl;
         return (
-          <tspan key={i} dy={dy || undefined} fontSize={s.fs} fontWeight={s.b ? 700 : undefined}>
+          <tspan
+            key={i}
+            dy={dy || undefined}
+            fontSize={s.fs}
+            fontWeight={s.b ? 700 : undefined}
+            fontStyle={s.it ? "italic" : undefined}
+            fontFamily={s.it ? MATH_ITALIC : undefined}
+          >
             {s.t}
           </tspan>
         );
@@ -54,24 +62,24 @@ function MText({ x, y, segs, anchor = "middle", className = "esa-svg-label", fil
 }
 
 // x_t, x_{t+h}, e_{x_t}, e_{x_{t+h}}, u_t(x_t) as label segments
-const SEG_XT = [{ t: "x", b: 1 }, { t: "t", lvl: 3, fs: 10.5 }];
-const SEG_XTH = [{ t: "x", b: 1 }, { t: "t+h", lvl: 3, fs: 10.5 }];
+const SEG_XT = [{ t: "x", b: 1 }, { t: "t", lvl: 3, fs: 10.5, it: 1 }];
+const SEG_XTH = [{ t: "x", b: 1 }, { t: "t+h", lvl: 3, fs: 10.5, it: 1 }];
 const SEG_E_XT = [
   { t: "e", b: 1 },
   { t: "x", b: 1, lvl: 3.5, fs: 12.5 },
-  { t: "t", lvl: 6, fs: 10.5 },
+  { t: "t", lvl: 6, fs: 10.5, it: 1 },
 ];
 const SEG_E_XTH = [
   { t: "e", b: 1 },
   { t: "x", b: 1, lvl: 3.5, fs: 12.5 },
-  { t: "t+h", lvl: 6, fs: 10.5 },
+  { t: "t+h", lvl: 6, fs: 10.5, it: 1 },
 ];
 const SEG_U_XT = [
-  { t: "u" },
-  { t: "t", lvl: 3, fs: 10.5 },
+  { t: "u", it: 1 },
+  { t: "t", lvl: 3, fs: 10.5, it: 1 },
   { t: "(", lvl: 0 },
   { t: "x", b: 1 },
-  { t: "t", lvl: 3, fs: 10.5 },
+  { t: "t", lvl: 3, fs: 10.5, it: 1 },
   { t: ")", lvl: 0 },
 ];
 
@@ -241,7 +249,7 @@ function ContinuousLocal() {
       />
       <circle cx={pt[0]} cy={pt[1]} r="4" fill="#a78bfa" />
       <circle cx={tip[0]} cy={tip[1]} r="4" fill="#7defa0" />
-      <text className="esa-svg-label" x={pt[0] - 2} y={pt[1] + 18} textAnchor="middle" fill="#a78bfa">
+      <text className="esa-svg-label" x={pt[0] - 2} y={pt[1] + 18} textAnchor="middle" fill="#a78bfa" fontFamily={MATH_ITALIC} fontStyle="italic">
         x(t)
       </text>
       <MText
@@ -249,9 +257,9 @@ function ContinuousLocal() {
         y={mid[1] - 12}
         anchor="end"
         fill="#7defa0"
-        segs={[{ t: "h u" }, { t: "t", lvl: 3, fs: 8 }, { t: "(x(t))", lvl: 0 }]}
+        segs={[{ t: "h u", it: 1 }, { t: "t", lvl: 3, fs: 8, it: 1 }, { t: "(x(t))", lvl: 0, it: 1 }]}
       />
-      <text className="esa-svg-label" x={tip[0] + 8} y={tip[1] - 6} fill="#7defa0">
+      <text className="esa-svg-label" x={tip[0] + 8} y={tip[1] - 6} fill="#7defa0" fontFamily={MATH_ITALIC} fontStyle="italic">
         x(t+h)
       </text>
     </svg>
@@ -392,9 +400,10 @@ function FanArrows() {
         fill="#7defa0"
         className="esa-svg-small"
         segs={[
-          { t: "1 + h " },
+          { t: "1 + " },
+          { t: "h ", it: 1 },
           ...SEG_U_XT,
-          { t: "y", b: 1, lvl: 3.5, fs: 10.5 },
+          { t: "y", it: 1, lvl: 3.5, fs: 10.5 },
           { t: "3", lvl: 6, fs: 8.5 },
         ]}
       />
@@ -405,9 +414,9 @@ function FanArrows() {
           fill="#7defa0"
           className="esa-svg-small"
           segs={[
-            { t: "h " },
+            { t: "h ", it: 1 },
             ...SEG_U_XT,
-            { t: "y", b: 1, lvl: 3.5, fs: 10.5 },
+            { t: "y", it: 1, lvl: 3.5, fs: 10.5 },
             { t: STATES[last].idx, lvl: 6, fs: 8.5 },
           ]}
         />
@@ -459,7 +468,7 @@ function DiscreteLocal() {
             anchor="end"
             className="esa-svg-faint"
             fill={st.cur ? "#a78bfa" : st.next ? "#7defa0" : undefined}
-            segs={[{ t: `${st.name} = ` }, { t: "y", b: 1 }, { t: st.idx, lvl: 3.5, fs: 10 }]}
+            segs={[{ t: `${st.name}`, it: 1 }, { t: " = " }, { t: "y", it: 1 }, { t: st.idx, lvl: 3.5, fs: 10 }]}
           />
         ),
       )}
@@ -524,19 +533,19 @@ export default function EulerStepAnalogy({ local = false }) {
         <div className="esa-section">
           <div className="esa-panel">
             <div className="esa-panel-label">
-              Continuous — an image x(t) &isin; <span className="esa-bb">R</span>
-              <sup>d</sup>
+              Continuous — an image <Mi>x</Mi>(<Mi>t</Mi>) &isin; <span className="esa-bb">R</span>
+              <sup><Mi>d</Mi></sup>
             </div>
             <div className="esa-flow">
               <div className="esa-item">
                 <PixelImage values={imageValues(0.5)} />
-                <span className="esa-itemlabel esa-cur">x(t)</span>
+                <span className="esa-itemlabel esa-cur"><Mi>x</Mi>(<Mi>t</Mi>)</span>
               </div>
               <StepArrow
                 id="esa-m-cont"
                 formula={
                   <>
-                    x(t+h) = x(t) + h u<sub>t</sub>(x(t))
+                    <Mi>x</Mi>(<Mi>t</Mi>+<Mi>h</Mi>) = <Mi>x</Mi>(<Mi>t</Mi>) + <Mi>h</Mi> <Mi>u</Mi><sub><Mi>t</Mi></sub>(<Mi>x</Mi>(<Mi>t</Mi>))
                   </>
                 }
                 nature="deterministic"
@@ -544,16 +553,16 @@ export default function EulerStepAnalogy({ local = false }) {
               />
               <div className="esa-item">
                 <PixelImage values={imageValues(0.25)} />
-                <span className="esa-itemlabel esa-next">x(t+h)</span>
+                <span className="esa-itemlabel esa-next"><Mi>x</Mi>(<Mi>t</Mi>+<Mi>h</Mi>)</span>
               </div>
             </div>
           </div>
 
           <div className="esa-panel">
             <div className="esa-panel-label">
-              Discrete — a sequence <b>x</b>
-              <sub>t</sub> &isin; <span className="esa-cal">S</span> (here{" "}
-              <span className="esa-cal">V</span> = {"{A, B, m}"}, S = 4)
+              Discrete — a sequence <Mb>x</Mb>
+              <sub><Mi>t</Mi></sub> &isin; <span className="esa-cal">S</span> (here{" "}
+              <span className="esa-cal">V</span> = {"{A, B, m}"}, <Mi>S</Mi> = 4)
             </div>
             <div className="esa-flow">
               <div className="esa-item">
@@ -563,22 +572,22 @@ export default function EulerStepAnalogy({ local = false }) {
                   ))}
                 </div>
                 <span className="esa-itemlabel esa-cur">
-                  <b>x</b>
-                  <sub>t</sub>
+                  <Mb>x</Mb>
+                  <sub><Mi>t</Mi></sub>
                 </span>
               </div>
               <StepArrow
                 id="esa-m-disc"
                 formula={
                   <>
-                    <b>x</b>
-                    <sub>t+h</sub> ∼ Cat(<b>e</b>
+                    <Mb>x</Mb>
+                    <sub><Mi>t</Mi>+<Mi>h</Mi></sub> ∼ Cat(<Mb>e</Mb>
                     <sub>
-                      <b>x</b>
-                      <sub>t</sub>
+                      <Mb>x</Mb>
+                      <sub><Mi>t</Mi></sub>
                     </sub>{" "}
-                    + h u<sub>t</sub>(<b>x</b>
-                    <sub>t</sub>))
+                    + <Mi>h</Mi> <Mi>u</Mi><sub><Mi>t</Mi></sub>(<Mb>x</Mb>
+                    <sub><Mi>t</Mi></sub>))
                   </>
                 }
                 nature="stochastic"
@@ -591,8 +600,8 @@ export default function EulerStepAnalogy({ local = false }) {
                   ))}
                 </div>
                 <span className="esa-itemlabel esa-next">
-                  <b>x</b>
-                  <sub>t+h</sub>
+                  <Mb>x</Mb>
+                  <sub><Mi>t</Mi>+<Mi>h</Mi></sub>
                 </span>
               </div>
             </div>
@@ -606,7 +615,7 @@ export default function EulerStepAnalogy({ local = false }) {
             <div className="esa-panel">
               <div className="esa-panel-label">
                 Continuous — a point of <span className="esa-bb">R</span>
-                <sup>d</sup>
+                <sup><Mi>d</Mi></sup>
               </div>
               <ContinuousLocal />
             </div>
@@ -749,7 +758,8 @@ const css = `
   justify-content: center;
   border-radius: 6px;
   color: white;
-  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-family: 'KaTeX_Math', 'STIX Two Math', serif;
+  font-style: italic;
   font-weight: 600;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 2px 5px rgba(0,0,0,0.35);
 }
