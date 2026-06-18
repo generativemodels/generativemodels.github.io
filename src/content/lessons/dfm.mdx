@@ -519,9 +519,6 @@ A second part TODO link is dedicated to discrete diffusion.
 
 The first section is an introduction to discrete data generation, and discrete flow matching is introduced in [Section 2](#discrete-flow-matching).
 
-
-TODO move those later [<a class="cite-ref" href="#ref-5">2</a>, <a class="cite-ref" href="#ref-6">3</a>].
-
 ### Generating discrete data
 In this blog post, by discrete data we mean sequences $\mathbf{x} = x^1 \dots x^S$ of length $S \in \mathbb{N}$, where each element $x^i$ takes values in a finite set $\mathcal{V}$, the *vocabulary*.
 Elements of the vocabulary are called *tokens*.
@@ -1411,7 +1408,7 @@ where the last equality uses $x^i = m$. Both cases match the claimed formula.
 </details>
 
 Because the term $\mathbb{I}(v = x^i)$ is a known constant given the current state, learning the velocity field $u$ is mathematically exactly equivalent to learning the denoiser probability $\mathbb{P}(X_1^i = v | X_t = \mathbf{x})$.<a href="#masked-source-denoiser-equivalence" class="dfm-note-ref"></a>
-Consequently, we can train a denoiser $P_{\theta, t}$ directly. Using the KL divergence between the true clean token distribution and the learned one, the loss simplifies to the standard cross-entropy:
+Consequently, we can train a denoiser $P_{\theta, t}$ directly. Using the KL divergence between the true clean token distribution and the learned one, the loss simplifies to the standard cross-entropy [<a class="cite-ref" href="#ref-5">2</a>, <a class="cite-ref" href="#ref-6">3</a>]:
 <PinkEquation>
 
 $$
@@ -1772,7 +1769,7 @@ Introducing a planner-aware sampling process creates a mismatch between training
 
 This difference matters because uniform masking can put training weight on mask patterns that the planner would almost never visit in practice. For example, in a structured sequence where the last token is only predictable after the first two have been revealed, uniform masking may still train the model to predict that last token from $(m,m,m)$ or from $(m,m,B)$, even though a confidence-based planner would first reveal easier positions and avoid asking for that token with so little context. These hard denoising tasks can inject extra error into the learned denoiser, and those errors can then be amplified during sampling when early wrong predictions become part of the context.
 
-A fix is to reweight the denoising loss @eq:cdm-loss toward the positions the planner would select. With the shorthand $P_{\theta,t}^i(x_1^i | \mathbf{x}_t) := P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}_t)$, this gives the Planner-Aware Path Learning (PAPL) objective:
+A fix is to reweight the denoising loss @eq:cdm-loss toward the positions the planner would select. With the shorthand $P_{\theta,t}^i(x_1^i | \mathbf{x}_t) := P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}_t)$, this gives the Planner-Aware Path Learning (PAPL) objective [<a class="cite-ref" href="#ref-7">4</a>]:
 <PinkEquation>
 $$
 \begin{equation}
