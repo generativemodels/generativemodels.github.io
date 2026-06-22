@@ -494,8 +494,8 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
 - **$\Delta_k$** for $k \in \mathbb{N}$, $\Delta_k=\{\pi\in\mathbb{R}_+^k:\sum_{\ell=1}^{k}\pi_\ell=1\}$ is the probability simplex
 - **$\text{Cat}$** categorical distribution: $x \sim \text{Cat}(\mathbf{p})$ means $\mathbb{P}(x = v) = \mathbf{p}_v$, for a probability vector $\mathbf{p} \in \Delta_{|\mathcal{V}|}$
 - *Convention: $t=0$: clean data; $t=1$: noisy data.*
-- **$p_0 = p_{\text{data}}$** clean data (target) distribution; the forward process corrupts it toward the mask distribution $p_{\text{mask}}$ at the final time
-- **$p_t$** marginal distribution at time $t$; the probability path between the clean data distribution $p_0$ and the mask distribution $p_{\text{mask}}$.
+- **$p_0$** clean data (target) distribution; the forward process corrupts it toward the mask distribution $\delta_{m\ldots m}$ at the final time
+- **$p_t$** marginal distribution at time $t$; the probability path between the clean data distribution $p_0$ and the mask distribution
 - **$\beta_t$** noise schedule: probability that a token is corrupted (masked) at step $t$
 - **$\alpha_t = \prod_{i=1}^t (1 - \beta_i)$** cumulative schedule, equal to the probability that a token is still clean (has survived) at step $t$
 - **$D_{\theta,t}(\mathbf{x}_t) \in \Delta_{|\mathcal{V}|}$** learned denoiser: predicts the distribution over the clean token $\mathbf{x}_0$ given the noisy sequence $\mathbf{x}_t$
@@ -656,7 +656,7 @@ $$
 <figure>
   <MaskedDiffusion showVariational={true} showScore={false} client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Forward process with T steps as in @eq:mdm-step. At step $t$, an unmasked token gets masked with probability $\beta_t$; after masking, this probability is 1. The blue bar shows the probability $q(x_t=x_0 | x_{t-1}=x_0)=1-\beta_t$ (@eq:forward-transition), and the grey bar shows $q(x_t=x_0 | x_0) = \alpha_t$. The trajectories are stochastic: changing the seed changes the step at which the clean token transitions to the mask token.
+    <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Forward process with T steps as in @eq:mdm-step. At step $t$, an unmasked token gets masked with probability $\beta_t$; after masking, this probability is 1. The trajectories are stochastic: changing the seed changes the step at which $x_0$ transitions to $m$.
     <br /> The “Show $N$ trajectories” button switches to an aggregate view that samples $N$ independent trajectories with the same transition rule; at step $t$, the plotted proportion of still-unmasked trajectories approaches the schedule $\alpha_t$ as $T$ and $N$ grow.
   </figcaption>
 </figure>
@@ -815,7 +815,7 @@ $$
 \end{equation}
 $$
 
-where the per-sample ELBO is defined as:
+where the ELBO (evidence lower bound) is defined as:
 
 $$
 \begin{equation}
@@ -888,7 +888,7 @@ $$
 & - \sum_{t=1}^{T} \mathbb{E}_{x_t \sim q( \cdot | x_0)} \left[ \mathrm{KL}\!\left(q\!\left(x_{t-1} | x_t, x_0\right),\, p_\theta\!\left(x_{t-1} | x_t\right)\right) \right]  \label{eq:discrete-elbo-2} \notag
 \end{align}
 $$
-where $p_T$ is a the prior distribution, here $p_T = \delta_{mm...m}$.
+where $p_T$ is a the prior distribution, here $p_T = \delta_{m\ldots m}$.
 </Statement>
 
 <details>
@@ -995,7 +995,7 @@ To sample from the data, we therefore need to learn the transitions $p_\theta(x_
 Indeed, we know that a token changes at most once along the trajectory.
 From @eq:bridge-denoiser-1, the only information not already determined is which clean token to jump to.
 Therefore, outputting the full reverse step at every $t$ would relearn this fixed structure repeatedly, which is redundant. */}
-However, the discrete diffusion models of [<a class="cite-ref" href="#ref-1">1</a>, <a class="cite-ref" href="#ref-2">2</a>] follow the key innovation of DDPM [<a class="cite-ref" href="#DDPM">11</a>] instead: predict the clean signal $x_0$ and rebuild the reverse step using $q(x_{t-1} | x_t, x_0)$.
+However, the discrete diffusion models of [<a class="cite-ref" href="#ref-1">1</a>, <a class="cite-ref" href="#ref-2">2</a>] prefer to follow the key innovation of DDPM [<a class="cite-ref" href="#DDPM">11</a>] instead: predict the clean signal $x_0$ and rebuild the reverse step using $q(x_{t-1} | x_t, x_0)$.
 Here, we use @eq:denoiser-bridge-proof-1, which combines this term with the denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$ to weight each possible clean token.
 Since this denoiser is itself intractable, we approximate it by a learned denoiser $D_{\theta,t}(x_t) \in \Delta_{|\mathcal{V}|}$.<a href="#denoiser-mask" class="dfm-note-ref"></a>.
 This definition naturally extends to each position $i$ if we consider sequences: $[D_{\theta,t}^i(\mathbf{x}_t)]_v \approx \mathbb{P}(X_0^i = v | \mathbf{X}_t = \mathbf{x}_t)$.
@@ -1016,7 +1016,7 @@ In the specific case of Masked Diffusion, we can express the loss in terms of th
 $$
 \begin{equation}
 \label{eq:mdm-loss}
-L_T(\theta) = T\,\mathbb{E}_{\substack{\mathbf{x}_0 \sim p_{\text{data}} \\ t \sim \mathrm{Unif}\{1,\ldots,T\} \\ \mathbf{x}_t \sim q( \cdot | \mathbf{x}_0)}} \left[ \sum_{i=1}^{S} \mathbb{I}(x_t^i = m) \left( -\frac{\alpha_{t-1} - \alpha_t}{1 - \alpha_t} \mathbf{x}_0^{i \top} \log D_{\theta,t}^i(\mathbf{x}_t) \right) \right]
+L_T(\theta) = T\,\mathbb{E}_{\substack{\mathbf{x}_0 \sim p_0 \\ t \sim \mathrm{Unif}\{1,\ldots,T\} \\ \mathbf{x}_t \sim q( \cdot | \mathbf{x}_0)}} \left[ \sum_{i=1}^{S} \mathbb{I}(x_t^i = m) \left( -\frac{\alpha_{t-1} - \alpha_t}{1 - \alpha_t} \mathbf{x}_0^{i \top} \log D_{\theta,t}^i(\mathbf{x}_t) \right) \right]
 \end{equation}
 $$
 </Statement>
@@ -1152,11 +1152,11 @@ Now we want to express the continuous-time limit of denoiser loss @eq:mdm-loss. 
 $$
 \begin{align}
 L_T(\theta)
-&= T\,\mathbb{E}_{\mathbf{x}_0\sim p_{\text{data}}}\;
+&= T\,\mathbb{E}_{\mathbf{x}_0\sim p_0}\;
 \underbrace{\mathbb{E}_{n\sim\mathrm{Unif}\{1,\ldots,T\}}}_{\textstyle =\,\frac{1}{T}\sum_{n=1}^{T}}\;
 \mathbb{E}_{\mathbf{x}_{\tau_n}\sim q(\cdot|\mathbf{x}_0)} \\
 &\quad \left[\sum_{i=1}^{S}\mathbb{I}(x_{\tau_n}^i=m)\left(-\frac{\alpha_{n-1}-\alpha_n}{1-\alpha_n}\,\mathbf{x}_0^{i\top}\log D_{\theta,\tau_n}^i(\mathbf{x}_{\tau_n})\right)\right] \notag \\[1.4em]
-&= \mathbb{E}_{\mathbf{x}_0\sim p_{\text{data}}}\;
+&= \mathbb{E}_{\mathbf{x}_0\sim p_0}\;
 \frac{1}{T}\sum_{n=1}^{T}\;
 \mathbb{E}_{\mathbf{x}_{\tau_n}\sim q(\cdot|\mathbf{x}_0)} \\
 &\quad \left[\sum_{i=1}^{S}\mathbb{I}(x_{\tau_n}^i=m)\;
@@ -1172,7 +1172,7 @@ $$
 \label{eq:mdm-loss-ct}
 L(\theta) =
 \mathbb{E}_{\substack{
-\mathbf{x}_0 \sim p_{\text{data}} \\
+\mathbf{x}_0 \sim p_0 \\
 t \sim \mathcal{U}(0,1) \\
 \mathbf{x}_t \sim q(\cdot|\mathbf{x}_0)
 }}
@@ -1213,7 +1213,7 @@ To wrap up, we end this section with a table summarizing the important steps in 
         $x_T \sim \mathcal{N}(0, I)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $x_T \sim p_{\mathrm{mask}}$
+        $x_T \sim \delta_{m\ldots m}$
       </td>
     </tr>
 
@@ -1274,7 +1274,7 @@ To wrap up, we end this section with a table summarizing the important steps in 
         $p_{\theta,t}(x_{t-1} | x_t) = \mathcal{N}\!\left(\mu_{\theta,t}(x_t),\; \sigma_t^2 I\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $x_T \sim p_{\mathrm{mask}}$ <br />
+        $x_T \sim \delta_{m\ldots m}$ <br />
         $p_{\theta,t}(x_{t-1} | x_t) = \mathrm{Cat}\!\left(x_{t-1};\; \tfrac{\alpha_{t-1} - \alpha_t}{1 - \alpha_t}\, D_{\theta,t}(x_t) + \tfrac{1 - \alpha_{t-1}}{1 - \alpha_t}\, \mathbf{e}_m\right)$ <br />
       </td>
     </tr>
@@ -1974,7 +1974,7 @@ In the continuous-time limit, optimizing the variational ELBO @eq:discrete-elbo-
 $$
 \begin{equation}
 \label{eq:ratio-loss}
-L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_{\text{data}} \\ x_t \sim q( \cdot |x_0)}} \Bigg[ \sum_{y \neq x_t} \bigg( [\dot{R}_{\theta,t}(x_t)]_y - [\dot{R}_t(x_t | x_0)]_y \log [\dot{R}_{\theta,t}(x_t)]_y \bigg) \Bigg].
+L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \Bigg[ \sum_{y \neq x_t} \bigg( [\dot{R}_{\theta,t}(x_t)]_y - [\dot{R}_t(x_t | x_0)]_y \log [\dot{R}_{\theta,t}(x_t)]_y \bigg) \Bigg].
 \end{equation}
 $$
 
@@ -2140,7 +2140,7 @@ An any-order autoregressive model (AO-ARM) is an autoregressive model trained to
 $$
 \begin{equation}
 \label{eq:ao-arm}
-\mathcal{L}_{\text{AO-ARM}}(\theta) = -\mathbb{E}_{\mathbf{x}_0 \sim p_{\text{data}},\, \pi \sim \mathcal{U}_\pi} \left[ \sum_{i=1}^{S} \log p_\theta(x_0^{\pi(i)} | x_0^{\pi(<i)}; \pi) \right]
+\mathcal{L}_{\text{AO-ARM}}(\theta) = -\mathbb{E}_{\mathbf{x}_0 \sim p_0,\, \pi \sim \mathcal{U}_\pi} \left[ \sum_{i=1}^{S} \log p_\theta(x_0^{\pi(i)} | x_0^{\pi(<i)}; \pi) \right]
 \end{equation}
 $$
 where $x_0^{\pi(<i)} = (x_0^{\pi(1)}, \ldots, x_0^{\pi(i-1)})$ denotes the tokens revealed before position $\pi(i)$ in the ordering $\pi$. In practice, AO-ARMs use a shared neural network with mask tokens to represent absent variables: given an ordering $\pi$ and a step $i$, the positions $\pi(i), \pi(i+1), \ldots, \pi(S)$ are replaced by the mask token $m$, and the network predicts the token at position $\pi(i)$ from this partially masked input.
@@ -2151,7 +2151,7 @@ The following proposition shows that the MDM training objective is equivalent to
 Let $\mathcal{L}_{\text{MDM}}(\theta)$ denote the Masked Diffusion training loss with linear schedule $\alpha_t = 1 - t$ and uniform time sampling $t \sim \mathcal{U}(0,1)$:
 $$
 \begin{align}
-\mathcal{L}_{\text{MDM}}(\theta) ={} & -\mathbb{E}_{t \sim \mathcal{U}(0,1),\, \mathbf{x}_0 \sim p_{\text{data}},\, \mathbf{x}_t \sim q(\cdot | \mathbf{x}_0)}  \label{eq:loss-mdm-exp-1} \\
+\mathcal{L}_{\text{MDM}}(\theta) ={} & -\mathbb{E}_{t \sim \mathcal{U}(0,1),\, \mathbf{x}_0 \sim p_0,\, \mathbf{x}_t \sim q(\cdot | \mathbf{x}_0)}  \label{eq:loss-mdm-exp-1} \\
 & \left[ \frac{1}{t} \sum_{i=1}^{S} \mathbb{I}(x_t^i = m) \log p_\theta(x_0^i | \mathbf{x}_t) \right] \label{eq:loss-mdm-exp-2}
 \end{align}
 $$

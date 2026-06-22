@@ -27,7 +27,6 @@ const COLOR_CONTINUOUS = "#DD8452";
 const COLOR_CLEAN = "#5bbf6f";
 const COLOR_MASK = "#aaa";
 const COLOR_ALPHA = "rgba(255,255,255,0.85)";
-const COLOR_UNCONDITIONAL = "#9ca3af";
 
 // ── Seeded RNG (mulberry32) ─────────────────────────────────────────
 function makeRng(seed) {
@@ -341,10 +340,6 @@ function TrajectoryFigure({
   const barAreaH = 80;
   const barTop = padT + 20;
   const barGap = 8;
-  const activeBarCount = Number(showDiscrete) + Number(showContinuous);
-  const conditionalGroupW = activeBarCount * barW + Math.max(0, activeBarCount - 1) * barGap;
-  const unconditionalBarX = barX + conditionalGroupW + (activeBarCount > 0 ? 22 : 0);
-  const unconditionalCleanProb = clampProb(alpha(currentIdx / T));
 
   // List of visited grid indices (in order of visiting).
   const visitedIdxs = Array.from({ length: step + 1 }, (_, k) => idxAtStep(k));
@@ -428,6 +423,10 @@ function TrajectoryFigure({
         const x = barX;
         return (
           <g>
+            <text x={x + barW / 2} y={barTop - 6} textAnchor="middle" fontSize={15.5}
+              fill={COLOR_DISCRETE} fontFamily="'KaTeX_Main', 'STIX Two Math', serif">
+              1 − <tspan {...svgMath}>βₜ</tspan>
+            </text>
             <rect x={x} y={barTop} width={barW} height={barAreaH}
               fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" />
             {h > 0 && (
@@ -454,22 +453,6 @@ function TrajectoryFigure({
             )}
             <text x={x + barW / 2} y={barTop + barAreaH + 12} textAnchor="middle" fontSize={10.3}
               fill={COLOR_CONTINUOUS} fontFamily="'KaTeX_Main', 'STIX Two Math', serif">{p.toFixed(2)}</text>
-          </g>
-        );
-      })()}
-      {(() => {
-        const p = unconditionalCleanProb;
-        const h = p * barAreaH;
-        return (
-          <g>
-            <rect x={unconditionalBarX} y={barTop} width={barW} height={barAreaH}
-              fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" />
-            {h > 0 && (
-              <rect x={unconditionalBarX} y={barTop + (barAreaH - h)} width={barW} height={h}
-                fill={COLOR_UNCONDITIONAL} opacity={0.85} rx={2} />
-            )}
-            <text x={unconditionalBarX + barW / 2} y={barTop + barAreaH + 12} textAnchor="middle" fontSize={10.3}
-              fill={COLOR_UNCONDITIONAL} fontFamily="'KaTeX_Main', 'STIX Two Math', serif">{p.toFixed(2)}</text>
           </g>
         );
       })()}
