@@ -2352,7 +2352,7 @@ __Training Objectives__: Now we show how their training objectives line up in th
 $$
 \begin{equation}
 \label{eq:cdm-loss}
-L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right].
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_0 \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right].
 \end{equation}
 $$
 
