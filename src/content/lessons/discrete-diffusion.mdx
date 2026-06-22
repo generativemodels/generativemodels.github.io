@@ -493,8 +493,6 @@ import DiffusionDiscreteContinuous from '../../components/discrete_continuous_di
 - **$\mathbf{x}^{\neq i}$** sub-sequence of $\mathbf{x}$ at all positions except $i$
 - **$\Delta_k$** for $k \in \mathbb{N}$, $\Delta_k=\{\pi\in\mathbb{R}_+^k:\sum_{\ell=1}^{k}\pi_\ell=1\}$ is the probability simplex
 - **$\text{Cat}$** categorical distribution: $x \sim \text{Cat}(\mathbf{p})$ means $\mathbb{P}(x = v) = \mathbf{p}_v$, for a probability vector $\mathbf{p} \in \Delta_{|\mathcal{V}|}$
-- **$p_{\text{mask}}$** mask distribution: $p_{\text{mask}}(v) = \mathbb{I}(v = m)$
-- **$p_{\text{unif}}$** uniform distribution: $p_{\text{unif}}(v) = \frac{1}{|\mathcal{V}|}$
 - *Convention: $t=0$: clean data; $t=1$: noisy data.*
 - **$p_0 = p_{\text{data}}$** clean data (target) distribution; the forward process corrupts it toward the mask distribution $p_{\text{mask}}$ at the final time
 - **$p_t$** marginal distribution at time $t$; the probability path between the clean data distribution $p_0$ and the mask distribution $p_{\text{mask}}$.
@@ -512,13 +510,19 @@ In recent years, diffusion models have emerged as the state-of-the-art framework
 Their strong generation performance, training stability and flexibility motivated their extension to discrete data,  including texts, graphs, or molecule sequences [<a class="cite-ref" href="#ref-2">2</a>, <a class="cite-ref" href="#ref-5">5</a>, <a class="cite-ref" href="#DiGress">6</a>].
 This blog post is a __pedagogical introduction__ to the adaptation of diffusion models for discrete data.
 
-As continuous-space diffusion models have been developed into two major branches, namely the *variational* [<a class="cite-ref" href="#NonequilibriumThermodynamics">10</a>, <a class="cite-ref" href="#DDPM">11</a>] and the *score-based* ones [<a class="cite-ref" href="#GenerativeScore">9</a>, <a class="cite-ref" href="#SDEDiffusion">12</a>], we present discrete diffusion through these two formalisms. In [section 1](#variational-discrete-diffusion), we show how the variational perspective leverages *discrete-time* transitions and variational principles to frame data generation [<a class="cite-ref" href="#ref-1">1</a>, <a class="cite-ref" href="#ref-2">2</a>, <a class="cite-ref" href="#NonequilibriumThermodynamics">10</a>]. In [section 2](#score-based-discrete-diffusion), we focus on *continuous-time* transitions and score-based methods for discrete data [<a class="cite-ref" href="#ref-4">4</a>]. Finally, in [section 3](#equivalence-between-viewpoints), we first show how these two different viewpoints are in fact equivalent from both the training and sampling perspectives. We then show the equivalence of discrete diffusion and discrete flow matching.<a href="#dfm-blog" class="dfm-note-ref"></a>
+{/* As continuous-space diffusion models have been developed into two major branches, namely the *variational* [<a class="cite-ref" href="#NonequilibriumThermodynamics">10</a>, <a class="cite-ref" href="#DDPM">11</a>] and the *score-based* ones [<a class="cite-ref" href="#GenerativeScore">9</a>, <a class="cite-ref" href="#SDEDiffusion">12</a>], we present discrete diffusion through these two formalisms. In [section 1](#variational-discrete-diffusion), we show how the variational perspective leverages *discrete-time* transitions and variational principles to frame data generation. In [section 2](#score-based-discrete-diffusion), we focus on *continuous-time* transitions and score-based methods for discrete data. Finally, in [section 3](#equivalence-between-viewpoints), we first show how these two different viewpoints are in fact equivalent from both the training and sampling perspectives, then show the equivalence of discrete diffusion and discrete flow matching.<a href="#dfm-blog" class="dfm-note-ref"></a> */}
+
+
+<note-orel> **Q** *Ordre des deux paragraphes ici convient ?* </note-orel>
+
+As continuous-space diffusion models have been developed into two major branches, namely the *variational* [<a class="cite-ref" href="#NonequilibriumThermodynamics">10</a>, <a class="cite-ref" href="#DDPM">11</a>] and the *score-based* ones [<a class="cite-ref" href="#GenerativeScore">9</a>, <a class="cite-ref" href="#SDEDiffusion">12</a>], we present discrete diffusion through these two formalisms.
+We first introduce [variational discrete diffusion](#variational-discrete-diffusion); the reader already familiar with this technique can jump directly to the [score-based perspective](#score-based-discrete-diffusion).
+Finally, in [the last section](#equivalence-between-viewpoints), we first show how these two different viewpoints are in fact equivalent from both the training and sampling perspectives, then show the equivalence of discrete diffusion and discrete flow matching.<a href="#dfm-blog" class="dfm-note-ref"></a>
 
 In this blog post, we deal with discrete data: the space on which the probability distributions are defined is $\mathcal{S} := \mathcal{V}^S$, namely the space of sequences of length $S \in \mathbb{N}$ over a given vocabulary $\mathcal{V}$.
 A sequence $\mathbf{x}$ in $\mathcal{S}$ is denoted as $\mathbf{x} = x^1 \dots x^S$, the $x^i$'s being called *tokens*.
 In the vocabulary, we add a special token: the mask token, denoted as $m$.
-
-We first introduce [variational discrete diffusion](#variational-discrete-diffusion); the reader already familiar with this technique can jump directly to the [score-based perspective](#score-based-discrete-diffusion).
+The reader interested to have a more complete introduction on discrete data modelling is referred to the [blog post on discrete flow matching](https://dl.heeere.com/dfm).
 
 ### Variational discrete diffusion
 
@@ -543,20 +547,17 @@ In discrete diffusion, an analogous approach generates sequences by reversing a 
 #### Forward process
 
 We first consider the forward process: it starts from a clean sequence $\mathbf{x}_0$, and progressively replaces each token by the mask token, transforming the sequence into $\mathbf{x}_T = mm...m$.
-Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token in the following.
-
+Because each token is masked independently, the forward process factorizes over tokens, and we restrict to the case of a single token transitioning from $x_0^i$ to $m$ in the following.
 
 In continuous Denoising Diffusion Probabilistic Models (DDPM), we start by defining a noising process over $T$ steps, where each step slightly corrupts the signal by adding Gaussian noise:
-
 $$
 \begin{equation}
 \label{eq:ddpm-step}
 x_t = \sqrt{1 - \beta_t}\, x_{t-1} + \sqrt{\beta_t}\,\varepsilon, \qquad \varepsilon \sim \mathcal{N}(0, I)
 \end{equation}
 $$
-
 where $\beta_t \in [0,1]$ controls the amount of noise injected at step $t \in \{1,\ldots,T\}$.
-In discrete space diffusion, the forward corruption takes a simpler binary form: at each step, a token either survives unchanged with probability $1 - \beta_t$, or is irreversibly replaced by the mask token $m$ with probability $\beta_t$:
+In discrete space diffusion, at each step, a token either survives unchanged with probability $1 - \beta_t$, or is irreversibly replaced by the mask token $m$ with probability $\beta_t$:
 
 $$
 \begin{equation}
@@ -655,7 +656,7 @@ $$
 <figure>
   <MaskedDiffusion showVariational={true} showScore={false} client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Discrete masked forward with T steps as in @eq:mdm-step. At step $t$, an unmasked token gets masked with probability $\beta_t$; after masking, this probability is 1. The blue bar shows the one-step forward probability $q(x_t=x_0 | x_{t-1}=x_0)=1-\beta_t$ (@eq:forward-transition), and the grey bar shows $q(x_t=x_0 | x_0) = \alpha_t$. The trajectories are stochastic: changing the seed changes the step at which the clean token transitions to the mask token.
+    <strong>Figure <Counter label="fig:masked-forward-discrete" />:</strong> Forward process with T steps as in @eq:mdm-step. At step $t$, an unmasked token gets masked with probability $\beta_t$; after masking, this probability is 1. The blue bar shows the probability $q(x_t=x_0 | x_{t-1}=x_0)=1-\beta_t$ (@eq:forward-transition), and the grey bar shows $q(x_t=x_0 | x_0) = \alpha_t$. The trajectories are stochastic: changing the seed changes the step at which the clean token transitions to the mask token.
     <br /> The “Show $N$ trajectories” button switches to an aggregate view that samples $N$ independent trajectories with the same transition rule; at step $t$, the plotted proportion of still-unmasked trajectories approaches the schedule $\alpha_t$ as $T$ and $N$ grow.
   </figcaption>
 </figure>
@@ -669,15 +670,12 @@ We now turn to reversing this process, in order to generate data from noise.
 
 #### Reverse process
 
-
 Generating data requires a reverse process that progressively unmasks tokens to produce samples from the discrete data distribution, i.e. generating samples $x_s$ from $x_t$ for $s < t$ until $s=0$.
-However, the transition kernel $q(x_s|x_t)$ is __intractable__. To overcome this difficulty, we express $q(x_s|x_t)$ by marginalizing the conditional reverse transition $q(x_s | x_t, x_0)$ over all possible $x_0$.
-
-First, we derive the reverse transitions from $x_t$ to $x_s$ for $st$, conditioned on the initial clean token $x_0$, namely $q(x_s | x_t, x_0)$.
-
+However, the transition kernel $q(x_s|x_t)$ is __intractable__.
+To overcome this difficulty, we express $q(x_s|x_t)$ by marginalizing the conditional reverse transition $q(x_s | x_t, x_0)$ <a href="#conditional-law" class="dfm-note-ref"></a> over all possible $x_0$.
 
 <Statement kind="Lemma" label="masked-diffusion-bridge" title="Conditional reverse transitions $q(x_s | x_t,x_0)$">
-For Masked Diffusion, $x_t = m$ and $s<t$, we have:<a href="#conditional-law" class="dfm-note-ref"></a>
+For $x_t = m$ and $s<t$, we have:
 $$
 \begin{equation}
 \label{eq:bridge-mask}
@@ -714,7 +712,7 @@ We conclude using that $x_s$ is either at state $x_0$ or at state $m$ with proba
 </details>
 
 The reverse process conditioned on $x_0$, namely sampling reccursively from $q(x_s | x_t, x_0)$ as described in @eq:bridge-mask, can also be simulated in Figure <Ref label="fig:masked-forward-discrete" /> by clicking the reverse button.
-Finally, we compute the unconditional reverse transition $q(x_s|x_t)$ by marginalizing the conditional reverse transition $q(x_s | x_t, x_0)$ over all possible clean tokens $v$, weighted by their probability $\mathbb{P}(X_0 = v | X_t=x_t)$ (more details in the proof spoiler).
+{/* Finally, we compute the unconditional reverse transition $q(x_s|x_t)$ by marginalizing the conditional reverse transition $q(x_s | x_t, x_0)$ over all possible clean tokens $v$, weighted by their probability $\mathbb{P}(X_0 = v | X_t=x_t)$ (more details in the proof spoiler). */}
 
 {/*
 <figure>
@@ -796,7 +794,8 @@ When a token is already unmasked, the reverse process simply keeps it fixed.
 
 #### Training
 
-We learn the reverse process by training a neural network whose generated trajectories align with those of the forward process. In Variational Diffusion, this is done by minimizing the KL divergence between the distribution induced by the (known) forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
+We learn the reverse process by training a neural network whose generated trajectories align with those of the forward process.
+In Variational Diffusion, this is done by minimizing the KL divergence between the distribution induced by the (known) forward process $q(x_{0:T})$ and the one induced by the learned backward process $p_\theta(x_{0:T})$:
 
 $$
 \begin{equation}
@@ -881,14 +880,15 @@ immediately, with equality iff the reverse trajectories perfectly recover the fo
 As written, @eq:elbo couples all $T$ steps along a whole trajectory $x_{1:T}$. The following theorem shows that we can simplify this global objective into a sum of local objectives, one for each step.
 
 <Statement kind="Theorem" label="discrete-diffusion-elbo" title="Discrete diffusion ELBO">
-The ELBO for a discrete diffusion process is given by:
+The ELBO for a discrete diffusion process is given by [<a class="cite-ref" href="#ref-1">1</a>, <a class="cite-ref" href="#ref-2">2</a>, <a class="cite-ref" href="#NonequilibriumThermodynamics">10</a>]:
 
 $$
 \begin{align}
-\text{ELBO}_{\theta}(x_0) ={}& - \mathrm{KL}(q(x_T | x_0) , p_{\text{source}})  \label{eq:discrete-elbo-1} \\
+\text{ELBO}_{\theta}(x_0) ={}& - \mathrm{KL}(q(x_T | x_0) , p_T)  \label{eq:discrete-elbo-1} \\
 & - \sum_{t=1}^{T} \mathbb{E}_{x_t \sim q( \cdot | x_0)} \left[ \mathrm{KL}\!\left(q\!\left(x_{t-1} | x_t, x_0\right),\, p_\theta\!\left(x_{t-1} | x_t\right)\right) \right]  \label{eq:discrete-elbo-2} \notag
 \end{align}
 $$
+where $p_T$ is a the prior distribution, here $p_T = \delta_{mm...m}$.
 </Statement>
 
 <details>
@@ -979,33 +979,35 @@ Therefore:
 
 $$
 \begin{align}
-    \text{ELBO}_{\theta}(x_0) &= - \mathrm{KL}\left(q(x_T|x_0) , p_{\text{source}}\right)  \label{eq:discrete-elbo-proof-1} \\
+    \text{ELBO}_{\theta}(x_0) &= - \mathrm{KL}\left(q(x_T|x_0) , p_T\right)  \label{eq:discrete-elbo-proof-1} \\
     &\quad - \sum_{t=1}^{T} \mathbb{E}_{\substack{x_t \sim q( \cdot | x_0)}} \left[ \mathrm{KL}\left(q(x_{t-1} | x_t, x_0) , p_\theta(x_{t-1} | x_t)\right) \right]  \label{eq:discrete-elbo-proof-2} \notag
 \end{align}
 $$
 
-where the first KL term is a constant independent of $\theta$, since $p_\theta(x_T) = p_{\text{source}}$ is a fixed base distribution.
+where the first KL term is a constant independent of $\theta$, since $p_\theta(x_T) = p_T$ is a fixed base distribution.
 
 </div>
 </details>
 
 The sum of KL terms corresponds to a forward trajectory where $x_0, x_1, \ldots, x_T$ is sampled from the noising process, and at each step the learned reverse transition $p_\theta(x_{t-1} | x_t)$ is trained to match the reverse transition conditioned on the initial clean token $x_0$: $q(x_{t-1} | x_t, x_0)$.
-Using this ELBO for training therefore requires learning the one-step reverse transitions $p_\theta(x_{t-1} | x_t)$.
 
-The one-step transitions $p_\theta(x_{t-1} | x_t)$ can be parameterized directly with a neural network, but this is inefficient.
-Indeed, most of the reverse step is already known. From @eq:bridge-mask, an unmasked token stays as it is and a masked token can only jump to $x_0$, so a token changes at most once along the trajectory. The only information not already determined is which clean token to jump to.
-Therefore, outputting the full reverse step at every $t$ would relearn this fixed structure repeatedly, which is redundant.
-Instead, the discrete diffusion models of [<a class="cite-ref" href="#ref-1">1</a>, <a class="cite-ref" href="#ref-2">2</a>] follow the key innovation of DDPM [<a class="cite-ref" href="#DDPM">11</a>]: predict the clean signal $x_0$ and rebuild the reverse step using $q(x_{t-1} | x_t, x_0)$, as in @eq:denoiser-bridge-proof-1, which combines this term with the denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$ to weight each possible clean token.
+To sample from the data, we therefore need to learn the transitions $p_\theta(x_{t-1} | x_t)$. {/* They can be parameterized directly with a neural network, but this is inefficient.
+Indeed, we know that a token changes at most once along the trajectory.
+From @eq:bridge-denoiser-1, the only information not already determined is which clean token to jump to.
+Therefore, outputting the full reverse step at every $t$ would relearn this fixed structure repeatedly, which is redundant. */}
+However, the discrete diffusion models of [<a class="cite-ref" href="#ref-1">1</a>, <a class="cite-ref" href="#ref-2">2</a>] follow the key innovation of DDPM [<a class="cite-ref" href="#DDPM">11</a>] instead: predict the clean signal $x_0$ and rebuild the reverse step using $q(x_{t-1} | x_t, x_0)$.
+Here, we use @eq:denoiser-bridge-proof-1, which combines this term with the denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$ to weight each possible clean token.
 Since this denoiser is itself intractable, we approximate it by a learned denoiser $D_{\theta,t}(x_t) \in \Delta_{|\mathcal{V}|}$.<a href="#denoiser-mask" class="dfm-note-ref"></a>.
 This definition naturally extends to each position $i$ if we consider sequences: $[D_{\theta,t}^i(\mathbf{x}_t)]_v \approx \mathbb{P}(X_0^i = v | \mathbf{X}_t = \mathbf{x}_t)$.
 
-Equivalently, the learned reverse transition is obtained by replacing the denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$ in @eq:bridge-denoiser-1 with the learned one $D_{\theta,t}$:
+{/* Equivalently, the learned reverse transition is obtained by replacing the denoiser $\mathbb{P}(X_0 = v | X_t=x_t)$ in @eq:bridge-denoiser-1 with the learned one $D_{\theta,t}$:
 $$
 \begin{align}
     p_\theta(x_s=v| x_t=m) &= \frac{\alpha_s-\alpha_t}{1-\alpha_t}\,[D_{\theta,t}(x_t)]_v\quad (v\in\mathcal{V}\setminus\{m\}),  \label{eq:bridge-model-1} \\
     p_\theta(x_s=m| x_t=m) &= \frac{1-\alpha_s}{1-\alpha_t}. \label{eq:bridge-model-2}
 \end{align}
-$$
+$$ */}
+
 The following proposition rewrites the ELBO term entirely in terms of this denoiser.
 
 <Statement kind="Proposition" label="masked-diffusion-training-loss" title="Masked diffusion training loss">
@@ -1041,7 +1043,7 @@ $$
 
 When $x_t\neq m$, both $q(x_s| x_t,x_0)$ and $p_\theta(x_s| x_t)$ put all their mass on $x_s=x_t=x_0$, so the KL term is zero.
 
-Hence only the case $x_t=m$ contributes. Therefore, using @eq:bridge-mask together with the learned reverse transition @eq:bridge-model-1 and @eq:bridge-model-2,
+Hence only the case $x_t=m$ contributes. Therefore, using @eq:bridge-mask together with the learned reverse transition @eq:bridge-denoiser-1 and @bridge-denoiser-2,
 
 $$
 \begin{align}
@@ -1103,7 +1105,7 @@ $$
 
 A drawback of the discrete-time construction presented in this section is that the loss @eq:mdm-loss only evaluates the denoiser $D_{\theta,t}$ at the $T$ grid times $t\in\{1,\ldots,T\}$, so it learns to undo the noise at the levels $\alpha_1,\ldots,\alpha_T$ and no others. Refining the schedule $\alpha_t$ at sampling time places new levels between the trained ones, where the denoiser must be evaluated at a noise level it never saw. Avoiding this mismatch ties us to the fixed grid $\alpha_1,\ldots,\alpha_T$. To remove this constraint, [<a class="cite-ref" href="#ref-3">3</a>] introduced the continuous-time limit of these models (later simplified for masked diffusion by [<a class="cite-ref" href="#ShiMaskedDiffusion">13</a>]): training over $t\sim\mathcal{U}(0,1)$ exposes the denoiser to every level, so the number of steps and the schedule become choices made after training rather than before.
 
-In order to provide a continuous-time version of the loss @eq:mdm-loss, we first need define a continuous-time analogue of the survival schedule $\alpha_t$ @eq:survival-prob-4, and give an intuition for its form.
+In order to provide a continuous-time version of the loss @eq:mdm-loss, we first need define a continuous-time analogue of the survival schedule $\alpha_t = \displaystyle\prod_{i=1}^{t} (1 - \beta_i)$, and give an intuition for its form.
 
 Introduce a continuous masking-rate function $\beta : [0,1] \to \mathbb{R}_+$. If a discrete grid has step size $\Delta t = 1/T$, the corresponding small masking probability at grid point $i/T$ is
 $$
@@ -1183,10 +1185,10 @@ t \sim \mathcal{U}(0,1) \\
 \end{equation}
 $$
 
-To wrap up, we end this section with a table summarizing the important steps in variational masked discrete diffusion, put in parallel with their equivalent for continuous space diffusion (DDPM).
-
 </div>
 </details>
+
+To wrap up, we end this section with a table summarizing the important steps in variational masked discrete diffusion, put in parallel with their equivalent for continuous space diffusion (DDPM).
 
 <table className="dfm-comparison-table" style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.9rem', marginTop: '2em', marginBottom: '1.25em'}}>
   <caption><strong>Table <Counter label="table:continuous-masked-diffusion" />:</strong> Continuous-space diffusion and masked discrete diffusion side by side.</caption>
@@ -1689,7 +1691,7 @@ $$
 L_t(\theta) = \mathbb{E}_{\substack{x_0 \sim p_0 \\ x_t \sim q( \cdot |x_0)}} \Bigg[ \sum_{y \neq x_t} [\dot{Q}_t(x_t)]_y \bigg( s_{\theta,t}(x_t)_y - \frac{p_t(y|x_0)}{p_t(x_t|x_0)} \log s_{\theta,t}(x_t)_y \bigg) \Bigg] + C
 \end{equation}
 $$
-where $C$ is a constant independent of $\theta$.
+where $C$ is a constant independent of $\theta$ [<a class="cite-ref" href="#ref-4">4</a>].
 </Statement>
 
 To wrap up, we end this section with a table summarizing the important steps in score-based diffusion, put in parallel with their equivalent for continuous-space diffusion.
@@ -2038,7 +2040,7 @@ $$
 \end{align}
 $$
 
-Writing $t_t=j/T$ and $\Delta t=1/T$, the ELBO @eq:discrete-elbo-1 is therefore (grouping the $\theta$-independent above and $\mathrm{KL}(q(x_1 | x_0) , p_{\text{source}})$ into a constant $C$):
+Writing $t_t=j/T$ and $\Delta t=1/T$, the ELBO @eq:discrete-elbo-1 is therefore (grouping the $\theta$-independent above and $\mathrm{KL}(q(x_1 | x_0) , p_T)$ into a constant $C$):
 
 $$
 \begin{align}
