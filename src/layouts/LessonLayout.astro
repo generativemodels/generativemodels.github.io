@@ -9,9 +9,9 @@ import Header from '../components/Header.astro';
 import { jsOnLoadSetupCounters } from '../components/numbering/CountersTools';
 import { resetDefines } from '../components/typst/typst-context';
 
-type Props = CollectionEntry<'lessons'>['data'];
+type Props = CollectionEntry<'lessons'>['data'] & { minutesRead?: number };
 
-const { title, description, pubDate, updatedDate, heroImage, tags } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, tags, minutesRead } = Astro.props;
 const beta = (tags ?? []).includes('beta');
 
 resetDefines();
@@ -220,6 +220,11 @@ const equationRefsOnload = `
 			.last-updated-on {
 				font-style: italic;
 			}
+			.reading-time {
+				margin-top: 0.25em;
+				font-size: 0.9em;
+				color: rgb(var(--gray));
+			}
 			:global(.equation-ref) {
 				white-space: nowrap;
 			}
@@ -273,6 +278,11 @@ const equationRefsOnload = `
 									<div class="last-updated-on">
 										Last updated on <FormattedDate date={updatedDate} />
 									</div>
+								)
+							}
+							{
+								minutesRead && (
+									<div class="reading-time">{minutesRead} min read</div>
 								)
 							}
 						</div>

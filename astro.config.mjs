@@ -10,6 +10,7 @@ import { typst } from 'astro-typst';
 import rehypeToc from '@jsdevtools/rehype-toc';
 import rehypeSlug from 'rehype-slug';
 import katexMdxEquationRefs from './src/plugins/katexMdxEquationRefs.mjs';
+import remarkReadingTime from './src/plugins/remarkReadingTime.mjs';
 
 import react from '@astrojs/react';
 
@@ -37,7 +38,7 @@ export default defineConfig({
     // ],
   }), react()],
   markdown: {
-    remarkPlugins: [remarkMath],
+    remarkPlugins: [remarkMath, remarkReadingTime],
     rehypePlugins: [
       [
         rehypeKatex,

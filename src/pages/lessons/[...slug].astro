@@ -18,7 +18,8 @@ type Props = CollectionEntry<'lessons'>;
 
 const lesson = Astro.props;
 resetCounters();
-const { Content } = await render(lesson);
+const { Content, remarkPluginFrontmatter } = await render(lesson);
+const minutesRead = lesson.data.readingTime ? remarkPluginFrontmatter.minutesRead : undefined;
 
 const components = {
 	EquationAccent,
@@ -34,6 +35,6 @@ for (const k of typstable) {
 }
 ---
 
-<LessonLayout {...lesson.data}>
+<LessonLayout {...lesson.data} minutesRead={minutesRead}>
 	<Content components={ components } />
 </LessonLayout>
