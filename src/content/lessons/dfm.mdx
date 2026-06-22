@@ -547,7 +547,7 @@ For simplicity *we will use the mask distribution as running example*; adaptatio
 <figure>
   <DiscreteDataIntro client:load notation={false} />
   <figcaption>
-    <strong>Figure <Counter label="fig:discrete-data-setup" />:</strong> The transport from the source $p_0$ to the target $p_1 = p_{\text{data}}$ shown as, for each position, the probability $p_t$ of drawing each token at time $t$ (white indicates probability zero, a fully colored cell probability one, and depth the position $s$ in the sequence), and/or as samples $\mathbf{x}_t \sim p_t$ (toogleable).
+    <strong>Figure <Counter label="fig:discrete-data-setup" />:</strong> The transport from the source $p_0$ to the target $p_1$ shown as, for each position, the probability $p_t$ of drawing each token at time $t$ (white indicates probability zero, a fully colored cell probability one, and depth the position $s$ in the sequence), and/or as samples $\mathbf{x}_t \sim p_t$ (toogleable). $p_1$ is the distribution where token $B$ is not allowed to be placed before a $A$ in the sequence.
   </figcaption>
 </figure>
 
@@ -1415,7 +1415,7 @@ Consequently, we can train a denoiser $P_{\theta, t}$ directly. Using the KL div
 $$
 \begin{equation}
 \label{eq:cdm-loss}
-L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right]
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_1 \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right]
 \end{equation}
 $$
 
@@ -1441,7 +1441,7 @@ $P_t(X_1^i | X_t = \mathbf{x})$ minimizes in $P$
 $$
 \begin{equation}
 \label{eq:denoiser-kl-proj}
-\mathbb{E}_{\substack{\mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t(\cdot | \mathbf{x}_1)}} \!\left[ \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x},\, \mathbf{x}_1),\, P(X_1^i | X_t = \mathbf{x})\right) \right]
+\mathbb{E}_{\substack{\mathbf{x}_1 \sim p_1 \\ \mathbf{x} \sim p_t(\cdot | \mathbf{x}_1)}} \!\left[ \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x},\, \mathbf{x}_1),\, P(X_1^i | X_t = \mathbf{x})\right) \right]
 \end{equation}
 $$
 
@@ -1450,7 +1450,7 @@ Thus, we want to minimize:
 $$
 \begin{equation}
 \label{eq:posterior-kl-cond}
-L(\theta) \equiv \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x},\, \mathbf{x}_1),\, P_{\theta,t}(X_1^i | X_t = \mathbf{x})\right) \right]
+L(\theta) \equiv \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_1 \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x},\, \mathbf{x}_1),\, P_{\theta,t}(X_1^i | X_t = \mathbf{x})\right) \right]
 \end{equation}
 $$
 
@@ -1468,7 +1468,7 @@ which gives directly:
 $$
 \begin{equation}
 \label{eq:cdm-loss-2}
-L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_{\text{data}} \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right]
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_1 \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right]
 \end{equation}
 $$
 
