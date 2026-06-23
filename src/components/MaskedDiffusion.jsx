@@ -425,7 +425,15 @@ function TrajectoryFigure({
           <g>
             <text x={x + barW / 2} y={barTop - 6} textAnchor="middle" fontSize={15.5}
               fill={COLOR_DISCRETE} fontFamily="'KaTeX_Main', 'STIX Two Math', serif">
-              1 − <tspan {...svgMath}>βₜ</tspan>
+              {direction === "forward" ? (
+                <>
+                  1 − <tspan {...svgMath}>βₜ</tspan>
+                </>
+              ) : (
+                <>
+                  (<tspan {...svgMath}>α</tspan><tspan baselineShift="sub" fontSize="70%">t−Δt</tspan> − <tspan {...svgMath}>αₜ</tspan>)/(1 − <tspan {...svgMath}>αₜ</tspan>)
+                </>
+              )}
             </text>
             <rect x={x} y={barTop} width={barW} height={barAreaH}
               fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" />
@@ -445,6 +453,18 @@ function TrajectoryFigure({
         const x = barX + (showDiscrete ? barW + barGap : 0);
         return (
           <g>
+            <text x={x + barW / 2} y={barTop - 6} textAnchor="middle" fontSize={15.5}
+              fill={COLOR_CONTINUOUS} fontFamily="'KaTeX_Main', 'STIX Two Math', serif">
+              {direction === "forward" ? (
+                <>
+                  1 − <tspan {...svgMath}>σ</tspan>(<tspan {...svgMath}>t</tspan>)Δ<tspan {...svgMath}>t</tspan>
+                </>
+              ) : (
+                <>
+                  −<tspan {...svgMath}>α̇ₜ</tspan>Δ<tspan {...svgMath}>t</tspan>/(1 − <tspan {...svgMath}>αₜ</tspan>)
+                </>
+              )}
+            </text>
             <rect x={x} y={barTop} width={barW} height={barAreaH}
               fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" />
             {h > 0 && (
@@ -783,11 +803,6 @@ export default function MaskedDiffusionForward({
               display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "center",
               marginBottom: 4,
             }}>
-              <span style={{
-                fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 13.8, color: "#a78bfa", fontWeight: 500,
-              }}>
-                single trajectory
-              </span>
               <NumberInput label={<Mi>T</Mi>} value={T} onApply={applyT} min={2} max={200} color="#a78bfa" width={56} />
               <NumberInput label="seed" value={seed} onApply={applySeed} color="#82b4ff" width={72} />
             </div>
@@ -916,11 +931,6 @@ export default function MaskedDiffusionForward({
             display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "center",
             marginBottom: 4,
           }}>
-            <span style={{
-              fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 13.8, color: "#82b4ff", fontWeight: 500,
-            }}>
-              N trajectories
-            </span>
             <NumberInput label={<Mi>N</Mi>} value={N} onApply={applyN} min={10} max={200000} color="#82b4ff" width={84} />
             <NumberInput label="seed" value={aggSeed} onApply={applyAggSeed} color="#82b4ff" width={72} />
             <button

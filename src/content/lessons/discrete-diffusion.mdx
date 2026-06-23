@@ -1104,11 +1104,11 @@ $$
 <summary>To go further: continuous time limit</summary>
 <div>
 
-A drawback of the discrete-time construction presented in this section is that the loss @eq:mdm-loss only evaluates the denoiser $D_{\theta,t}$ at the $T$ grid times $t\in\{1,\ldots,T\}$, so it learns to undo the noise at the levels $\alpha_1,\ldots,\alpha_T$ and no others. Refining the schedule $\alpha_t$ at sampling time places new levels between the trained ones, where the denoiser must be evaluated at a noise level it never saw. Avoiding this mismatch ties us to the fixed grid $\alpha_1,\ldots,\alpha_T$. To remove this constraint, [<a class="cite-ref" href="#ref-3">3</a>] introduced the continuous-time limit of these models (later simplified for masked diffusion by [<a class="cite-ref" href="#ShiMaskedDiffusion">13</a>]): training over $t\sim\mathcal{U}(0,1)$ exposes the denoiser to every level, so the number of steps and the schedule become choices made after training rather than before.
+A drawback of the discrete-time construction presented in this section is that the loss @eq:mdm-loss only evaluates the denoiser $D_{\theta,t}$ at the $T$ grid times $t\in\{1,\ldots,T\}$, so it learns to undo the noise at the levels $\alpha_1,\ldots,\alpha_T$ and no others. Refining the schedule $\alpha_t$ at sampling time places new levels between the trained ones, where the denoiser must be evaluated at a noise level it never saw. Avoiding this mismatch ties us to the fixed grid $\alpha_1,\ldots,\alpha_T$. To remove this constraint, [<a class="cite-ref" href="#ref-3">3</a>] introduced the continuous-time limit of these models (later simplified for masked diffusion by [<a class="cite-ref" href="#ShiMaskedDiffusion">13</a>]): training over $t\sim\mathcal{U}(0,1)$ exposes the denoiser to every noise level, so the number of steps and the schedule become choices made after training rather than before.
 
 In order to provide a continuous-time version of the loss @eq:mdm-loss, we first need define a continuous-time analogue of the survival schedule $\alpha_t = \displaystyle\prod_{i=1}^{t} (1 - \beta_i)$, and give an intuition for its form.
 
-Introduce a continuous masking-rate function $\beta : [0,1] \to \mathbb{R}_+$. If a discrete grid has step size $\Delta t = 1/T$, the corresponding small masking probability at grid point $i/T$ is
+Introduce a continuous masking-rate function $\beta : [0,1] \to \mathbb{R}_+$. We normalize the discrete steps $0,1,\ldots,T$ to the continuous grid $0,1/T,\ldots,1$ and define the step size $\Delta t = 1/T$. The corresponding masking probability at grid point $i/T$ is
 $$
 \begin{equation}
 \label{eq:ct-beta-discretization}
@@ -1547,21 +1547,21 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 </details>
 */}
 
-{/*
 <figure>
   <MaskedDiffusion showVariational={false} showScore={true} client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:masked-forward-continuous" />:</strong> Euler simulation of the infinitesimal forward transition @eq:forward-rate. The next state is sampled with step size $\Delta t = 1/T$ from the first-order transition probability $q(x_{t+\Delta t}=y | x_t) = \mathbb{I}(y=x_t) + [\dot{Q}_t(x_t)]_y\Delta t + o(\Delta t)$, giving a discretized continuous-time process to compare with the discrete Markov Chain in Figure <Ref label="fig:masked-forward-discrete" />. The aggregate view reports the fraction still unmasked; the empirical curve (in orange) can differ from the discrete Markov Chain simulation (in blue), but this divergence decreases as $T$ and $N$ grow, since both curves converge to the white schedule $\alpha_t$.
+    <strong>Figure <Counter label="fig:masked-forward-continuous" />:</strong> Euler simulation of the forward process @eq:forward-rate, with absorbing generator @eq:q-dot-def. At time $t$, an unmasked token gets masked with probability $\sigma(t)\Delta t = -\dfrac{\dot{\alpha}_t}{\alpha_t}\Delta t$, where $\Delta t=1/T$; after masking, this probability is 1. The trajectories are stochastic: changing the seed changes the step at which $x_0$ transitions to $m$.
+    <br /> The “Show $N$ trajectories” button switches to an aggregate view that samples $N$ independent trajectories with the same transition rule; as $T$ and $N$ grow, the plotted fraction still unmasked approaches the schedule $\alpha_t$.
   </figcaption>
 </figure>
-*/}
 
 #### Reverse process
 
 In the previous section, we have described the forward process of score-based discrete diffusion models. To generate new data samples, we need to reverse the forward process.
-Similarly to continuous-space diffusion, where the reverse process is obtained by reversing the forward process, in discrete space, the reverse process is obtained by reversing the forward Markov chain, and is also a continuous-time Markov chain.
+<note-orel> **Q**: *Remove the next sentence ? (redundant)* </note-orel>
+Similarly to continuous-space diffusion, where the reverse process is obtained by reversing the forward SDE, in discrete space, the reverse process is obtained by reversing the forward Markov chain, and is also a continuous-time Markov chain.
 
-<Statement kind="Proposition" label="reverse-rate" title="Reverse rate $\dot{R}_t$">
+<Statement kind="Proposition" label="reverse-rate" title="Reverse process">
 Interestingly, the reverse process is also a continuous-time Markov chain, and its transition probabilities can be expressed as:
 $$
 \begin{equation}
@@ -1570,7 +1570,7 @@ p(x_{t-\Delta t} = y | x_t) = \mathbb{I}(y = x_t) + \Delta t \, [\dot{R}_t(x_t)]
 \end{equation}
 $$
 
-Where the generator matrix $\dot{R}_t$ is defined as:
+where the generator matrix $\dot{R}_t$ is:
 $$
 \begin{equation}
 \label{eq:reverse-rate-mask}
@@ -1647,6 +1647,7 @@ where $\odot$ denotes the elementwise product. The forward rate $\dot{Q}_t$ is k
 However, the concrete score $s_t(x_t)_y$ (or equivalently the reverse rate $\dot{R}_t$) depends on the noisy-data marginals $q(X_t=\cdot)$ which are unknown and untractable.
 This is why, in practice, we learn a neural approximation of it, denoted by $s_{\theta, t}(x_t)_y$.
 
+*See the reverse process conditioned on $x_0$, where the unknown $s_t(x_t)$ is replaced by the known $s_t(x_t | x_0)$ in Figure <Ref label="fig:masked-forward-continuous" /> by clicking the reverse button.*
 
 #### Training
 
@@ -1720,7 +1721,7 @@ To wrap up, we end this section with a table summarizing the important steps in 
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
         $dX_t = f_t(X_t)\,dt + g_t\,dW_t$ <br />
-        Euler-Maruyama: $x_{t+\Delta t} = x_t + f_t(x_t)\Delta t + g_t\sqrt{\Delta t}\,\varepsilon_t,\quad \varepsilon_t \sim \mathcal{N}(0,I)$ <br />
+        {/* Euler-Maruyama: $x_{t+\Delta t} = x_t + f_t(x_t)\Delta t + g_t\sqrt{\Delta t}\,\varepsilon_t,\quad \varepsilon_t \sim \mathcal{N}(0,I)$ <br /> */}
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
         $x_{t+\Delta t} \sim \mathrm{Cat}\!\left(\mathbf{e}_{x_t} + \dot{Q}_t(x_t)\Delta t + o(\Delta t)\right)$ <br />
@@ -1730,19 +1731,15 @@ To wrap up, we end this section with a table summarizing the important steps in 
     {/* B.2 From local to global */}
     <tr>
       <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-        <strong>2. From local to global: integrated transition</strong>
+        <strong>2. Simulation-free forward process</strong>
       </td>
     </tr>
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
-        $q(x_t | x_0) = \mathcal{N}\!\left(m_t\, x_0,\; \sigma_t^2 I\right)$ <br />
-        $m_t = \exp\!\left(\int_0^t f_s\,ds\right), \quad \sigma_t^2 = \int_0^t g_s^2\,\exp\!\left(2\int_s^t f_r\,dr\right)ds$ <br />
-        DDPM: $m_t = \sqrt{\alpha_t},\quad \sigma_t^2 = 1 - \alpha_t$
+        $q(x_t | x_0) = \mathcal{N}\!\left(\sqrt{\alpha_t}\,x_0,\; (1-\alpha_t)I\right)$
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
-        $q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\, Q_t\, \mathbf{e}_{x_0}\right)$ <br />
-        $Q_t = \mathcal{T}\!\exp\!\left(\int_0^t \dot{Q}_s\,ds\right)$ <br />
-        Masked Diffusion: $Q_t = \alpha_t I + (1-\alpha_t)\, \mathbf{e}_m \mathbf{1}^\top$
+        $q(x_t | x_0) = \mathrm{Cat}\!\left(x_t;\, \alpha_t\mathbf{e}_{x_0} + (1-\alpha_t)\mathbf{e}_m\right)$
       </td>
     </tr>
 
@@ -1755,11 +1752,11 @@ To wrap up, we end this section with a table summarizing the important steps in 
     <tr>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
         $dX_t = \left(f_t(X_t) - g_t^2 \nabla \log p_{\theta,t}(X_t)\right)dt + g_t\,d\bar{W}_t$ <br />
-        Euler-Maruyama: $x_{t-\Delta t} = x_t - \Delta t \left(f_t(x_t) - g_t^2 \nabla \log p_{\theta,t}(x_t)\right) + g_t\sqrt{\Delta t}\,\bar{\varepsilon}_t,\quad \bar{\varepsilon}_t \sim \mathcal{N}(0,I)$
+        {/* Euler-Maruyama: $x_{t-\Delta t} = x_t - \Delta t \left(f_t(x_t) - g_t^2 \nabla \log p_{\theta,t}(x_t)\right) + g_t\sqrt{\Delta t}\,\bar{\varepsilon}_t,\quad \bar{\varepsilon}_t \sim \mathcal{N}(0,I)$ */}
       </td>
       <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
         $x_{t-\Delta t} \sim \mathrm{Cat}\!\left(x_{t-\Delta t};\, \mathbf{e}_{x_t} + \Delta t\, \dot{R}_{\theta,t}(x_t) + o(\Delta t)\right)$ <br />
-        $[\dot{R}_{\theta,t}(x_t)]_y = [\dot{Q}_t(x_t)]_y\,\dfrac{p_{\theta,t}(y)}{p_{\theta,t}(x_t)} \quad (y \neq x_t)$
+        {/* $[\dot{R}_{\theta,t}(x_t)]_y = [\dot{Q}_t(x_t)]_y\,\dfrac{p_{\theta,t}(y)}{p_{\theta,t}(x_t)} \quad (y \neq x_t)$ */}
       </td>
     </tr>
 
@@ -1799,13 +1796,14 @@ To wrap up, we end this section with a table summarizing the important steps in 
 ### Equivalence between viewpoints
 
 In the previous sections, we introduced two discrete diffusion perspectives for transporting an initial distribution to a target discrete distribution: the [variational formulation](#variational-discrete-diffusion) and the [score-based formulation](#score-based-discrete-diffusion).
-We will show these two viewpoints are equivalent, and then we connect them to [discrete flow matching](#equivalence-with-discrete-flow-matching)<a href="#dfm-blog" class="dfm-note-ref"></a>.
+In all this section, we assume the fully corrupted distribution is $\delta_{m\ldots m}$
+We will show with this assumption that these two viewpoints are equivalent, and then we connect them to [discrete flow matching](#equivalence-with-discrete-flow-matching)<a href="#dfm-blog" class="dfm-note-ref"></a>.
 
 #### Equivalence between the two discrete diffusion perspectives
 
-Discrete diffusion models can be framed from two different perspectives: variational inference and score matching. These two viewpoints, while appearing different, are in fact equivalent. We now demonstrate this equivalence by first showing that their sampling schemes coincide, and then that their training objectives are equivalent.
+In this section, we demonstrate that variational inference and score matching viewpoints for discrete diffusion are equivalent. We first show that their sampling schemes coincide, and then that their training objectives are equivalent.
 
-__Sampling:__ We first connect the two views of discrete diffusion at the sampling level. The reverse rate for score-based discrete diffusion can be written in terms of the true denoiser $D_t^i(\mathbf{x})_v=\mathbb{P}(X_0^i=v | \mathbf{X}_t=\mathbf{x})$:
+__Sampling:__ We first connect the two views of discrete diffusion at the sampling level. The key idea is that the reverse rate $\dot{R}_t$ for score-based discrete diffusion can be written in terms of the denoiser $D_t^i(\mathbf{x})_v=\mathbb{P}(X_0^i=v | \mathbf{X}_t=\mathbf{x})$:
 
 $$
 \begin{equation}
@@ -1863,7 +1861,7 @@ and using $x^i=m$ gives @eq:denoiser-reverse-rate. If $x^i\neq m$, the token is 
 </div>
 </details>
 
-Then, we show that the two discrete diffusion frameworks are equivalent by showing that their sampling schemes are the same, i.e. connecting @eq:masked-diffusion-denoiser-sampling and @eq:score-sampling-cat. Starting from @eq:masked-diffusion-denoiser-sampling and taking $s=t-h$ and letting $h \to 0$, for a masked token $x_t^i=m$:
+It remains to connect @eq:masked-diffusion-denoiser-sampling and @eq:score-sampling-cat. Starting from @eq:masked-diffusion-denoiser-sampling, taking $s=t-h$ and letting $h \to 0$, for a masked token $x_t^i=m$:
 
 $$
 \begin{align}
@@ -1895,7 +1893,7 @@ using $\alpha_{t-h} - \alpha_t = -h\dot{\alpha}_t + o(h)$ in the second line and
 If $x_t^i\neq m$, both sampling processes keep the token fixed, i.e., once denoised, a token cannot be masked again or change token value.
 
 __Training Objectives__: Now we turn to the corresponding training objectives. The [variational perspective](#variational-discrete-diffusion) gives the ELBO loss @eq:discrete-elbo-1 (which can be rewritten as @eq:mdm-loss for Masked Diffusion), while the [score-based perspective](#score-based-discrete-diffusion) gives the concrete score matching loss @eq:score-loss-prop.
-We now show that these two objectives are in fact the same: taking the continuous-time limit of the variational ELBO produces, after a change of variable, exactly the concrete score matching loss @eq:score-loss-prop.
+We now show that these two objectives are in fact the same: taking the continuous-time limit of the ELBO produces, after a change of variable, exactly the concrete score matching loss @eq:score-loss-prop.
 
 Starting from the variational loss @eq:discrete-elbo-1, in the continuous-time limit $T \to \infty$, each discrete transition $q(x_s | x_t)$ is replaced by an instantaneous rate $\dot{R}_t(x_t)$. This motivates introducing the conditional reverse rate $\dot{R}_t(x_t | x_0)$, defined by the first-order Taylor expansion:
 
@@ -2291,12 +2289,20 @@ with the same $f(k, \mathbf{x}_0)$ defined in Step 1.
 
 #### Equivalence with discrete flow matching
 
-We now connect discrete diffusion to discrete flow matching<a href="#dfm-blog" class="dfm-note-ref"></a>. In discrete flow matching, a probability velocity $u_t$ defines the Euler sampling scheme $x_{t+h} \sim \mathrm{Cat}(\mathbf{e}_{x_t} + h\,u_t(x_t))$, and we show that this sampling rule is equivalent to sampling in discrete diffusion (@eq:reverse-rate).
+We now connect discrete diffusion to discrete flow matching<a href="#dfm-blog" class="dfm-note-ref"></a>. In discrete flow matching, a velocity field $u_t$ defines the Euler sampling scheme:
 
+$$
+\begin{equation}
+\label{eq:dfm-euler-sampling}
+x_{t+h} \sim \mathrm{Cat}\!\left(\mathbf{e}_{x_t} + h\,u_t(x_t)\right).
+\end{equation}
+$$
+
+We show that this sampling rule is equivalent to sampling in discrete diffusion (@eq:reverse-rate).
 
 __Sampling__: To align these two sampling equations directly, we must first account for the main discrepancy between the frameworks: their time conventions. In discrete diffusion, $t = 0$ corresponds to clean data, and $t = 1$ corresponds to the fully masked state. Discrete flow matching uses the exact opposite convention.
 
-We can therefore perfectly translate between the two frameworks using a simple time reversal: $t_{\text{FM}} = 1 - t_{\text{DD}}$. Concretely, if $(x_t)_{t \in [0,1]}$ denotes the discrete diffusion reverse process, then the time-reversed process $\tilde{x}_{t'} := x_{1-t'}$ is a valid discrete flow matching process: it has the same law as the flow matching process with velocity field:
+Suppose we know the discrete diffusion reverse rate $\dot{R}_t$. We define the flow matching velocity by the time reversal:
 
 $$
 \begin{equation}
@@ -2305,7 +2311,7 @@ u_{t'}^{\text{FM}} = \dot{R}_{1-t'}
 \end{equation}
 $$
 
-In particular, sampling from discrete diffusion (running the reverse CTMC from $t=1$ to $t=0$) is equivalent to sampling from this flow matching process (running a CTMC from $t'=0$ to $t'=1$): the two procedures produce trajectories with identical distributions.
+Then, sampling from discrete diffusion using @eq:reverse-rate is equivalent to sampling from the flow matching Euler scheme @eq:dfm-euler-sampling: for every $t'\in[0,1]$, the distribution $p^{\mathrm{FM}}_{t'}$ of samples obtained by simulating flow matching from $0$ to $t'$ is the same as the distribution $p^{\mathrm{DD}}_{1-t'}$ obtained by simulating the discrete diffusion reverse CTMC from $1$ to $1-t'$, i.e. $p^{\mathrm{FM}}_{t'} = p^{\mathrm{DD}}_{1-t'}$.
 
 <details>
 <summary>Proof</summary>
@@ -2347,7 +2353,7 @@ and therefore $u_{t'}^{\text{FM}} = \dot{R}_{1-t'}$.
 </div>
 </details>
 
-__Training Objectives__: Now we show how their training objectives line up in the masked case. The [variational diffusion perspective](#variational-discrete-diffusion) gives the Masked Diffusion objective @eq:mdm-loss. In discrete flow matching, the velocity can be parameterized through a denoiser $P_{\theta,t}(X_1^i = x_1^i | X_t=\mathbf{x})$, trained with the cross-entropy objective:
+__Training Objectives__: Now we show how their training objectives line up. The [variational diffusion perspective](#variational-discrete-diffusion) gives the Masked Diffusion objective @eq:mdm-loss. In discrete flow matching, the velocity can be parameterized through a denoiser $P_{\theta,t}(X_1^i = x_1^i | X_t=\mathbf{x})$, trained with the cross-entropy objective:
 
 $$
 \begin{equation}
@@ -2355,8 +2361,6 @@ $$
 L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_0 \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right].
 \end{equation}
 $$
-
-We now compare these objectives.
 
 To directly compare the two training losses, we first note that the denoiser used by discrete flow matching and the denoiser used by variational diffusion in @eq:mdm-loss are exactly the same object. Applying the time reversal $t_{\text{FM}} = 1 - t_{\text{DD}}$ and identifying the clean data $x_1=x_0$, we get:
 
@@ -2369,7 +2373,7 @@ D_{\theta,t_{\text{DD}}}^i(\mathbf{x})_{x_0^i}
 $$
 
 <Statement kind="Proposition" label="masked-mdm-cdm-loss-equivalence" title="Masked diffusion/CDM loss equivalence">
-Under the time reversal $t_{\text{FM}}=1-t_{\text{DD}}$ and the denoiser identification @eq:denoiser-time-identification-1, the Masked Diffusion training loss $L_{\text{MDM}}(t)$ from @eq:mdm-loss is directly comparable to the denoising loss $L_{\text{CDM}}(t)$ from @eq:cdm-loss. At fixed flow-matching time $t$:
+Under the time reversal $t_{\text{FM}}=1-t_{\text{DD}}$, the Masked Diffusion training loss $L_{\text{MDM}}(t)$ from @eq:mdm-loss is directly comparable to the denoising loss $L_{\text{CDM}}(t)$ from @eq:cdm-loss. At fixed flow-matching time $t$:
 
 $$
 \begin{equation}
