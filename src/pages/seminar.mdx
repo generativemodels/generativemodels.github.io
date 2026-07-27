@@ -1,0 +1,51 @@
+import AboutHeroImage from '../assets/blog-placeholder-about.jpg';
+import Layout from '../layouts/LessonLayout.astro';
+
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+
+<Layout
+	title="Seminar"
+	description="Lorem ipsum dolor sit amet"
+	pubDate={new Date('August 27 2026')}
+	heroImage={AboutHeroImage}
+>
+
+	<p>
+		This is a webpage for the internal "Foundation of Deep Learning" seminar of the Inria [Malice](https://labhc-malice.github.io/) and [Ockham](https://team.inria.fr/ockham/) teams.
+		The seminar is a fully remote 45min presentation, not recorded, and takes place Tuesday at 4PM, Paris time.
+	</p>
+
+export const schedule = [
+	{ date: "2026-09-15", speaker: "Samuel Boïté", website: "https://samuelbx.github.io/", title: "Expected Batch Optimal Transport Plans and Consequences for Flow Matching", abstract: "TBD" },
+	{ date: "2026-09-08", speaker: "TBD", website: "", title: "TBD", abstract: "TBD" },
+	{ date: "2026-09-01", speaker: "Danilo", website: "https://mila.quebec/en/directory/danilo-vucetic", title: "TBD", abstract: "TBD" },
+	{ date: "2026-08-25", speaker: "TBD", website: "", title: "TBD", abstract: "TBD" },
+	{ date: "2026-08-18", speaker: "Matthew Niedoba", website: "https://scholar.google.com/citations?user=uSl2vYwAAAAJ&hl=en", title: "TBD", abstract: "TBD" },
+	{ date: "2026-08-11", speaker: "Claudia Merger", website: "https://claudiamer.github.io/", title: "TBD", abstract: "TBD" },
+];
+
+<table>
+	<thead>
+		<tr>
+			<th>Date</th>
+			<th>Speaker</th>
+			<th>Title</th>
+			<th>Abstract</th>
+		</tr>
+	</thead>
+	<tbody>
+		{schedule.map(({ date, speaker, website, title, abstract }) => (
+			<tr>
+				<td>{date}</td>
+				<td><a href={website}>{speaker}</a></td>
+				<td>{title}</td>
+				<td><details><summary>Abstract</summary>{abstract}</details></td>
+			</tr>
+		))}
+	</tbody>
+</table>
+
+</Layout>
