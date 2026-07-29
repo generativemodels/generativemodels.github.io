@@ -521,6 +521,8 @@ A second part TODO link is dedicated to discrete diffusion.
 The first section is an introduction to discrete data generation, and discrete flow matching is introduced in [Section 2](#discrete-flow-matching).
 
 ### Generating discrete data
+
+#### Discrete data
 Autoregressive generative models have being especially successful for generation of *sequences* of *discrete* elements.
 For instance, language models generate sequences of tokens (words or subwords) from a predefined discrete set (the *vocabulary*).
 
@@ -537,6 +539,8 @@ More precisely, in this blog post, we present flow matching/diffusion for *seque
 
 Elements of the vocabulary are called *tokens*. For example, for text data, tokens could be the letters: $\mathcal{V} = \{a, b, c, \dots, z \}$, while DNA sequences would correspond to $\mathcal{V}=\{A, T, C, G\}$.
 In the vocabulary, we add a special token: the mask token, denoted as $m$.
+
+#### Discrete data generation process
 
 Like its continuous analog, discrete flow matching progressively transforms samples from a simple *source* probability distribution $p_0$ into samples from the *target* distribution $p_1$ (the one of the data we want to generate).
 
