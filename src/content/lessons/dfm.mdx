@@ -533,26 +533,54 @@ More precisely, in this blog post, we present flow matching/diffusion for *seque
 <figure>
   <DiscreteDataIntro client:load transport={false} onehotToggle={false} />
   <figcaption>
-    <strong>Figure <Counter label="fig:discrete-data-notation" />:</strong> A toy vocabulary $\mathcal{V}$ of 3 elements: $\mathcal{V} = \{A, B, m \}$  and an example sequence of size 4: each element $x^i$ of the sequence belongs to $\mathcal{V}$: $x^1, x^2, x^3, x^4 \in \mathcal{V}$.
+    <strong>Figure <Counter label="fig:discrete-data-notation" />:</strong> A toy vocabulary $\mathcal{V}$ of 3 elements: $\mathcal{V} = \{A, B, m \}$  and an example sequence of length 4: each element $x^i$ of the sequence belongs to $\mathcal{V}$: $x^1, x^2, x^3, x^4 \in \mathcal{V}$.
   </figcaption>
 </figure>
 
 Elements of the vocabulary are called *tokens*. For example, for text data, tokens could be the letters: $\mathcal{V} = \{a, b, c, \dots, z \}$, while DNA sequences would correspond to $\mathcal{V}=\{A, T, C, G\}$.
-In the vocabulary, we add a special token: the mask token, denoted as $m$.
+In the vocabulary, a special token can be added, the *mask* token $m$.
 
 #### Discrete data generation process
 
-Like its continuous analog, discrete flow matching progressively transforms samples from a simple *source* probability distribution $p_0$ into samples from the *target* distribution $p_1$ (the one of the data we want to generate).
+*Discrete generative modelling on Sudoku*.
+The goal is to generate valid Sudoku grids, which are $9 \times 9$ grids filled with numbers from $1$ to $9$, such that each number appears exactly once in each row, column.
+The vocabulary is the set of numbers from $1$ to $9$: $\mathcal{V} = \{1, 2, \ldots, 9, m\}$, and the sequence length is number of squares to fill $S= 9 \times 9 = 81$.
+
+*Discrete diffusion/flow matching on Sudoku*.
+Discrete flow matching starts from a *fully masked grid*: each square is initially filled with the mask token $m$.
+The model then iteratively fills this grid with non-mask tokens $\{1, 2, \ldots, 9\}$. For example, one can iteratively *unmask* the grid one square after one square, and finally reach a filled Sudoku grid.
+
+QBE: todo do a sort of gif?
+
+<figure>
+  <SudokuFlowMatching client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:sudoku-sampling" />:</strong> Visualization of the sampling process for discrete flow matching: a fully masked Sudoku $9 \times9$ grid is transformed into a valid $9 \times9$ Sudoku grid.
+  </figcaption>
+</figure>
 
 
-The source distribution is typically chosen to be either:
-- The **mask distribution** ($p_0 = \delta_{m\ldots m}$): All tokens in the starting sequence are equal to the mask token $m$; $\delta$ is the Dirac delta distribution.
+[Section 2](#discrete-flow-matching) provides the details on to generate discrete data with discrete flow matching.
+
+### Discrete flow matching
+
+#### Transporting distributions
+
+Discrete flow matching iteratively transforms samples from a simple *source* probability distribution $p_0$ (e.g., $x_0 \sim p_0$ fully masked) into samples from the *target* distribution $p_1$, the data distribution we want to generate.
+The source distribution is typically chosen to be the **mask distribution** ($p_0 = \delta_{m\ldots m}$): all tokens in the starting sequence are equal to the mask token $m$; $\delta$ is the Dirac delta distribution.
+
+
 {/* With this choice, the model can always tell noisy (masked) tokens apart from clean ones, which also makes training simple: the model only needs to learn to fill in blanks, much like masked language modeling. The downside is that once a token is unmasked during sampling, it is never revisited, so the model cannot correct its own mistakes. */}
-- The **uniform distribution** ($p_0 = p_{\text{unif}}$): All tokens in the starting sequence are sampled uniformly across the vocabulary $\mathcal{V}$.
+
 {/* Here, a corrupted token looks just like any other token, so the model must learn both where the errors are and how to fix them, which makes training harder in practice. In exchange, any position can be revised at any point during sampling, so the model gets the ability to correct itself. */}
 
-For simplicity *we will use the mask distribution as running example*; adaptations in the case of other distributions are available as toggleable content.
+{/* For simplicity *we will use the mask distribution as running example*; adaptations in the case of other distributions are available as toggleable content. */}
 
+QBE: schema transport distributions?
+
+QBE: todo footnote uniform - The **uniform distribution** ($p_0 = p_{\text{unif}}$): All tokens in the starting sequence are sampled uniformly across the vocabulary $\mathcal{V}$.
+
+QBE: decide what to do with this figure. Not sure it is cristal clear.
 <figure>
   <DiscreteDataIntro client:load notation={false} />
   <figcaption>
@@ -560,26 +588,8 @@ For simplicity *we will use the mask distribution as running example*; adaptatio
   </figcaption>
 </figure>
 
-TODO qbe repasser
-*Example of generation on Sudoku*.
-As an example of how discrete flow matching generate discrete data, consider Sudoku grids. The vocabulary is $\mathcal{V} = \{1, 2, \ldots, 9, m\}$, and the sequence length is $S=81$, as there are 81 cases in a grid.
-Discrete flow matching starts from a fully masked grid.
-The model then iteratively fills this grid with non-mask tokens $\{1, 2, \ldots, 9\}$, step-by-step, finally reaching a sample from the target distribution (a valid, completed Sudoku board).
- {/* (the source distribution). */}
 
-<figure>
-  <SudokuFlowMatching client:load />
-  <figcaption>
-    <strong>Figure <Counter label="fig:sudoku-sampling" />:</strong> Visualization of the sampling process for discrete flow matching: a sample from the source distribution (a fully masked Sudoku grid) is transformed into a sample from the target distribution (a valid Sudoku grid).
-  </figcaption>
-</figure>
-
-[Section 2](#discrete-flow-matching) provides the details on to generate discrete data with discrete flow matching.
-{/* We now explain how discrete flow matching is able to achieve such generation. */}
-
-### Discrete flow matching
-
-#### Setup: probability velocities
+#### The flow matching generation process for discrete data
 
 {/* In this section we adopt the Flow Matching convention: time goes from $t=0$ (source) to $t=1$ (target): the source distribution is thus denoted $p_0$ while the target distribution is $p_1.$ */}
 
