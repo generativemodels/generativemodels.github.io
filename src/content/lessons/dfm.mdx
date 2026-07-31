@@ -566,7 +566,18 @@ QBE: todo do a sort of gif?
 
 #### Transporting distributions
 
-Discrete flow matching iteratively transforms samples from a simple *source* probability distribution $p_0$ (e.g., $x_0 \sim p_0$ fully masked) into samples from the *target* distribution $p_1$, the data distribution we want to generate.
+Discrete flow matching iteratively transforms fully masked samples/images into samples/images from the target distribution.
+At the distribution level, discrete flow matching can be seen as a *transport* of a simple *source* probability distribution $p_0$ (e.g., $x_0 \sim p_0$ fully masked) to a *target* distribution $p_1$, the data distribution we want to generate.
+
+QBE: introduce later?
+
+<figure>
+  <DiscreteDataIntro client:load notation={false} />
+  <figcaption>
+    <strong>Figure <Counter label="fig:discrete-data-setup" />:</strong> The transport from the source $p_0$ to the target $p_1$ shown as, for each position, the probability $p_t$ of drawing each token at time $t$ (white indicates probability zero, a fully colored cell probability one, and depth the position $s$ in the sequence), and/or as samples $\mathbf{x}_t \sim p_t$ (toogleable). $p_1$ is the distribution where token $B$ is not allowed to be placed before a $A$ in the sequence.
+  </figcaption>
+</figure>
+
 The source distribution is typically chosen to be the **mask distribution** ($p_0 = \delta_{m\ldots m}$): all tokens in the starting sequence are equal to the mask token $m$; $\delta$ is the Dirac delta distribution.
 
 
@@ -581,19 +592,16 @@ QBE: schema transport distributions?
 QBE: todo footnote uniform - The **uniform distribution** ($p_0 = p_{\text{unif}}$): All tokens in the starting sequence are sampled uniformly across the vocabulary $\mathcal{V}$.
 
 QBE: decide what to do with this figure. Not sure it is cristal clear.
-<figure>
-  <DiscreteDataIntro client:load notation={false} />
-  <figcaption>
-    <strong>Figure <Counter label="fig:discrete-data-setup" />:</strong> The transport from the source $p_0$ to the target $p_1$ shown as, for each position, the probability $p_t$ of drawing each token at time $t$ (white indicates probability zero, a fully colored cell probability one, and depth the position $s$ in the sequence), and/or as samples $\mathbf{x}_t \sim p_t$ (toogleable). $p_1$ is the distribution where token $B$ is not allowed to be placed before a $A$ in the sequence.
-  </figcaption>
-</figure>
 
 
-#### The flow matching generation process for discrete data
+#### Flow matching: from continuous-space discrete-space data
 
 {/* In this section we adopt the Flow Matching convention: time goes from $t=0$ (source) to $t=1$ (target): the source distribution is thus denoted $p_0$ while the target distribution is $p_1.$ */}
 
-In *continuous* flow matching, generated samples are obtained by solving the following Ordinary Differential Equation (ODE)
+##### Reminder on flow matching for continuous data
+
+See the [former blog post](https://dl.heeere.com/conditional-flow-matching/blog/conditional-flow-matching/) for a comprehensive explanation.
+In continuous-space flow matching, generated samples are obtained by solving the following Ordinary Differential Equation (ODE)
 $$
 \begin{equation}
   \label{eq:flow-ode}
@@ -605,9 +613,15 @@ $$
 $$
 which is driven by the so-called *velocity field* $u: \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d$.
 
+QBE todo rephrase. As solving an ODE on a discrete space is not possible, the generation process in discrete flow matching is different.
+
+##### From continuous-space to discrete-space
+
+QBE: comparison Algorithm Euler continuous vs discrete? + pixel vs sequence
+
+QBE: discussion "shape" of u
 {/* and if $p_t$ is defined as the law of the ODE solution $x(t)$ at time $t \in [0, 1]$ when $x_0 \sim p_0$, we say that $u$ generates the probability path $(p_t)_{t \in [0, 1]}$.<a href="#cfm-blog" class="dfm-note-ref"></a> */}
 
-As solving an ODE on a discrete space is not possible, the generation process in discrete flow matching is different.
 It is defined as
 $$
 \begin{equation}
