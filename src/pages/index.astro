@@ -5,134 +5,188 @@ import Header from '../components/Header.astro';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
 	const schedule = [
-	{ date: "Wed Sept 10th", description: "Cancelled", material: "TBD" },
-	{ date: "Thurs Sept 11th", description: "Overview, <a href='lessons/introduction'>introduction to generative models</a>, <a href='lessons/maximum_likelihood'>maximum likelihood</a>, Expectation Maximization", material: "TBD" },
-	{ date: "Wed Sept 17th", description: `
-	Back to GMM (<a href="https://dl.heeere.com/2025-genmod-02/">slides</a>, <a href="https://dl.heeere.com/2025-genmod-02.pdf">pdf</a>),
-	Bayesianism, variational inference, Variational autoencoders, (reparametrization trick)
-	`, material: "TBD" },
-	{ date: "Thurs Sept 18th", description: "Cancelled", material: "TBD" },
-	{ date: "Wed Sept 24th", description: "Conditional flow matching", material: "TBD" },
-	{ date: "Thur Sept 25th", description: "Lab 1 on conditional flow matching", material: "TBD" },
-	{ date: "Wed Oct 1st", description: "Generative Adversarial Networks", material: "TBD" },
-	{ date: "Thurs Oct 2nd", description: "Wasserstein Generative Adversarial Networks + Lab 2", material: "TBD" },
-	{ date: "Wed Oct 8th", description: "<a href='lessons/diffusion'>Diffusion Models</a>", material: `
+	{ date: "09/09", description: `<a href='lessons/introduction'>Introduction to generative models</a>, <a href='lessons/maximum_likelihood'>maximum likelihood</a>, Mixtures of Gaussian; <a href="https://dl.heeere.com/2025-genmod-02/">slides</a>, <a href="https://dl.heeere.com/2025-genmod-02.pdf">pdf</a>`, material: "" },
+	{ date: "10/09/", description: "Bayes, (Variational) Autoencoders", material: "" },
+	{ date: "16/09", description: `Lab 1 (AE, MoG)`, material: "" },
+	{ date: "17/09", description: "GAN/WGAN", material: "" },
+	{ date: "23/09", description: "Lab 2 (GAN)", material: "" },
+	{ date: "24/09", description: "Flow matching", material: "" },
+	{ date: "30/09", description: "Lab 3 (FM)", material: "" },
+	{ date: "01/10", description: "Diffusion I", material: "" },
+	{ date: "07/10", description: "<a href='lessons/diffusion'>Diffusion II</a>", material: `
 	<a href="https://neurips.cc/virtual/2024/invited-talk/101133">Arnaud Doucet invited talk at NeurIPS 2024</a>
 	`},
-	{ date: "Thurs Oct 9th", description: "Introduction to sequence modelling, tokenizer, autoregressive model, bigram", material: "TBD" },
-	{ date: "Wed Oct 15th", description: "Diffusion 2/2, link between diffusion and flow matching, intro to conditional generation", material: "TBD" },
-	{ date: "Thurs Oct 16th", description: "Evaluation of generative models, FID, precison, recall, density, conditional generation, CG CFG", material: "TBD" },
-	{ date: "Fri Oct 17th", description: "Project Feedback", material: "TBD" },
-	{ date: "Wed Oct 22nd", description: "Attention and Transformers + lab", material: "TBD" },
-	{ date: "Thurs Oct 23rd", description: "No lecture", material: "TBD" },
-	{ date: "Wed Nov 5th ", description: "Discrete Diffusion", material: "TBD" },
-	{ date: "Thur Nov 6th ", description: "Energy-based  models", material: "TBD" },
-	{ date: "Wed Nov 12th ", description: "Project Presentations 1/2", material: "TBD" },
-	{ date: "Thur Nov 13th ", description: "Project Presentations 2/2", material: "TBD" },
+	{ date: "08/10", description: "Model evaluation, Optimal transport", material: "" },
+	{ date: "14/10", description: "Discrete diffusion", material: "" },
+	{ date: "15/10", description: "Introduction to sequence modelling, tokenizer, autoregressive model, bigram", material: "" },
+	{ date: "21/10", description: "Attention and Transformers + Lab 4", material: "" },
+	{ date: "22/10", description: "Written exam", material: "" },
+	{ date: "11/11 ", description: "Project Presentations 1/2", material: "" },
+	{ date: "12/11 ", description: "Project Presentations 2/2", material: "" },
 	];
 ---
 
+
 <!doctype html>
 <html lang="en">
-	<head>
-		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
-	</head>
-	<body>
-		<Header />
+  <head>
+    <BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+  </head>
+
+  <body>
+    <Header />
+
+    <main>
+      <h1>Generative modelling</h1>
+
+      <p>
+        In the wake of models like DALL·E and ChatGPT, generative models have had
+        a massive impact on text and image applications. The goal of this class
+        is to present their mathematical and algorithmic foundations.
+      </p>
+
+     <!-- <figure>
+        <div class="hero-figure">
+          <iframe
+            class="hero-left"
+            src="../assets/intro/ot-flow-1d.html#loop9"
+            frameborder="0"
+            scrolling="no"
+          ></iframe>
+
+          <img
+            class="hero-center"
+            src="assets/intro/pbackground.svg"
+          />
+
+          <iframe
+            class="hero-right"
+            src="../../assets/intro/u-anim.html"
+            frameborder="0"
+            scrolling="no"
+          ></iframe>
+        </div>
+      </figure> -->
+
+      <h3>Teachers for 2026</h3>
+      <ul>
+        <li>Quentin Bertrand (CR Inria, MALICE team)</li>
+        <li>Ségolène Martin (CR Inria, OCKHAM team)</li>
+        <li>Mathurin Massias (CR Inria, OCKHAM team)</li>
+      </ul>
+	  For questions, write to all three teachers, using the pattern firstname.lastname@inria.fr.
+	  Many thanks to Rémi Emonet who taught the class in 2025 and created most of the current material.
+
+	  <br><br>
+
+      <h3>Validation</h3>
+      <ul>
+        <li>5 weekly quizzes on class questions + 3 Python labs.</li>
+		<li>2 h written exam at the end of the class (on 22/10/26)</li>
+        <li>
+          Paper presentation and extension of a selected research article and
+          the associated code. We expect an in-depth analysis..
+        </li>
+      </ul>
+
+      <h3>Prerequisites</h3>
+      <ul>
+        <li>Probability (densities, change of variable formula)</li>
+        <li>
+          Linear algebra (PSD matrices, eigenvalue decomposition, spectral
+          theorem)
+        </li>
+        <li>
+          Calculus (gradient, Hessian, Jacobian, chain rule, ordinary
+          differential equations)
+        </li>
+      </ul>
+	  A pdf recap is available <a href="https://mathurinm.github.io/assets/pdf/math_background.pdf">here</a>.
+	  <br><br>
 
 
-		<main>
-			<h2>Attempted Schedule</h2>
-			<table style="border-collapse: collapse; width: 100%;">
-			  <thead>
-				<tr style="background-color: #f3f4f6; color: #374151;">
-				  <th style="padding: 8px; text-align: left;">Date</th>
-				  <th style="padding: 8px; text-align: left;">Description</th>
-				  <th style="padding: 8px; text-align: left;">Material</th>
-				</tr>
-			  </thead>
-			  <tbody>
-				{schedule.map((item, index) => (
-				  <tr style={`background-color: ${index % 2 === 0 ? "#ffffff" : "#f9fafb"};`}>
-					<td style="padding: 8px;">{item.date}</td>
-					<td style="padding: 8px;">
-					  <div set:html={item.description}></div>
-					</td>
-					<td style="padding: 8px;">
-						<div set:html={item.material}></div>
-					</td>
-				  </tr>
-				))}
-			  </tbody>
-			</table>
-		  </main>
+      <h3>Tentative Schedule</h3>
 
-	<!-- <main>
-	<h2>Attempted Schedule</h2>
-	<table style="border-collapse: collapse; width: 100%;">
-		<thead>
-		<tr style="background-color: #f3f4f6; color: #374151;">
-			<th style="padding: 8px; text-align: left;">Date</th>
-			<th style="padding: 8px; text-align: left;">Description</th>
-			<th style="padding: 8px; text-align: left;">Material</th>
-		</tr>
-		</thead>
-		<tbody>
-		{schedule.map((item, index) => (
-			<tr style={`background-color: ${index % 2 === 0 ? "#ffffff" : "#f9fafb"};`}>
-			<td style="padding: 8px;">{item.date}</td>
-			<td style="padding: 8px;" dangerouslySetInnerHTML={{ __html: item.description }}></td>
-			<td style="padding: 8px;">{item.material}</td>
-			</tr>
-		))}
-		</tbody>
-	</table>
-	</main> -->
+      <table style="border-collapse: collapse; width: 100%;">
+        <colgroup>
+          <col style="width: 90px;" />
+          <col />
+          <col style="width: 25%;" />
+        </colgroup>
 
-		<!-- <main>
-			<h2>Attempted Schedule </h2>
-			<table style="border-collapse: collapse; width: 100%;">
-			  <thead>
-				<tr style="background-color: #f3f4f6; color: #374151;">
-				  <th style="padding: 8px; text-align: left;">Date</th>
-				  <th style="padding: 8px; text-align: left;">Description</th>
-				  <th style="padding: 8px; text-align: left;">Material</th>
-				</tr>
-			  </thead>
-			  <tbody>
-				<tr style="background-color: #ffffff;">
-				  <td style="padding: 8px;">Wed Sept 10</td>
-				  <td style="padding: 8px;">Cancelled</td>
-				  <td style="padding: 8px;">TBD</td>
-				</tr>
-				<tr style="background-color: #ffffff;">
-				  <td style="padding: 8px;">Thurs Sept 11</td>
-				  <td style="padding: 8px;">Overview, <a href="lessons/introduction"> introduction to generative models </a>, <a href="lessons/maximum_likelihood"> maximum likelihood </a>, Expectation Maximization</td>
-				  <td style="padding: 8px;">TBD</td>
-				</tr>
-				<tr style="background-color: #f9fafb;">
-				  <td style="padding: 8px;">Wed Sept 17</td>
-				  <td style="padding: 8px;">Variational autoencoders, variational inference, reparametrization trick</td>
-				  <td style="padding: 8px;">TBD</td>
-				</tr>
-				<tr style="background-color: #ffffff;">
-				  <td style="padding: 8px;">Thurs Sept 18</td>
-				  <td style="padding: 8px;">GANs, Wasserstein GANs and gradient penalty</td>
-				  <td style="padding: 8px;">TBD</td>
-				</tr>
-				<tr style="background-color: #ffffff;">
-				  <td style="padding: 8px;">Wed Sept 24</td>
-				  <td style="padding: 8px;">Lab 2, WGANs</td>
-				  <td style="padding: 8px;">TBD</td>
-				</tr>
-				<tr style="background-color: #ffffff;">
-				  <td style="padding: 8px;">Thur Sept 25</td>
-				  <td style="padding: 8px;">Normalizing Flows</td>
-				  <td style="padding: 8px;">TBD</td>
-				</tr>
-			  </tbody>
-			</table>
-		  </main> -->
-		<Footer />
-	</body>
+        <thead>
+          <tr style="background-color:#f3f4f6;color:#374151;">
+            <th style="padding:8px;text-align:left;">Date</th>
+            <th style="padding:8px;text-align:left;">Description</th>
+            <th style="padding:8px;text-align:left;">Material</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {schedule.map((item, index) => (
+            <tr
+              style={`background-color:${
+                index % 2 === 0 ? "#ffffff" : "#f9fafb"
+              };`}
+            >
+              <td style="padding:8px; white-space:nowrap;">
+                {item.date}
+              </td>
+
+              <td style="padding:8px;">
+                <div set:html={item.description} />
+              </td>
+
+              <td style="padding:8px;">
+                <div set:html={item.material} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </main>
+
+    <Footer />
+  </body>
 </html>
+
+<style>
+  .hero-figure {
+    --ar: calc(218 / 161);
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .hero-left {
+    aspect-ratio: 1;
+    width: calc(100% / (1 + 2 * var(--ar)));
+    border: none;
+  }
+
+  .hero-center {
+    vertical-align: top;
+    width: calc(100% * var(--ar) / (1 + 2 * var(--ar)));
+  }
+
+  .hero-right {
+    aspect-ratio: var(--ar);
+    width: calc(100% * var(--ar) / (1 + 2 * var(--ar)));
+    margin: 0 -5px;
+    border: none;
+  }
+
+  table {
+    margin-top: 1rem;
+  }
+
+  th,
+  td {
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: top;
+  }
+
+  h2 {
+    margin-top: 2rem;
+  }
+</style>
