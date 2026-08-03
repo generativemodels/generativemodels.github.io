@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Mi, Mb, MATH_ITALIC } from "./mathType.jsx";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { Mi, MATH_ITALIC } from "./mathType.jsx";
 
 // ── Seeded PRNG (mulberry32) ──────────────────────────────────────────
 function makePrng(seed) {
@@ -54,14 +54,19 @@ function generateSolvedGrid(seed) {
   return grid;
 }
 
-// ── Build reveal thresholds via seeded shuffle ────────────────────────
-function buildThresholds(seed) {
-  const rng = makePrng(seed ^ 0xdeadbeef);
+// ── Reveal thresholds ─────────────────────────────────────────────────
+// Diffusion unmasks the 81 cells in a random order, autoregressive fills them
+// left to right, top to bottom: the same 81 steps, only the order differs.
+function buildThresholds(seed, order) {
   const positions = [];
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
-      positions.push({ r, c, key: rng() });
-  positions.sort((a, b) => a.key - b.key);
+      positions.push({ r, c });
+  if (order === "diffusion") {
+    const rng = makePrng(seed ^ 0xdeadbeef);
+    positions.forEach((p) => { p.key = rng(); });
+    positions.sort((a, b) => a.key - b.key);
+  }
   const thresholds = new Map();
   positions.forEach(({ r, c }, i) => {
     thresholds.set(`${r}-${c}`, (i + 1) / 81);
@@ -80,31 +85,106 @@ function getGrid(t, solvedBoard, thresholds) {
 }
 
 const CELL = 42;
-const GAP = 2;
-const BOX_GAP = 5;
 
-function getPos(r, c) {
-  const x = Math.floor(c / 3) * (CELL * 3 + GAP * 2 + BOX_GAP) + (c % 3) * (CELL + GAP);
-  const y = Math.floor(r / 3) * (CELL * 3 + GAP * 2 + BOX_GAP) + (r % 3) * (CELL + GAP);
-  return { x, y };
+// Cell/gap geometry, scaled from the cell size so the side-by-side gif mode
+// can shrink both grids and keep the 3x3 boxes readable.
+function geometry(cell) {
+  const gap = Math.max(1, Math.round((cell * 2) / 42));
+  const boxGap = Math.max(3, Math.round((cell * 5) / 42));
+  return { cell, gap, boxGap, size: cell * 9 + gap * 6 + boxGap * 2 };
 }
 
-const GRID_SIZE = CELL * 9 + GAP * 6 + BOX_GAP * 2;
+function SudokuGrid({ grid, cell = CELL }) {
+  const { gap, boxGap, size } = geometry(cell);
+  const block = cell * 3 + gap * 2 + boxGap;
+  const pos = (r, c) => ({
+    x: Math.floor(c / 3) * block + (c % 3) * (cell + gap),
+    y: Math.floor(r / 3) * block + (r % 3) * (cell + gap),
+  });
+
+  return (
+    <div style={{
+      position: "relative", width: size, height: size,
+      borderRadius: 12, overflow: "hidden",
+      boxShadow: "0 0 0 1px rgba(167,139,250,0.1), 0 18px 52px rgba(0,0,0,0.34)",
+    }}>
+      <svg width={size} height={size} style={{ position: "absolute", top: 0, left: 0 }}>
+        {[0, 1, 2].map(br => [0, 1, 2].map(bc => (
+          <rect key={`${br}-${bc}`} x={bc * block} y={br * block}
+            width={cell * 3 + gap * 2} height={cell * 3 + gap * 2}
+            rx={7} fill="none" stroke="rgba(167,139,250,0.07)" strokeWidth={1.5} />
+        )))}
+      </svg>
+
+      {grid.map((row, r) => row.map((c_, c) => {
+        const { x, y } = pos(r, c);
+        const isMasked = c_.state === "masked";
+        return (
+          <div key={`${r}-${c}`} style={{
+            position: "absolute", left: x, top: y, width: cell, height: cell,
+            borderRadius: Math.max(3, cell / 8),
+            background: isMasked ? "rgba(0,0,0,0.6)" : "rgba(125,239,160,0.1)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: isMasked ? MATH_ITALIC : "'KaTeX_Main', 'STIX Two Math', serif",
+            fontStyle: isMasked ? "italic" : "normal",
+            fontSize: (isMasked ? 16 : 18) * (cell / CELL),
+            fontWeight: 500,
+            color: isMasked ? "rgba(130,180,255,0.55)" : "#7defa0",
+            transition: "all 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
+            boxShadow: isMasked ? "none" : `inset 0 0 16px rgba(125,239,160,0.08)`,
+          }}>
+            {isMasked ? "m" : c_.value}
+          </div>
+        );
+      }))}
+    </div>
+  );
+}
+
+function Stats({ grid, compact = false }) {
+  const masked = grid.flat().filter(c => c.state === "masked").length;
+  const revealed = 81 - masked;
+  return (
+    <div style={{ display: "flex", gap: compact ? 16 : 26, justifyContent: "center" }}>
+      {[
+        { label: "Masked", value: masked, color: "#82b4ff" },
+        { label: "Generated", value: revealed, color: "#7defa0" },
+        ...(compact ? [] : [{ label: "Total", value: 81, color: "rgba(255,255,255,0.4)" }]),
+      ].map(s => (
+        <div key={s.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+          <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: compact ? 16.5 : 20.7, fontWeight: 600, color: s.color }}>{s.value}</span>
+          <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 10.3, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{s.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// gif mode: one full sweep t: 0 -> 1, then a pause on the finished grid, loop.
+const GIF_SWEEP_MS = 9000;
+const GIF_HOLD_MS = 1800;
 
 export default function App() {
-  const [activeSeed, setActiveSeed] = useState(42);
   const [inputSeed, setInputSeed] = useState("42");
   const [solvedBoard, setSolvedBoard] = useState(() => generateSolvedGrid(42));
-  const [thresholds, setThresholds] = useState(() => buildThresholds(42));
+  const [seed, setSeed] = useState(42);
+  const [mode, setMode] = useState("diffusion"); // "diffusion" | "ar"
+  const [gif, setGif] = useState(true);
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
   const tRef = useRef(t);
   const animRef = useRef(null);
 
+  const thresholds = useMemo(() => ({
+    diffusion: buildThresholds(seed, "diffusion"),
+    ar: buildThresholds(seed, "ar"),
+  }), [seed]);
+
   useEffect(() => { tRef.current = t; }, [t]);
 
+  // Manual play/pause (single-grid mode)
   useEffect(() => {
-    if (!playing) { if (animRef.current) cancelAnimationFrame(animRef.current); return; }
+    if (gif || !playing) { if (animRef.current) cancelAnimationFrame(animRef.current); return; }
     let last = performance.now();
     const tick = (now) => {
       const next = tRef.current + (now - last) / 1000 * 0.11;
@@ -115,41 +195,54 @@ export default function App() {
     };
     animRef.current = requestAnimationFrame(tick);
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  }, [playing]);
+  }, [playing, gif]);
 
-  // Button: pick a fresh random seed in [1, 1000]
-  const handleGenerate = useCallback(() => {
-    const s = Math.floor(Math.random() * 1000) + 1;
+  // gif mode: looping sweep, no controls
+  useEffect(() => {
+    if (!gif) return undefined;
+    setPlaying(false);
+    let raf = null;
+    let start = null;
+    const period = GIF_SWEEP_MS + GIF_HOLD_MS;
+    const step = (now) => {
+      if (start == null) start = now;
+      const e = (now - start) % period;
+      setT(e < GIF_SWEEP_MS ? e / GIF_SWEEP_MS : 1);
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [gif]);
+
+  const applySeed = useCallback((s) => {
     setInputSeed(String(s));
-    setActiveSeed(s);
+    setSeed(s);
     setSolvedBoard(generateSolvedGrid(s));
-    setThresholds(buildThresholds(s));
     setT(0);
     setPlaying(false);
     if (animRef.current) cancelAnimationFrame(animRef.current);
   }, []);
 
-  // Enter key on input: apply the typed seed
+  const handleGenerate = useCallback(() => {
+    applySeed(Math.floor(Math.random() * 1000) + 1);
+  }, [applySeed]);
+
   const handleApplyInputSeed = useCallback(() => {
     const parsed = parseInt(inputSeed, 10);
-    const s = isNaN(parsed) ? 42 : parsed;
-    setInputSeed(String(s));
-    setActiveSeed(s);
-    setSolvedBoard(generateSolvedGrid(s));
-    setThresholds(buildThresholds(s));
-    setT(0);
-    setPlaying(false);
-    if (animRef.current) cancelAnimationFrame(animRef.current);
-  }, [inputSeed]);
+    applySeed(isNaN(parsed) ? 42 : parsed);
+  }, [inputSeed, applySeed]);
 
-  const grid = getGrid(t, solvedBoard, thresholds);
-  const masked = grid.flat().filter(c => c.state === "masked").length;
-  const revealed = grid.flat().filter(c => c.state === "revealed").length;
-  const total = 81;
+  const grid = getGrid(t, solvedBoard, thresholds[mode]);
 
-  const label = t === 0 ? "x\u2080  \u2014 fully masked"
-    : t >= 0.995 ? "x\u2081  \u2014 generated grid"
-      : `x\u209C  \u2014 t = ${t.toFixed(2)}`;
+  const label = t === 0 ? "x₀ : fully masked"
+    : t >= 0.995 ? "x₁ : generated grid"
+      : `xₜ : t = ${t.toFixed(2)}`;
+
+  const title = gif
+    ? "Generating a Sudoku grid"
+    : mode === "diffusion"
+      ? "Discrete Flow Matching on Sudoku"
+      : "Autoregressive generation on Sudoku";
 
   return (
     <div style={{
@@ -163,164 +256,145 @@ export default function App() {
       gap: 14,
       borderRadius: 16,
     }}>
-      {/* Title */}
-      <div style={{ textAlign: "center", maxWidth: 520 }}>
-        <h1 style={{
-          fontSize: 23, fontWeight: 700, margin: 0, letterSpacing: "-0.02em",
-          background: "linear-gradient(135deg, #82b4ff, #a78bfa, #7defa0)",
-          WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-        }}>Discrete Flow Matching on Sudoku</h1>
-        <p style={{
-          fontSize: 14.5, color: "rgba(255,255,255,0.5)", marginTop: 6, lineHeight: 1.5,
-          fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
-        }}>
-          Transporting <span style={{ color: "#82b4ff" }}><Mb>x</Mb>{"\u2080"}</span> (fully masked)
-          {" \u2192 "}<span style={{ color: "#a78bfa" }}><Mb>x</Mb>{"\u209C"}</span> (intermediate at <Mi>t</Mi>)
-          {" \u2192 "}<span style={{ color: "#7defa0" }}><Mb>x</Mb>{"\u2081"}</span> (generated grid)
-        </p>
-      </div>
+      <style>{css}</style>
 
-      {/* Seed controls */}
+      <h1 style={{
+        fontSize: 23, fontWeight: 700, margin: 0, letterSpacing: "-0.02em", textAlign: "center",
+        background: "linear-gradient(135deg, #82b4ff, #a78bfa, #7defa0)",
+        WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+      }}>{title}</h1>
+
+      {/* Controls: mode, view and seed all on one row, to save vertical space */}
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
-        <span style={{
-          fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 11.5,
-          color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.1em",
-        }}>Seed</span>
-        <input
-          type="number"
-          value={inputSeed}
-          onChange={e => setInputSeed(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && handleApplyInputSeed()}
-          style={{
-            width: 64, padding: "5px 8px",
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(167,139,250,0.2)",
-            borderRadius: 8,
-            color: "#a78bfa",
-            fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
-            fontSize: 13.8,
-            outline: "none",
-          }}
-        />
-        <button
-          onClick={handleGenerate}
-          style={{
-            padding: "6px 12px",
-            background: "rgba(167,139,250,0.12)",
-            border: "1.5px solid rgba(167,139,250,0.25)",
-            borderRadius: 8,
-            color: "#a78bfa",
-            fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
-            fontSize: 13.8,
-            fontWeight: 500,
-            cursor: "pointer",
-          }}
-        >
-          Generate new grid
-        </button>
-      </div>
-
-      {/* Grid label */}
-      <div style={{
-        fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 14.5,
-        color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em",
-      }}>{label}</div>
-
-      {/* Sudoku Grid */}
-      <div style={{
-        position: "relative", width: GRID_SIZE, height: GRID_SIZE,
-        borderRadius: 12, overflow: "hidden",
-        boxShadow: "0 0 0 1px rgba(167,139,250,0.1), 0 18px 52px rgba(0,0,0,0.34)",
-      }}>
-        <svg width={GRID_SIZE} height={GRID_SIZE} style={{ position: "absolute", top: 0, left: 0 }}>
-          {[0, 1, 2].map(br => [0, 1, 2].map(bc => {
-            const x = bc * (CELL * 3 + GAP * 2 + BOX_GAP);
-            const y = br * (CELL * 3 + GAP * 2 + BOX_GAP);
-            return <rect key={`${br}-${bc}`} x={x} y={y}
-              width={CELL * 3 + GAP * 2} height={CELL * 3 + GAP * 2}
-              rx={7} fill="none" stroke="rgba(167,139,250,0.07)" strokeWidth={1.5} />;
-          }))}
-        </svg>
-
-        {grid.map((row, r) => row.map((cell, c) => {
-          const { x, y } = getPos(r, c);
-          const isMasked = cell.state === "masked";
-          const isRevealed = cell.state === "revealed";
-
-          return (
-            <div key={`${r}-${c}`} style={{
-              position: "absolute", left: x, top: y, width: CELL, height: CELL,
-              borderRadius: 5,
-              background: isMasked ? "rgba(0,0,0,0.6)" : "rgba(125,239,160,0.1)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontFamily: isMasked ? MATH_ITALIC : "'KaTeX_Main', 'STIX Two Math', serif",
-              fontStyle: isMasked ? "italic" : "normal",
-              fontSize: isMasked ? 16 : 18,
-              fontWeight: 500,
-              color: isMasked ? "rgba(130,180,255,0.55)" : "#7defa0",
-              transition: "all 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
-              boxShadow: isRevealed ? "inset 0 0 16px rgba(125,239,160,0.08)" : "none",
-            }}>
-              {isMasked ? "m" : cell.value}
-            </div>
-          );
-        }))}
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: "flex", gap: 26, justifyContent: "center" }}>
-        {[
-          { label: "Masked", value: masked, color: "#82b4ff" },
-          { label: "Generated", value: revealed, color: "#7defa0" },
-          { label: "Total", value: total, color: "rgba(255,255,255,0.4)" },
-        ].map(s => (
-          <div key={s.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-            <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 20.7, fontWeight: 600, color: s.color }}>{s.value}</span>
-            <span style={{ fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 10.3, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{s.label}</span>
+        {!gif && (
+          <div className="sfm-toggle-group">
+            <button
+              className={`sfm-toggle-btn${mode === "diffusion" ? " active" : ""}`}
+              onClick={() => setMode("diffusion")}
+            >
+              Diffusion
+            </button>
+            <button
+              className={`sfm-toggle-btn${mode === "ar" ? " active" : ""}`}
+              onClick={() => setMode("ar")}
+            >
+              Autoregressive
+            </button>
           </div>
-        ))}
-      </div>
-
-      {/* Slider */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", maxWidth: 440 }}>
-        <button onClick={() => {
-          if (t >= 0.995) setT(0);
-          setPlaying(p => !p);
-        }} style={{
-          width: 34, height: 34, borderRadius: "50%",
-          border: "1.5px solid rgba(167,139,250,0.25)",
-          background: playing ? "rgba(167,139,250,0.12)" : "rgba(255,255,255,0.03)",
-          color: "#a78bfa", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14.9,
-          flexShrink: 0,
-        }}>{playing ? "\u275A\u275A" : "\u25B6"}</button>
-
-        <div style={{ flex: 1, position: "relative", height: 36, display: "flex", alignItems: "center" }}>
-          <div style={{ width: "100%", height: 3, borderRadius: 2, background: "rgba(255,255,255,0.07)", position: "relative" }}>
-            <div style={{
-              position: "absolute", left: 0, top: 0, height: "100%",
-              width: `${t * 100}%`, borderRadius: 2,
-              background: "linear-gradient(90deg, #82b4ff, #a78bfa, #7defa0)",
-              transition: playing ? "none" : "width 0.15s ease",
-            }} />
-          </div>
-          <input type="range" min={0} max={1} step={0.005} value={t}
-            onChange={e => { setT(parseFloat(e.target.value)); setPlaying(false); }}
-            style={{ position: "absolute", width: "100%", height: 36, opacity: 0, cursor: "pointer", margin: 0 }}
-          />
-          <div style={{
-            position: "absolute", left: `calc(${t * 100}% - 8px)`, top: "50%", transform: "translateY(-50%)",
-            width: 16, height: 16, borderRadius: "50%", background: "#a78bfa",
-            boxShadow: "0 0 14px rgba(167,139,250,0.4)", pointerEvents: "none",
-            transition: playing ? "none" : "left 0.15s ease",
-          }} />
+        )}
+        <div className="sfm-toggle-group">
+          <button
+            className={`sfm-toggle-btn${gif ? " active" : ""}`}
+            onClick={() => { setGif(g => !g); setT(0); }}
+          >
+            GIF mode
+          </button>
         </div>
-
-        <span style={{
-          fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 13.8, color: "#a78bfa",
-          minWidth: 46, textAlign: "right", fontWeight: 500,
-        }}><Mi>t</Mi>={t.toFixed(2)}</span>
+        {!gif && (
+          <>
+            <span style={{
+              fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 11.5,
+              color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.1em",
+            }}>Seed</span>
+            <input
+              type="number"
+              value={inputSeed}
+              onChange={e => setInputSeed(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleApplyInputSeed()}
+              style={{
+                width: 64, padding: "5px 8px",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(167,139,250,0.2)",
+                borderRadius: 8,
+                color: "#a78bfa",
+                fontFamily: "'KaTeX_Main', 'STIX Two Math', serif",
+                fontSize: 13.8,
+                outline: "none",
+              }}
+            />
+          </>
+        )}
+        <button className="sfm-btn" onClick={handleGenerate}>Generate new grid</button>
       </div>
+
+      {gif ? (
+        <>
+          <div style={{
+            fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 14.5,
+            color: "#a78bfa", letterSpacing: "0.06em",
+          }}>
+            <Mi>t</Mi> = {t.toFixed(2)}
+          </div>
+          <div className="sfm-gif-row">
+            {[
+              { key: "diffusion", name: "Diffusion", sub: "random order" },
+              { key: "ar", name: "Autoregressive", sub: "left to right" },
+            ].map(({ key, name, sub }) => {
+              const g = getGrid(t, solvedBoard, thresholds[key]);
+              return (
+                <div key={key} className="sfm-gif-panel">
+                  <div className="sfm-gif-title">{name}</div>
+                  <div className="sfm-gif-sub">{sub}</div>
+                  <SudokuGrid grid={g} cell={28} />
+                  <Stats grid={g} compact />
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{
+            fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 14.5,
+            color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em",
+          }}>{label}</div>
+
+          <SudokuGrid grid={grid} />
+
+          <Stats grid={grid} />
+
+          {/* Slider */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", maxWidth: 440 }}>
+            <button onClick={() => {
+              if (t >= 0.995) setT(0);
+              setPlaying(p => !p);
+            }} style={{
+              width: 34, height: 34, borderRadius: "50%",
+              border: "1.5px solid rgba(167,139,250,0.25)",
+              background: playing ? "rgba(167,139,250,0.12)" : "rgba(255,255,255,0.03)",
+              color: "#a78bfa", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14.9,
+              flexShrink: 0,
+            }}>{playing ? "❚❚" : "▶"}</button>
+
+            <div style={{ flex: 1, position: "relative", height: 36, display: "flex", alignItems: "center" }}>
+              <div style={{ width: "100%", height: 3, borderRadius: 2, background: "rgba(255,255,255,0.07)", position: "relative" }}>
+                <div style={{
+                  position: "absolute", left: 0, top: 0, height: "100%",
+                  width: `${t * 100}%`, borderRadius: 2,
+                  background: "linear-gradient(90deg, #82b4ff, #a78bfa, #7defa0)",
+                  transition: playing ? "none" : "width 0.15s ease",
+                }} />
+              </div>
+              <input type="range" min={0} max={1} step={0.005} value={t}
+                onChange={e => { setT(parseFloat(e.target.value)); setPlaying(false); }}
+                style={{ position: "absolute", width: "100%", height: 36, opacity: 0, cursor: "pointer", margin: 0 }}
+              />
+              <div style={{
+                position: "absolute", left: `calc(${t * 100}% - 8px)`, top: "50%", transform: "translateY(-50%)",
+                width: 16, height: 16, borderRadius: "50%", background: "#a78bfa",
+                boxShadow: "0 0 14px rgba(167,139,250,0.4)", pointerEvents: "none",
+                transition: playing ? "none" : "left 0.15s ease",
+              }} />
+            </div>
+
+            <span style={{
+              fontFamily: "'KaTeX_Main', 'STIX Two Math', serif", fontSize: 13.8, color: "#a78bfa",
+              minWidth: 46, textAlign: "right", fontWeight: 500,
+            }}><Mi>t</Mi>={t.toFixed(2)}</span>
+          </div>
+        </>
+      )}
 
       {/* Legend */}
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
@@ -337,3 +411,68 @@ export default function App() {
     </div>
   );
 }
+
+const css = `
+.sfm-toggle-group {
+  display: inline-flex;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.sfm-toggle-btn {
+  padding: 6px 14px;
+  border: none;
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.4);
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 14.9px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.sfm-toggle-btn:not(:last-child) {
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+.sfm-toggle-btn.active {
+  background: rgba(167,139,250,0.18);
+  color: #a78bfa;
+  font-weight: 600;
+}
+.sfm-btn {
+  padding: 6px 12px;
+  background: rgba(167,139,250,0.12);
+  border: 1.5px solid rgba(167,139,250,0.25);
+  border-radius: 8px;
+  color: #a78bfa;
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 13.8px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.sfm-gif-row {
+  display: flex;
+  gap: 26px;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.sfm-gif-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.sfm-gif-title {
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 15.5px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.82);
+}
+.sfm-gif-sub {
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 11.5px;
+  color: rgba(255,255,255,0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: -6px;
+}
+`;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { Mi, Mb, Mc, svgMath, svgCal, cal } from "./mathType.jsx";
+import { Mi, Mb, Mc, svgMath, cal } from "./mathType.jsx";
 
 // ── Setup: small vocabulary and short sequences ─────────────────────
 const VOCAB = ["A", "B"]; // "real" tokens; the mask token m is added on top
@@ -14,17 +14,6 @@ function tokenColor(token) {
   return `lch(30% 100 ${(20 + index * 360) / VOCAB.length})`;
 }
 
-// RGB approximations of the lch colors above, for the 3D cube shading math.
-const TOKEN_RGB = {
-  A: [142, 14, 47], // ~ lch(30% 100 10)
-  B: [0, 78, 76], // ~ lch(30% 100 190)
-  [MASK]: [85, 85, 85],
-};
-const mixWhite = (rgb, p) => rgb.map((c) => Math.round(255 * (1 - p) + c * p));
-const lighten = (rgb, a) => rgb.map((c) => Math.round(c * (1 - a) + 255 * a));
-const darken = (rgb, a) => rgb.map((c) => Math.round(c * (1 - a)));
-const rgbStr = (rgb) => `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
-
 // ── Seeded RNG (mulberry32) ─────────────────────────────────────────
 function makeRng(seed) {
   let s = seed | 0;
@@ -38,13 +27,7 @@ function makeRng(seed) {
 
 // Toy structured target distribution p_data: "sorted" sequences A^j B^(S-j),
 // j uniform in {0,...,S} — all the A's come before the B's. Visibly structured
-// next to the uniform samples, with non-uniform per-position marginals:
-// P(x^s = A) = (S + 1 - s) / (S + 1).
-const PDATA_A_MARGINAL = Array.from(
-  { length: S },
-  (_, s) => (S - s) / (S + 1),
-);
-
+// next to the uniform samples.
 function dataSequence(j) {
   return Array.from({ length: S }, (_, i) => (i < j ? "A" : "B"));
 }
@@ -57,23 +40,54 @@ function sampleUniform(rand) {
   return Array.from({ length: S }, () => VOCAB[Math.floor(rand() * VOCAB.length)]);
 }
 
-// Per-position marginals over {A, B, m} along the path p_t = (1-t) p_0 + t p_data.
-function sourceMarginal(source) {
-  return source === "mask" ? { A: 0, B: 0, [MASK]: 1 } : { A: 0.5, B: 0.5, [MASK]: 0 };
-}
-function dataMarginals() {
-  return PDATA_A_MARGINAL.map((pa) => ({ A: pa, B: 1 - pa, [MASK]: 0 }));
-}
-function ptMarginals(t, source) {
-  const p0 = sourceMarginal(source);
-  return PDATA_A_MARGINAL.map((pa) => ({
-    A: (1 - t) * p0.A + t * pa,
-    B: (1 - t) * p0.B + t * (1 - pa),
-    [MASK]: (1 - t) * p0[MASK],
-  }));
-}
-
 const ALL_TOKENS = [...VOCAB, MASK];
+
+// ── The state space S = V^S, ordered for plotting ───────────────────
+// Sequences are laid out left to right by increasing number of mask tokens,
+// so the fully masked sequence m…m (the source Dirac) sits at the far right
+// and the clean sequences occupy the left of the axis.
+const STATES = (() => {
+  const out = [];
+  const build = (prefix) => {
+    if (prefix.length === S) return void out.push(prefix);
+    for (const v of ALL_TOKENS) build([...prefix, v]);
+  };
+  build([]);
+  const rank = (x) => x.map((v) => ALL_TOKENS.indexOf(v)).join("");
+  return out
+    .map((x) => ({ x, masks: x.filter((v) => v === MASK).length, rank: rank(x) }))
+    .sort((a, b) => a.masks - b.masks || a.rank.localeCompare(b.rank))
+    .map((o) => o.x);
+})();
+
+const DATA_SEQS = Array.from({ length: S + 1 }, (_, j) => dataSequence(j));
+
+// p_t over the whole state space, exact for the conditional path
+//   q_t(x^i | x_0, x_1) = t·1(x^i = x_1^i) + (1-t)·1(x^i = x_0^i),
+// marginalized over x_1 ~ p_data and x_0 ~ p_0 (both factorize per position).
+function stateProbs(t, source) {
+  const w = 1 / DATA_SEQS.length;
+  const off = source === "mask" ? 0 : (1 - t) / VOCAB.length;
+  return STATES.map((x) => {
+    let p = 0;
+    for (const x1 of DATA_SEQS) {
+      let q = 1;
+      for (let i = 0; i < S; i++) {
+        const isMask = x[i] === MASK;
+        // weight of token x[i] at position i under q_t(· | x_0, x_1)
+        const f = (x[i] === x1[i] ? t : 0) +
+          (source === "mask" ? (isMask ? 1 - t : 0) : (isMask ? 0 : off));
+        if (f === 0) {
+          q = 0;
+          break;
+        }
+        q *= f;
+      }
+      p += w * q;
+    }
+    return p;
+  });
+}
 
 // ── Token block (1D view) ───────────────────────────────────────────
 function Block({ token, size = 34 }) {
@@ -121,88 +135,21 @@ function OneHotCell({ on, token, size = 24 }) {
 
 
 
-// ── Isometric cube (3D view), ported from dfm-live-figure SVGCube.vue ──
-const CUBE = 30; // front face size
-const DEPTH = 15; // depth offset per sequence position
+// ── Distribution over the state space S = V^S ───────────────────────
+// Each sequence gets one bar; bar heights use a square-root scale so that the
+// source Dirac (mass 1) and the spread-out p_t (mass ~1/50 per state) are
+// legible on the same axis. The vertical axis is deliberately unlabelled: only
+// the shape and the ordering of the masses carry meaning here.
+const PANEL_W = 176;
+const PANEL_H = 92;
+const PANEL_GAP = 36;
+const ARC_H = 54; // band above the panels reserved for the p_0 -> p_1 arrow
+const VIEW_W = 3 * PANEL_W + 2 * PANEL_GAP;
+const BASE_Y = ARC_H + PANEL_H;
+const panelX = (i) => i * (PANEL_W + PANEL_GAP);
 
-function Cube({ x = 0, y = 0, z = 0, rgb, label, opacity = 1 }) {
-  const tx = x * CUBE + z * DEPTH;
-  const ty = y * CUBE - z * DEPTH;
-  return (
-    <g transform={`translate(${tx},${ty})`} opacity={opacity}>
-      <polygon
-        points={`0,0 ${DEPTH},${-DEPTH} ${CUBE + DEPTH},${-DEPTH} ${CUBE},0`}
-        fill={rgbStr(lighten(rgb, 0.18))}
-        stroke="rgba(0,0,0,0.5)"
-        strokeWidth="0.6"
-      />
-      <rect
-        width={CUBE}
-        height={CUBE}
-        fill={rgbStr(rgb)}
-        stroke="rgba(0,0,0,0.5)"
-        strokeWidth="0.6"
-      />
-      <polygon
-        points={`${CUBE},0 ${CUBE + DEPTH},${-DEPTH} ${CUBE + DEPTH},${CUBE - DEPTH} ${CUBE},${CUBE}`}
-        fill={rgbStr(darken(rgb, 0.2))}
-        stroke="rgba(0,0,0,0.5)"
-        strokeWidth="0.6"
-      />
-      {label && (
-        <text
-          x={CUBE / 2}
-          y={CUBE / 2}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fill="white"
-          fontSize={CUBE * 0.575}
-          fontFamily="'KaTeX_Math', 'STIX Two Math', serif"
-          fontStyle="italic"
-          fontWeight="600"
-        >
-          {label}
-        </text>
-      )}
-    </g>
-  );
-}
-
-// One probability table: |V|+1 rows (A on top, then B, then m), S depth slices.
-// probs[s][token] is the marginal probability of `token` at position s+1.
-const ROW_ORDER = ["A", "B", MASK];
-
-function ProbTable({ probs, x = 0, opacity = 1, highlight = false }) {
-  const cubes = [];
-  // painter's algorithm: draw back slices (large z) first, and within a slice
-  // bottom rows first, so upper cubes' front faces cover lower cubes' top faces
-  for (let z = S - 1; z >= 0; z--) {
-    for (let row = ROW_ORDER.length - 1; row >= 0; row--) {
-      const tok = ROW_ORDER[row];
-      const p = probs[z][tok];
-      cubes.push(
-        <Cube
-          key={`${z}-${tok}`}
-          x={x}
-          y={row}
-          z={z}
-          rgb={mixWhite(TOKEN_RGB[tok], p)}
-        />,
-      );
-    }
-  }
-  return (
-    <g
-      opacity={opacity}
-      filter={highlight ? "drop-shadow(0 0 8px rgba(167,139,250,0.7))" : undefined}
-    >
-      {cubes}
-    </g>
-  );
-}
-
-// SVG label with a subscript, e.g. p_t, p_data. The variable p is italic
-// (math); word/number subscripts stay upright, single-letter ones (t) italic.
+// SVG label with a subscript, e.g. p_t. The variable p is italic (math);
+// number subscripts stay upright, the single-letter t stays italic.
 function TableLabel({ x, y, sub, highlight = false, italicSub = false }) {
   return (
     <text
@@ -218,59 +165,71 @@ function TableLabel({ x, y, sub, highlight = false, italicSub = false }) {
   );
 }
 
-function CubeView({ t, source }) {
-  const HB = 7; // horizontal travel of the p_t table, in cube units
-  const tableCenter = CUBE / 2 + (S * DEPTH) / 2; // x-center of one table
-  const stackX = HB + (S * DEPTH) / CUBE + 1.4;
-  const labelY = ROW_ORDER.length * CUBE + 24;
-  const width = (stackX + 1) * CUBE + DEPTH + 20;
-  const top = -(S * DEPTH + 30); // room for the slanted x^s labels on top
+function DistPanel({ i, probs, color, dim = false }) {
+  const x0 = panelX(i);
+  const slot = PANEL_W / STATES.length;
+  const barW = Math.max(1.6, slot * 0.72);
   return (
-    <svg
-      className="ddi-cube-svg"
-      viewBox={`-10 ${top} ${width} ${labelY - top + 14}`}
-    >
-      <ProbTable probs={ptMarginals(0, source)} x={0} opacity={0.4} />
-      <ProbTable probs={dataMarginals()} x={HB} opacity={0.4} />
-      <ProbTable probs={ptMarginals(t, source)} x={t * HB} highlight />
-      {/* vocabulary stack, drawn bottom-up so the cubes stack cleanly */}
-      <g>
-        {[...ROW_ORDER]
-          .map((tok, row) => ({ tok, row }))
-          .reverse()
-          .map(({ tok, row }) => (
-            <Cube key={tok} x={stackX} y={row} rgb={TOKEN_RGB[tok]} label={tok} />
-          ))}
-      </g>
-      {/* position labels x^1..x^S above the moving p_t table, one per depth
-          slice, slanted along the depth axis so they stay legible */}
-      {Array.from({ length: S }, (_, z) => (
-        <text
-          key={z}
-          className="ddi-svg-label ddi-svg-poslabel"
-          transform={`translate(${t * HB * CUBE + z * DEPTH + 8}, ${-z * DEPTH - DEPTH - 5}) rotate(-45)`}
-        >
-          {`x${"¹²³⁴⁵⁶⁷⁸⁹"[z]}`}
-        </text>
-      ))}
-      {/* all labels below their tables; p_0 nudged left, p_t tracks its table */}
-      <TableLabel x={tableCenter - 16} y={labelY} sub="0" />
-      <TableLabel
-        x={t * HB * CUBE + tableCenter}
-        y={labelY}
-        sub="t"
-        highlight
-        italicSub
+    <g opacity={dim ? 0.55 : 1}>
+      {probs.map((p, k) => {
+        if (p <= 1e-9) return null;
+        const h = Math.sqrt(p) * PANEL_H;
+        return (
+          <rect
+            key={k}
+            x={x0 + k * slot + (slot - barW) / 2}
+            y={BASE_Y - h}
+            width={barW}
+            height={h}
+            fill={color}
+            rx={0.8}
+          />
+        );
+      })}
+      {/* x-axis, arrow-tipped like the continuous-case sketch */}
+      <line
+        x1={x0}
+        y1={BASE_Y}
+        x2={x0 + PANEL_W + 8}
+        y2={BASE_Y}
+        stroke="rgba(255,255,255,0.3)"
+        strokeWidth="1"
       />
-      <TableLabel x={HB * CUBE + tableCenter} y={labelY} sub="1" />
-      <text
-        className="ddi-svg-label"
-        {...svgCal}
-        x={stackX * CUBE + CUBE / 2 + DEPTH / 2}
-        y={labelY}
-      >
-        {cal.V}
-      </text>
+      <path
+        d={`M${x0 + PANEL_W + 8},${BASE_Y} l-5,-2.6 l0,5.2 z`}
+        fill="rgba(255,255,255,0.3)"
+      />
+    </g>
+  );
+}
+
+function DistView({ t, source }) {
+  const p0 = stateProbs(0, source);
+  const pt = stateProbs(t, source);
+  const p1 = stateProbs(1, source);
+  const labelY = BASE_Y + 30;
+  // the arrow arcs through the band above the panels, so it clears p_t whatever
+  // the value of t
+  const ax0 = panelX(0) + PANEL_W / 2;
+  const ax1 = panelX(2) + PANEL_W / 2;
+  return (
+    <svg className="ddi-dist-svg" viewBox={`-6 -6 ${VIEW_W + 24} ${labelY + 16}`}>
+      <path
+        d={`M${ax0},${ARC_H - 12} Q${(ax0 + ax1) / 2},${-4} ${ax1 - 6},${ARC_H - 14}`}
+        fill="none"
+        stroke="rgba(255,255,255,0.4)"
+        strokeWidth="1.3"
+      />
+      <path
+        d={`M${ax1 - 6},${ARC_H - 14} l-6.4,-4.4 l1.8,7.6 z`}
+        fill="rgba(255,255,255,0.4)"
+      />
+      <DistPanel i={0} probs={p0} color="#82b4ff" dim />
+      <DistPanel i={1} probs={pt} color="#a78bfa" />
+      <DistPanel i={2} probs={p1} color="#7defa0" dim />
+      <TableLabel x={panelX(0) + PANEL_W / 2} y={labelY} sub="0" />
+      <TableLabel x={panelX(1) + PANEL_W / 2} y={labelY} sub="t" highlight italicSub />
+      <TableLabel x={panelX(2) + PANEL_W / 2} y={labelY} sub="1" />
     </svg>
   );
 }
@@ -279,14 +238,11 @@ function CubeView({ t, source }) {
 // stacked — used in the slides where horizontal space is the one available.
 // `notation` / `transport` toggle each section independently, so the figure can
 // be split into two standalone figures (notations panel vs. transport panel).
-export default function DiscreteDataIntro({ samples = false, cube = true, onehot = false, row = false, notation = true, transport: showTransport = true, onehotToggle = true }) {
+export default function DiscreteDataIntro({ onehot = false, row = false, notation = true, transport: showTransport = true, onehotToggle = true }) {
   const [seed, setSeed] = useState(26);
   const [source, setSource] = useState("mask"); // "mask" | "unif"
-  // which transport views are shown (both can be active at once)
-  const [showSamples, setShowSamples] = useState(!!samples);
-  const [showCube, setShowCube] = useState(!!cube);
   const [showOneHot, setShowOneHot] = useState(!!onehot);
-  const [t, setT] = useState(0);
+  const [t, setT] = useState(0.5);
   const [playing, setPlaying] = useState(false);
 
   // Example sequence for the notation panel, plus the transport setup:
@@ -356,58 +312,13 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
         <div className="ddi-notation">
           <div className="ddi-notation-item">
             <div className="ddi-section-title">
-              Vocabulary <Mc>{cal.V}</Mc> = {"{"}
-              <Mi>A</Mi>, <Mi>B</Mi>, <Mi>m</Mi>
-              {"}"}
-            </div>
-            <div className="ddi-oh-grid">
-              <span className="ddi-oh-tokenslabel">tokens</span>
-              {showOneHot && (
-                <div className="ddi-oh-col">
-                  <span className="ddi-pos-label">&nbsp;</span>
-                  <span className="ddi-oh-spacer" />
-                  <span className="ddi-oh-header">&nbsp;</span>
-                  {ALL_TOKENS.map((v) => (
-                    <span key={v} className="ddi-oh-rowlabel">
-                      <Mi>{v}</Mi>
-                    </span>
-                  ))}
-                </div>
-              )}
-              {ALL_TOKENS.map((tok) => (
-                <div key={tok} className="ddi-oh-col">
-                  <span className="ddi-pos-label">&nbsp;</span>
-                  <Block token={tok} size={30} />
-                  {showOneHot && (
-                    <>
-                      <span className="ddi-oh-header">
-                        <Mb>e</Mb>
-                        <sub><Mi>{tok}</Mi></sub>
-                      </span>
-                      {ALL_TOKENS.map((v) => (
-                        <OneHotCell key={v} on={v === tok} token={tok} size={30} />
-                      ))}
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-            {showOneHot && (
-              <div className="ddi-oh-caption">
-                <Mb>e</Mb>
-                <sub><Mi>A</Mi></sub>, <Mb>e</Mb>
-                <sub><Mi>B</Mi></sub>, <Mb>e</Mb>
-                <sub><Mi>m</Mi></sub> &isin; &#8477;&sup3;
-              </div>
-            )}
-          </div>
-          <div className="ddi-notation-item">
-            <div className="ddi-section-title">
-              Sequence <Mb>x</Mb> ={" "}
-              <Mi>
-                x<sup>1</sup>x<sup>2</sup>x<sup>3</sup>x<sup>4</sup>
-              </Mi>
-              &nbsp;(<Mi>S</Mi> = {S})
+              <span className="ddi-nowrap">
+                Sequence <Mb>x</Mb> ={" "}
+                <Mi>
+                  x<sup>1</sup>x<sup>2</sup>x<sup>3</sup>x<sup>4</sup>
+                </Mi>
+              </span>{" "}
+              <span className="ddi-nowrap">of length {S}</span>
             </div>
             <div className="ddi-oh-grid">
               {showOneHot && (
@@ -457,6 +368,57 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
               </div>
             )}
           </div>
+          <div className="ddi-notation-item">
+            <div className="ddi-section-title">
+              <span className="ddi-nowrap">
+                Vocabulary of {ALL_TOKENS.length} elements
+              </span>{" "}
+              <span className="ddi-nowrap">
+                <Mc>{cal.V}</Mc> = {"{"}
+                <Mi>A</Mi>, <Mi>B</Mi>, <Mi>m</Mi>
+                {"}"}
+              </span>
+            </div>
+            <div className="ddi-oh-grid">
+              {showOneHot && (
+                <div className="ddi-oh-col">
+                  <span className="ddi-pos-label">&nbsp;</span>
+                  <span className="ddi-oh-spacer" />
+                  <span className="ddi-oh-header">&nbsp;</span>
+                  {ALL_TOKENS.map((v) => (
+                    <span key={v} className="ddi-oh-rowlabel">
+                      <Mi>{v}</Mi>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {ALL_TOKENS.map((tok) => (
+                <div key={tok} className="ddi-oh-col">
+                  <span className="ddi-pos-label">&nbsp;</span>
+                  <Block token={tok} size={30} />
+                  {showOneHot && (
+                    <>
+                      <span className="ddi-oh-header">
+                        <Mb>e</Mb>
+                        <sub><Mi>{tok}</Mi></sub>
+                      </span>
+                      {ALL_TOKENS.map((v) => (
+                        <OneHotCell key={v} on={v === tok} token={tok} size={30} />
+                      ))}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+            {showOneHot && (
+              <div className="ddi-oh-caption">
+                <Mb>e</Mb>
+                <sub><Mi>A</Mi></sub>, <Mb>e</Mb>
+                <sub><Mi>B</Mi></sub>, <Mb>e</Mb>
+                <sub><Mi>m</Mi></sub> &isin; &#8477;&sup3;
+              </div>
+            )}
+          </div>
         </div>
         {onehotToggle && (
         <div className="ddi-toggle-group">
@@ -474,81 +436,53 @@ export default function DiscreteDataIntro({ samples = false, cube = true, onehot
       {/* ── 3. Transport p_0 → p_data ── */}
       {showTransport && (
       <div className="ddi-section">
-        <div className="ddi-section-title">
-          Transport <Mi>p</Mi>
-          <sub>0</sub> to <Mi>p</Mi>
-          <sub>1</sub> via intermediate distributions <Mi>p</Mi>
-          <sub>
-            <Mi>t</Mi>
-          </sub>
+        {/* distributions over the state space; the three panels line up with
+            the three sample columns below */}
+        <div className="ddi-dist-wrap">
+          <DistView t={t} source={source} />
         </div>
-
-        <div className="ddi-toggle-group">
-          <button
-            className={`ddi-toggle-btn${showSamples ? " active" : ""}`}
-            onClick={() => {
-              // keep at least one view active
-              if (showSamples && !showCube) setShowCube(true);
-              setShowSamples(!showSamples);
-            }}
-          >
-            Samples
-          </button>
-          <button
-            className={`ddi-toggle-btn${showCube ? " active" : ""}`}
-            onClick={() => {
-              if (showCube && !showSamples) setShowSamples(true);
-              setShowCube(!showCube);
-            }}
-          >
-            Distributions
-          </button>
-        </div>
-
-        {showCube && (
-          <div className="ddi-cube-wrap">
-            <CubeView t={t} source={source} />
+        <div className="ddi-transport">
+          <div className="ddi-endpoint">
+            <div className="ddi-endpoint-label">
+              <Mb>x</Mb>
+              <sub>0</sub> &sim; <Mi>p</Mi>
+              <sub>0</sub>
+            </div>
+            {transport.map(({ srcTokens }, r) => (
+              <SampleRow
+                key={r}
+                tokens={source === "mask" ? Array(S).fill(MASK) : srcTokens}
+              />
+            ))}
           </div>
-        )}
-
-        {showSamples && (
-          <div className="ddi-transport">
-            <div className="ddi-endpoint">
-              <div className="ddi-endpoint-label">
-                <Mi>p</Mi>
-                <sub>0</sub>
-              </div>
-              {transport.map(({ srcTokens }, r) => (
-                <SampleRow
-                  key={r}
-                  tokens={source === "mask" ? Array(S).fill(MASK) : srcTokens}
-                />
-              ))}
+          <div className="ddi-arrow">
+            <div className="ddi-arrow-label">
+              <Mb>x</Mb>
+              <sub>
+                <Mi>t</Mi>
+              </sub>{" "}
+              &sim; <Mi>p</Mi>
+              <sub>
+                <Mi>t</Mi>
+              </sub>
             </div>
-            <div className="ddi-arrow">
-              <div className="ddi-arrow-label">
-                <Mi>p</Mi>
-                <sub>
-                  <Mi>t</Mi>
-                </sub>
-              </div>
-              <div className="ddi-pt">
-                {transportRows.map((row, r) => (
-                  <SampleRow key={r} tokens={row} />
-                ))}
-              </div>
-            </div>
-            <div className="ddi-endpoint">
-              <div className="ddi-endpoint-label">
-                <Mi>p</Mi>
-                <sub>1</sub>
-              </div>
-              {transport.map(({ x1 }, r) => (
-                <SampleRow key={r} tokens={x1} />
+            <div className="ddi-pt">
+              {transportRows.map((row, r) => (
+                <SampleRow key={r} tokens={row} />
               ))}
             </div>
           </div>
-        )}
+          <div className="ddi-endpoint">
+            <div className="ddi-endpoint-label">
+              <Mb>x</Mb>
+              <sub>1</sub> &sim; <Mi>p</Mi>
+              <sub>1</sub>
+            </div>
+            {transport.map(({ x1 }, r) => (
+              <SampleRow key={r} tokens={x1} />
+            ))}
+          </div>
+        </div>
 
         <div className="ddi-controls">
           <div className="ddi-toggle-group">
@@ -645,12 +579,8 @@ const css = `
   width: auto;
   flex: 0 1 auto;
 }
-.ddi-body--row .ddi-cube-svg {
-  max-width: 420px;
-}
-/* room for the absolutely-positioned "tokens" label hanging left of the grid */
-.ddi-body--row .ddi-section:first-child {
-  padding-left: 40px;
+.ddi-body--row .ddi-dist-svg {
+  max-width: 480px;
 }
 .ddi-section-title {
   font-size: 17.2px;
@@ -684,14 +614,27 @@ const css = `
   flex-direction: row;
   justify-content: center;
   align-items: flex-start;
-  gap: 48px;
+  gap: 28px;
   flex-wrap: wrap;
+  width: 100%;
 }
+/* the two panels share the row evenly; their titles wrap rather than pushing
+   the vocabulary panel onto a second line */
 .ddi-notation-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+/* reserve two lines so both panels' token rows stay on the same baseline */
+.ddi-notation-item .ddi-section-title {
+  line-height: 1.3;
+  min-height: 2.6em;
+}
+.ddi-nowrap {
+  white-space: nowrap;
 }
 .ddi-pos-label {
   font-family: 'KaTeX_Main', 'STIX Two Math', serif;
@@ -738,17 +681,6 @@ const css = `
 .ddi-oh-spacer {
   height: 30px;
 }
-.ddi-oh-tokenslabel {
-  position: absolute;
-  right: calc(100% + 10px);
-  top: 20px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
-  font-size: 13.8px;
-  color: rgba(255,255,255,0.55);
-}
 .ddi-oh-header {
   height: 18px;
   line-height: 18px;
@@ -793,25 +725,26 @@ const css = `
   display: flex;
   gap: 3px;
 }
+/* the three sample columns mirror the three SVG panels: same relative widths
+   and gap, so each stack sits under its distribution */
 .ddi-transport {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  gap: 28px;
-  flex-wrap: wrap;
+  gap: 6.06%;
+  width: 100%;
+  max-width: 600px;
+}
+.ddi-endpoint, .ddi-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 0;
+  min-width: 0;
 }
 .ddi-endpoint {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
   opacity: 0.55;
-}
-.ddi-arrow {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
 }
 .ddi-pt {
   display: flex;
@@ -819,16 +752,16 @@ const css = `
   gap: 4px;
   filter: drop-shadow(0 0 8px rgba(167,139,250,0.55));
 }
-.ddi-cube-wrap {
+.ddi-dist-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   width: 100%;
+  max-width: 600px;
 }
-.ddi-cube-svg {
+.ddi-dist-svg {
   width: 100%;
-  max-width: 560px;
   height: auto;
   display: block;
 }
@@ -851,7 +784,7 @@ const css = `
 }
 .ddi-controls {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
@@ -892,7 +825,7 @@ const css = `
 .ddi-slider {
   -webkit-appearance: none;
   appearance: none;
-  width: 140px;
+  width: 118px;
   height: 4px;
   background: rgba(255,255,255,0.12);
   border-radius: 2px;

@@ -574,7 +574,7 @@ QBE: introduce later?
 <figure>
   <DiscreteDataIntro client:load notation={false} />
   <figcaption>
-    <strong>Figure <Counter label="fig:discrete-data-setup" />:</strong> The transport from the source $p_0$ to the target $p_1$ shown as, for each position, the probability $p_t$ of drawing each token at time $t$ (white indicates probability zero, a fully colored cell probability one, and depth the position $s$ in the sequence), and/or as samples $\mathbf{x}_t \sim p_t$ (toogleable). $p_1$ is the distribution where token $B$ is not allowed to be placed before a $A$ in the sequence.
+    <strong>Figure <Counter label="fig:discrete-data-setup" />:</strong> The transport from the source $p_0$ to the target $p_1$, shown both as distributions over the whole sequence space $\mathcal{S} = \mathcal{V}^S$ and as samples $\mathbf{x}_t \sim p_t$ drawn below each distribution. Each bar is one sequence $\mathbf{x} \in \mathcal{S}$, ordered by number of mask tokens, so that the fully masked sequence $m m m m$ is right-most. At $t=0$ all the mass sits on the Dirac $\delta_{m \ldots m}$; as $t$ grows that mass decreases and spreads over partially unmasked sequences, until it vanishes at $t=1$ and only $p_1$ remains. $p_1$ is the distribution where token $B$ is not allowed to be placed before a $A$ in the sequence. Bar heights use a square-root scale, so that the source Dirac and the much flatter intermediate distributions stay legible on the same axis.
   </figcaption>
 </figure>
 
