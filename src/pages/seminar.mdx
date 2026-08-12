@@ -15,10 +15,10 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
 	<p>
 		This is a webpage for the internal "Foundation of Deep Learning" seminar of the Inria [Malice](https://labhc-malice.github.io/) and [Ockham](https://team.inria.fr/ockham/) teams.
-		The seminar is a fully remote 45min presentation, not recorded, and takes place Tuesday at 4PM, Paris time.
+		The seminar is a fully remote 45 min presentation, not recorded, and takes place on Tuesdays, 4 PM Paris time.
 	</p>
 
-export const schedule = [
+export const schedule_upcoming = [
 	{ date: "2026-09-29", speaker: "", website: "", title: "ICLR Break", abstract: "TBD" },
 	{ date: "2026-09-22", speaker: "", website: "", title: "ICLR Break", abstract: "TBD" },
 	{ date: "2026-09-15", speaker: "Samuel Boïté", website: "https://samuelbx.github.io/", title: "Expected Batch Optimal Transport Plans and Consequences for Flow Matching", abstract: "TBD" },
@@ -26,29 +26,63 @@ export const schedule = [
 	{ date: "2026-09-01", speaker: "Danilo Vucetic", website: "https://mila.quebec/en/directory/danilo-vucetic", title: "TBD", abstract: "TBD" },
 	{ date: "2026-08-25", speaker: "Binxu Wang", website: "https://kempnerinstitute.harvard.edu/people/our-people/binxu-wang/", title: "TBD", abstract: "TBD" },
 	{ date: "2026-08-18", speaker: "Matthew Niedoba", website: "https://scholar.google.com/citations?user=uSl2vYwAAAAJ&hl=en", title: "Analytical Models of Diffusion Generalization", abstract: "Image diffusion models exhibit a curious generalization phenomenon - they produce remarkably similar samples under deterministic sampling procedures, despite differences in model architecture or training procedures. We investigate this phenomenon and propose analytical models to approximate this convergent behavior. We then discuss a unified framework that consolidates several of these analytical instances, and explore ways to improve generation quality within it." },
-	{ date: "2026-08-11", speaker: "Claudia Merger", website: "https://claudiamer.github.io/", title: " What Do Generative Models Actually Learn? From Distributional Simplicity Bias to Memorization", abstract: "Generative models, such as diffusion models and normalizing flows must learn both a representation of the data distribution and a mechanism for sampling from it. However, learning an arbitrary high-dimensional density is generally considered prohibitively difficult because of the curse of dimensionality: without additional assumptions, the number of training samples required for density estimation can grow exponentially with the dimension. In practice, diffusion models appear to overcome this problem remarkably well, producing samples that are both novel and realistic. Under other conditions, however, they collapse towards a “memorizing solution,” reproducing individual training examples. At the same time, we still lack a precise description of what models that generalize rather than memorize actually learn. In this talk, I will discuss three theoretical concepts that help unravel this question. First, maximum-entropy models provide a tractable hypothesis class for formalizing which properties of a data distribution a generative model has learned. Second, dynamic distributional simplicity bias describes the tendency of neural networks to exploit simpler statistics before progressively incorporating higher-order structure. Finally, the theory of local memorization characterizes how and where diffusion models transition towards a memorizing solution." },
+].sort(
+	(a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+);
+
+
+export const schedule_past = [
+		{ date: "2026-08-11", speaker: "Claudia Merger", website: "https://claudiamer.github.io/", title: " What Do Generative Models Actually Learn? From Distributional Simplicity Bias to Memorization", abstract: "Generative models, such as diffusion models and normalizing flows must learn both a representation of the data distribution and a mechanism for sampling from it. However, learning an arbitrary high-dimensional density is generally considered prohibitively difficult because of the curse of dimensionality: without additional assumptions, the number of training samples required for density estimation can grow exponentially with the dimension. In practice, diffusion models appear to overcome this problem remarkably well, producing samples that are both novel and realistic. Under other conditions, however, they collapse towards a “memorizing solution,” reproducing individual training examples. At the same time, we still lack a precise description of what models that generalize rather than memorize actually learn. In this talk, I will discuss three theoretical concepts that help unravel this question. First, maximum-entropy models provide a tractable hypothesis class for formalizing which properties of a data distribution a generative model has learned. Second, dynamic distributional simplicity bias describes the tendency of neural networks to exploit simpler statistics before progressively incorporating higher-order structure. Finally, the theory of local memorization characterizes how and where diffusion models transition towards a memorizing solution." },
 ];
 
 
-<table>
-	<thead>
-		<tr>
-			<th>Date</th>
-			<th>Speaker</th>
-			<th>Title</th>
-			<th>Abstract</th>
-		</tr>
-	</thead>
-	<tbody>
-		{schedule.map(({ date, speaker, website, title, abstract }) => (
-			<tr>
-				<td>{date}</td>
-				<td><a href={website}>{speaker}</a></td>
-				<td>{title}</td>
-				<td><details><summary>Abstract</summary>{abstract}</details></td>
-			</tr>
-		))}
-	</tbody>
-</table>
+### Upcoming talks
+
+<div>
+	{schedule_upcoming.map(({ date, speaker, website, title, abstract }) => (
+		<article>
+			<strong >{date}</strong>
+
+			<div>
+				{website ? (
+					<a href={website}>{speaker}</a>
+				) : (
+					<span>{speaker}</span>
+				)}
+				<span>: <em>{title}</em></span>
+			</div>
+
+			<details>
+				<summary>Abstract</summary>
+				<p>{abstract}</p>
+			</details>
+		</article>
+	))}
+</div>
+
+
+### Past talks
+
+<div>
+	{schedule_past.map(({ date, speaker, website, title, abstract }) => (
+		<article>
+			<strong >{date}</strong>
+
+			<div>
+				{website ? (
+					<a href={website}>{speaker}</a>
+				) : (
+					<span>{speaker}</span>
+				)}
+				<span>: <em>{title}</em></span>
+			</div>
+
+			<details>
+				<summary>Abstract</summary>
+				<p>{abstract}</p>
+			</details>
+		</article>
+	))}
+</div>
 
 </Layout>
