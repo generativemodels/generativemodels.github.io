@@ -3,9 +3,9 @@ import { incrementCounter, getCounterId, getCounterText } from './CountersTools'
 
 const [type, name] = Astro.props.label.split(':')
 const counterId = getCounterId(type, name)
-incrementCounter(type, name)
-const counterText = getCounterText(type, name)
+const counterScope = Astro.url.pathname
+incrementCounter(type, name, counterScope)
+const counterText = getCounterText(type, name, counterScope)
 ---
 
 <span id={counterId} class={`counter--${type}`} data-type={type} data-name={name} data-text={counterText}>{counterText}</span>
-
