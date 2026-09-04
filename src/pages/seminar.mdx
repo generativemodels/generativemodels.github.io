@@ -1,10 +1,4 @@
-import AboutHeroImage from '../assets/blog-placeholder-about.jpg';
 import Layout from '../layouts/LessonLayout.astro';
-
-import BaseHead from '../components/BaseHead.astro';
-import Footer from '../components/Footer.astro';
-import Header from '../components/Header.astro';
-import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
 export const schedule_all = [
 	{ date: "2026-10-20", speaker: "Jaeyeon Kim", website: "https://jaeyeonkim01.github.io/", title: "From Selective Underfitting to One-Step Generative Modeling", abstract: "Diffusion models are trained to approximate the score of a finite empirical distribution, yet accurately matching this score everywhere would lead them to reproduce their training data rather than generate novel samples. In the first part of this talk, I will introduce selective underfitting, a framework for understanding this apparent paradox better. We distinguish between a supervision region, where noisy training samples concentrate and the empirical score is directly learned, and an extrapolation region, which receives little direct supervision but is where the model is queried during inference. We find that better generative models fit the empirical score more accurately within the supervision region while selectively deviating from it outside, suggesting that generative performance depends not only on how much a model underfits, but also on where it does so. In the latter half of the talk, I will present a simple approach to one-step generation using the insight gained from selective underfitting. Our preliminary analysis shows that off-manifold error decreases throughout training and is further reduced by distribution matching, leading to a one-step generative model. Together, these results suggest a geometric view of generative modeling." },
@@ -24,15 +18,9 @@ export const schedule_all = [
 
 
 export function getSplitSchedule(talks = schedule_all) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Start of today
-
-    const upcoming = talks.filter(talk => new Date(talk.date) >= today).sort(
-	(a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-);
-    const past = talks.filter(talk => new Date(talk.date) < today).sort(
-	(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-);;
+	const today = new Date().toLocaleDateString('en-CA'); // "2026-09-04"
+	const upcoming = talks.filter(t => t.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+	const past = talks.filter(t => t.date < today).sort((a, b) => b.date.localeCompare(a.date));
 
     return { past, upcoming };
 }
