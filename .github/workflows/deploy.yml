@@ -24,7 +24,7 @@ jobs:
         uses: withastro/action@v3
         with:
           node-version: 22.19.0
-          package-manager: pnpm@8.11.0
+          package-manager: pnpm@10.32.1
         # with:
           # path: . # The root location of your Astro project inside the repository. (optional)
           # node-version: 20 # The specific version of Node that should be used to build your site. Defaults to 20. (optional)

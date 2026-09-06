@@ -1,0 +1,1931 @@
+---
+title: 'Discrete flow matching'
+menu: 'Discrete flow matching'
+description: 'On discrete flow matching, its core principles, and parallel with continuous versions'
+pubDate: '2026-06-02'
+heroImage: '../../assets/blog-placeholder-3.jpg'
+order: 610
+tags: ['Diffusion', 'Flow Matching']
+typst: ['del', 'code']
+readingTime: true
+---
+
+import T from '../../components/typst/TypstMath.astro'
+import Cetz from '../../components/typst/TypstCetz.astro'
+import { Image } from 'astro:assets'
+import Counter from '../../components/numbering/Counter.astro'
+import Ref from '../../components/numbering/Ref.astro'
+import Statement from '../../components/numbering/Statement.astro'
+import Algorithm from '../../components/numbering/Algorithm.astro'
+import SudokuFlowMatching from '../../components/sudoku_flow_matching_generative.jsx';
+import DFMSampling from '../../components/DFMSampling.jsx';
+import DiscreteDataIntro from '../../components/DiscreteDataIntro.jsx';
+import EulerStepAnalogy from '../../components/EulerStepAnalogy.jsx';
+import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
+
+<T defines='
+#let anno(t) = $text(#luma(100), size: #10pt, (#t))$;
+#let c = blue;
+#let add(txt) = $text(#c, txt)$
+#let KL(a,b) = $"KL"(#(a), #(b))$;
+#let mm(x) = text(red, x)
+'/>
+
+<style>{`
+
+  .prose { counter-reset: section; }
+  .prose h3 { counter-reset: subsection; }
+  .prose h3::before {
+    counter-increment: section;
+    content: counter(section) ". ";
+  }
+  .prose h4::before {
+    counter-increment: subsection;
+    content: counter(section) "." counter(subsection) " ";
+  }
+
+  a.cite-ref {
+    text-decoration: none;
+  }
+  a[href^="#"] {
+    text-decoration: none;
+  }
+
+  .cite-tooltip {
+    position: fixed;
+    display: none;
+    z-index: 2000;
+    width: max-content;
+    max-width: min(34rem, 92vw);
+    background: #ffffff;
+    color: #111827;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.15);
+    padding: 0.55rem 0.7rem;
+    font-size: 0.86rem;
+    line-height: 1.45;
+    white-space: normal;
+  }
+
+  .ref-entry {
+    margin-bottom: 0.8rem;
+  }
+
+  .dfm-note-entry {
+    margin-bottom: 0.8rem;
+  }
+
+  .dfm-note-number {
+    font-weight: 700;
+  }
+
+  .dfm-note-main > p:first-of-type {
+    display: inline;
+    margin: 0;
+  }
+
+  .ref-main strong {
+    font-weight: 700;
+  }
+
+  .dfm-note-ref {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25em;
+    height: 1.25em;
+    margin-left: 0.12em;
+    color: #2563eb;
+    cursor: help;
+    font-size: 0.72em;
+    font-weight: 700;
+    line-height: 1;
+    text-decoration-line: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 0.12em;
+    vertical-align: super;
+    white-space: nowrap;
+  }
+
+  .dfm-note-ref:focus {
+    outline: 2px solid #93c5fd;
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  .dfm-zoomable-image {
+    cursor: zoom-in;
+  }
+
+  .dfm-zoomable-image:focus {
+    outline: 2px solid #93c5fd;
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+
+  .dfm-image-lightbox {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    padding: 2rem;
+    background: rgba(15, 23, 42, 0.86);
+    cursor: zoom-out;
+  }
+
+  .dfm-image-lightbox.is-open {
+    display: flex;
+  }
+
+  .dfm-image-lightbox img {
+    max-width: 96vw;
+    max-height: 92vh;
+    object-fit: contain;
+    background: #ffffff;
+    box-shadow: 0 22px 60px rgba(0, 0, 0, 0.32);
+    cursor: default;
+  }
+
+  .dfm-image-lightbox__close {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.72);
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  .dfm-local-example {
+    --pos-1: #15803d;
+    --pos-2: #dc2626;
+    --pos-3: #2563eb;
+    position: relative;
+    display: grid;
+    grid-template-columns: 4.5rem minmax(22rem, 1fr);
+    gap: 1.2rem;
+    align-items: center;
+    margin: 1.5rem 0 2rem;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+
+  .dfm-local-example__matrix {
+    position: relative;
+    padding: 0;
+  }
+
+  .dfm-local-example table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.88rem;
+    line-height: 1.35;
+  }
+
+  .dfm-local-example th,
+  .dfm-local-example td {
+    padding: 0.28rem 0.55rem;
+    text-align: left;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  .dfm-local-example th {
+    border-bottom: 1px solid #d1d5db;
+    color: #374151;
+    font-weight: 700;
+  }
+
+  .dfm-local-example__state {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 0.95rem;
+    letter-spacing: 0;
+  }
+
+  .dfm-local-example__active td {
+    background: #f8fafc;
+  }
+
+  .dfm-local-example__pos-1 {
+    color: var(--pos-1);
+    font-weight: 700;
+  }
+
+  .dfm-local-example__pos-2 {
+    color: var(--pos-2);
+    font-weight: 700;
+  }
+
+  .dfm-local-example__pos-3 {
+    color: var(--pos-3);
+    font-weight: 700;
+  }
+
+  .dfm-local-example__source {
+    position: relative;
+    z-index: 1;
+    justify-self: center;
+    padding: 0.3rem 0.45rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #111827;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .dfm-local-example__arrows {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .dfm-local-example__arrows path {
+    fill: none;
+    stroke: #6b7280;
+    stroke-width: 1.4;
+    marker-end: url(#dfm-local-example-arrowhead);
+  }
+
+  .dfm-comparison-table th,
+  .dfm-comparison-table td {
+    vertical-align: middle;
+  }
+
+  .dfm-comparison-table p {
+    margin: 0;
+    text-align: inherit;
+  }
+
+  .dfm-comparison-table caption {
+    caption-side: bottom;
+    margin-top: 0.5em;
+    color: rgb(var(--gray));
+    font-size: 16.2px;
+    font-style: italic;
+    text-align: center;
+  }
+
+  @media (max-width: 720px) {
+    .dfm-local-example {
+      grid-template-columns: 4rem minmax(22rem, 1fr);
+      padding: 0.8rem;
+    }
+  }
+`}</style>
+
+<script is:inline>{`
+  (() => {
+    let tooltip;
+
+    const ensureTooltip = () => {
+      if (tooltip) return tooltip;
+      tooltip = document.createElement('div');
+      tooltip.className = 'cite-tooltip';
+      document.body.appendChild(tooltip);
+      return tooltip;
+    };
+
+    const getRefHtml = (link) => {
+      const href = link.getAttribute('href') || '';
+      if (!href.startsWith('#')) return '';
+      const refAnchor = document.getElementById(href.slice(1));
+      if (!refAnchor) return '';
+      const entry = refAnchor.closest('.ref-entry, .dfm-note-entry');
+      const refMain = entry ? entry.querySelector('.ref-main, .dfm-note-main') : null;
+      return refMain ? refMain.innerHTML : '';
+    };
+
+    const showTooltip = (link) => {
+      const html = getRefHtml(link);
+      if (!html) return;
+      const tip = ensureTooltip();
+      tip.innerHTML = html;
+      tip.style.display = 'block';
+
+      const rect = link.getBoundingClientRect();
+      const margin = 10;
+      let left = rect.left;
+      let top = rect.bottom + 8;
+
+      const tipRect = tip.getBoundingClientRect();
+      if (left + tipRect.width > window.innerWidth - margin) {
+        left = window.innerWidth - tipRect.width - margin;
+      }
+      if (left < margin) left = margin;
+      if (top + tipRect.height > window.innerHeight - margin) {
+        top = rect.top - tipRect.height - 8;
+      }
+      if (top < margin) top = margin;
+
+      tip.style.left = left + 'px';
+      tip.style.top = top + 'px';
+    };
+
+    const hideTooltip = () => {
+      if (!tooltip) return;
+      tooltip.style.display = 'none';
+    };
+
+    let lightbox;
+    let lightboxImage;
+    let previousFocus;
+
+    const ensureLightbox = () => {
+      if (lightbox) return lightbox;
+
+      lightbox = document.createElement('div');
+      lightbox.className = 'dfm-image-lightbox';
+      lightbox.setAttribute('role', 'dialog');
+      lightbox.setAttribute('aria-modal', 'true');
+
+      const closeButton = document.createElement('button');
+      closeButton.type = 'button';
+      closeButton.className = 'dfm-image-lightbox__close';
+      closeButton.setAttribute('aria-label', 'Close zoomed image');
+      closeButton.textContent = 'x';
+
+      lightboxImage = document.createElement('img');
+      lightboxImage.alt = '';
+
+      lightbox.appendChild(closeButton);
+      lightbox.appendChild(lightboxImage);
+      document.body.appendChild(lightbox);
+
+      const closeLightbox = () => {
+        lightbox.classList.remove('is-open');
+        document.body.style.overflow = '';
+        if (previousFocus) previousFocus.focus();
+      };
+
+      lightbox.addEventListener('click', (event) => {
+        if (event.target === lightbox) closeLightbox();
+      });
+      closeButton.addEventListener('click', closeLightbox);
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && lightbox.classList.contains('is-open')) {
+          closeLightbox();
+        }
+      });
+
+      return lightbox;
+    };
+
+    const openLightbox = (image) => {
+      const box = ensureLightbox();
+      previousFocus = document.activeElement;
+      lightboxImage.src = image.currentSrc || image.src;
+      lightboxImage.alt = image.alt || '';
+      box.classList.add('is-open');
+      document.body.style.overflow = 'hidden';
+      box.querySelector('button').focus();
+    };
+
+    const bindZoomableImages = () => {
+      document.querySelectorAll('.dfm-zoomable-image, img[src*=".svg"], img[src*=".gif"]').forEach((image) => {
+        if (image.dataset.zoomBound === '1') return;
+        image.dataset.zoomBound = '1';
+        image.classList.add('dfm-zoomable-image');
+        image.setAttribute('tabindex', '0');
+        image.setAttribute('role', 'button');
+        image.addEventListener('click', () => openLightbox(image));
+        image.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openLightbox(image);
+          }
+        });
+      });
+    };
+
+    const resolveNoteRefs = () => {
+      const noteNumbers = new Map();
+      let nextNumber = 1;
+
+      document.querySelectorAll('a.dfm-note-ref').forEach((link) => {
+        const noteId = (link.getAttribute('href') || '').slice(1);
+        if (!noteId) return;
+        if (!noteNumbers.has(noteId)) {
+          noteNumbers.set(noteId, String(nextNumber++));
+        }
+      });
+
+      const noteEntries = Array.from(document.querySelectorAll('.dfm-note-entry'));
+
+      noteEntries.forEach((entry) => {
+        const anchor = entry.querySelector('[id]');
+        const main = entry.querySelector('.dfm-note-main');
+        const number = anchor ? noteNumbers.get(anchor.id) : null;
+        if (!main || !number) return;
+
+        entry.dataset.noteNumber = number;
+        const firstParagraph = main.querySelector(':scope > p:first-of-type');
+        const numberParent = firstParagraph || main;
+        let numberEl = numberParent.querySelector(':scope > .dfm-note-number');
+        if (!numberEl) {
+          numberEl = document.createElement('span');
+          numberEl.className = 'dfm-note-number';
+          numberParent.insertBefore(numberEl, numberParent.firstChild);
+        }
+        numberEl.textContent = number + '. ';
+      });
+
+      noteEntries
+        .filter((entry) => entry.dataset.noteNumber)
+        .sort((a, b) => Number(a.dataset.noteNumber) - Number(b.dataset.noteNumber))
+        .forEach((entry) => entry.parentElement?.appendChild(entry));
+
+      document.querySelectorAll('a.dfm-note-ref').forEach((link) => {
+        const noteId = (link.getAttribute('href') || '').slice(1);
+        const number = noteNumbers.get(noteId);
+        if (!number) return;
+        link.textContent = number;
+        link.setAttribute('aria-label', 'Note ' + number);
+      });
+    };
+
+    const bindCitations = () => {
+      document.querySelectorAll('a.cite-ref, .dfm-note-ref').forEach((link) => {
+        if (link.dataset.citeBound === '1') return;
+        link.dataset.citeBound = '1';
+        link.addEventListener('mouseenter', () => showTooltip(link));
+        link.addEventListener('focus', () => showTooltip(link));
+        link.addEventListener('mouseleave', hideTooltip);
+        link.addEventListener('blur', hideTooltip);
+      });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        resolveNoteRefs();
+        bindCitations();
+        bindZoomableImages();
+      });
+    } else {
+      resolveNoteRefs();
+      bindCitations();
+      bindZoomableImages();
+    }
+  })();
+`}</script>
+
+<div class="glossary">
+<div class="glossary-content">
+<label><input type="checkbox" id="cb-glossary" checked /> Glossary (keep visible)</label>
+
+- **$\mathcal{V}$** vocabulary set; $|\mathcal{V}|$ is the vocabulary size
+- **$\mathcal{S} = \mathcal{V}^S$** space of all possible sequences of length $S$ over the vocabulary
+- **$\mathbf{x} = x^1 \dots x^S$** sequence of $S$ tokens, where each token $x^i$ takes values in $\mathcal{V}$
+- **$\mathbf{e}_v$** one-hot vector in $\mathbb{R}^{|\mathcal{V}|}$ for token $v \in \mathcal{V}$
+- **$m$** mask token
+- **$\mathbf{x}^{\neq i}$** sub-sequence of $\mathbf{x}$ at all positions except $i$
+- **$\Delta_k$** for $k \in \mathbb{N}$, $\Delta_k=\{\pi\in\mathbb{R}_+^k:\sum_{\ell=1}^{k}\pi_\ell=1\}$ is the probability simplex
+- **$\text{Cat}$** categorical distribution: $x \sim \text{Cat}(\mathbf{p})$ means $\mathbb{P}(x = v) = \mathbf{p}_v$, for a probability vector $\mathbf{p} \in \Delta_{|\mathcal{V}|}$
+- **$p_{\text{unif}}$** uniform distribution: $p_{\text{unif}}(v) = \frac{1}{|\mathcal{V}|}$
+- *Convention*: $t=0$: noisy data; $t=1$: clean data.
+- **$p_0$** source distribution (mask or uniform)
+- **$p_1$** target (data) distribution
+- **$p_t$** marginal distribution at time $t$; the probability path interpolating between the source $p_0$ and the target $p_1$ distributions
+- **$\mathbf{z}$** conditioning variable, of law $\pi(\mathbf{z})$
+- **$p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | z^j)$** factorized conditional probability path given the conditioning variable $\mathbf{z}$
+- **$q_t(x | z)$** token-wise conditional distribution given $\mathbf{z}$
+{/* - **$q_t(x | x_0, x_1)$** source-target token-wise conditional distribution: $q_t(x | x_0, x_1) = \kappa_t \mathbb{I}(x = x_1) + (1 - \kappa_t) \mathbb{I}(x = x_0)$ */}
+- **$u_t(\mathbf{x})_{\mathbf{y}}$** probability velocity: the instantaneous rate at which the sequence transitions from $\mathbf{x}$ to $\mathbf{y}$ at time $t$
+- **$u_t^i(\mathbf{x})_v$** token-wise velocity at position $i$: the instantaneous rate at which the $i$-th token of $\mathbf{x}$ transitions to $v$ at time $t$
+- **$u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}}$** conditional velocity field given $\mathbf{z}$
+{/* it relates to the marginal velocity via expectation, formulated as $u_t(\mathbf{x})_{\mathbf{y}} = \mathbb{E}_{\substack{\mathbf{z}}}[u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} | X_t = \mathbf{x}] $ */}
+{/* - **$u_t(x | x_0, x_1)$** source-target token-wise conditional velocity: $u_t(x | x_0, x_1)_v = \frac{\dot{\kappa}_t}{1 - \kappa_t} \left( \mathbb{I}(v = x_1) - \mathbb{I}(v = x) \right)$ */}
+- **$u_{\theta,t}^i(\mathbf{x})_v$** learned velocity field parameterized by $\theta$
+- **$P_{\theta,t}(X_1^i | \mathbf{x}_t)$** learned denoiser: at coordinate $j$, probability that the $i$-th token at time $1$ is $\mathbf{e}_j$, given current sequence $\mathbf{x}_t$
+
+<label for="cb-glossary">Hide Glossary</label>
+</div>
+</div>
+
+
+Flow matching and diffusion have emerged as the state-of-the-art techniques for generation of continuous data modalities, in particular images, audio and video [<a class="cite-ref" href="#SD3">6</a>, <a class="cite-ref" href="#SD-video">7</a>].
+Their strong generation performance, training stability and flexibility motivated their extension to *discrete* data, including texts, graphs, or molecule sequences [<a class="cite-ref" href="#ref-2">1</a>, <a class="cite-ref" href="#ref-5">2</a>, <a class="cite-ref" href="#DiGress">5</a>].
+This blog post is an introduction to flow matching for discrete data.
+A second part TODO link is dedicated to discrete diffusion.
+
+The first section is an introduction to discrete data generation, and discrete flow matching is introduced in [Section 2](#discrete-flow-matching).
+
+### Generating discrete data
+
+#### Discrete data
+Autoregressive generative models have being especially successful for generation of *sequences* of *discrete* elements.
+For instance, language models generate sequences of tokens (words or subwords) from a predefined discrete set (the *vocabulary*).
+
+More precisely, in this blog post, we present flow matching/diffusion for *sequences* of *discrete* data:
+- sequences $\mathbf{x} = x^1 \dots x^S$ of length $S \in \mathbb{N}$,
+- where each element $x^i$ belongs to a predefined discrete/finite set called the *vocabulary* $\mathcal{V}$: $x^i \in \mathcal{V}$.
+
+<figure>
+  <DiscreteDataIntro client:load transport={false} onehotToggle={false} />
+  <figcaption>
+    <strong>Figure <Counter label="fig:discrete-data-notation" />:</strong> A toy vocabulary $\mathcal{V}$ of 3 elements: $\mathcal{V} = \{A, B, m \}$  and an example sequence of length 4: each element $x^i$ of the sequence belongs to $\mathcal{V}$: $x^1, x^2, x^3, x^4 \in \mathcal{V}$.
+  </figcaption>
+</figure>
+
+Elements of the vocabulary are called *tokens*. For example, for text data, tokens could be the letters: $\mathcal{V} = \{a, b, c, \dots, z \}$, while DNA sequences would correspond to $\mathcal{V}=\{A, T, C, G\}$.
+In the vocabulary, a special token can be added, the *mask* token $m$.
+
+#### Discrete data generation process
+
+*Discrete generative modelling on Sudoku*.
+The goal is to generate valid Sudoku grids, which are $9 \times 9$ grids filled with numbers from $1$ to $9$, such that each number appears exactly once in each row, column.
+The vocabulary is the set of numbers from $1$ to $9$: $\mathcal{V} = \{1, 2, \ldots, 9, m\}$, and the sequence length is number of squares to fill $S= 9 \times 9 = 81$.
+
+*Discrete diffusion/flow matching on Sudoku*.
+Discrete flow matching starts from a *fully masked grid*: each square is initially filled with the mask token $m$.
+The model then iteratively fills this grid with non-mask tokens $\{1, 2, \ldots, 9\}$. For example, one can iteratively *unmask* the grid one square after one square, and finally reach a filled Sudoku grid.
+
+QBE: todo do a sort of gif?
+
+<figure>
+  <SudokuFlowMatching client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:sudoku-sampling" />:</strong> Visualization of the sampling process for discrete flow matching: a fully masked Sudoku $9 \times9$ grid is transformed into a valid $9 \times9$ Sudoku grid.
+  </figcaption>
+</figure>
+
+
+[Section 2](#discrete-flow-matching) provides the details on to generate discrete data with discrete flow matching.
+
+### Discrete flow matching
+
+#### Transporting distributions
+
+Discrete flow matching iteratively transforms fully masked samples/images into samples/images from the target distribution.
+At the distribution level, discrete flow matching can be seen as a *transport* of a simple *source* probability distribution $p_0$ (e.g., $x_0 \sim p_0$ fully masked) to a *target* distribution $p_1$, the data distribution we want to generate.
+
+QBE: introduce later?
+
+<figure>
+  <DiscreteDataIntro client:load notation={false} />
+  <figcaption>
+    <strong>Figure <Counter label="fig:discrete-data-setup" />:</strong> The transport from the source $p_0$ to the target $p_1$, shown both as distributions over the whole sequence space $\mathcal{S} = \mathcal{V}^S$ and as samples $\mathbf{x}_t \sim p_t$ drawn below each distribution. Each bar is one sequence $\mathbf{x} \in \mathcal{S}$, ordered by number of mask tokens, so that the fully masked sequence $m m m m$ is right-most. At $t=0$ all the mass sits on the Dirac $\delta_{m \ldots m}$; as $t$ grows that mass decreases and spreads over partially unmasked sequences, until it vanishes at $t=1$ and only $p_1$ remains. $p_1$ is the distribution where token $B$ is not allowed to be placed before a $A$ in the sequence. Bar heights use a square-root scale, so that the source Dirac and the much flatter intermediate distributions stay legible on the same axis.
+  </figcaption>
+</figure>
+
+The source distribution is typically chosen to be the **mask distribution** ($p_0 = \delta_{m\ldots m}$): all tokens in the starting sequence are equal to the mask token $m$; $\delta$ is the Dirac delta distribution.
+
+
+{/* With this choice, the model can always tell noisy (masked) tokens apart from clean ones, which also makes training simple: the model only needs to learn to fill in blanks, much like masked language modeling. The downside is that once a token is unmasked during sampling, it is never revisited, so the model cannot correct its own mistakes. */}
+
+{/* Here, a corrupted token looks just like any other token, so the model must learn both where the errors are and how to fix them, which makes training harder in practice. In exchange, any position can be revised at any point during sampling, so the model gets the ability to correct itself. */}
+
+{/* For simplicity *we will use the mask distribution as running example*; adaptations in the case of other distributions are available as toggleable content. */}
+
+QBE: schema transport distributions?
+
+QBE: todo footnote uniform - The **uniform distribution** ($p_0 = p_{\text{unif}}$): All tokens in the starting sequence are sampled uniformly across the vocabulary $\mathcal{V}$.
+
+QBE: decide what to do with this figure. Not sure it is cristal clear.
+
+
+#### Flow matching: from continuous-space discrete-space data
+
+{/* In this section we adopt the Flow Matching convention: time goes from $t=0$ (source) to $t=1$ (target): the source distribution is thus denoted $p_0$ while the target distribution is $p_1.$ */}
+
+##### Reminder on flow matching for continuous data
+
+See the [former blog post](https://dl.heeere.com/conditional-flow-matching/blog/conditional-flow-matching/) for a comprehensive explanation.
+In continuous-space flow matching, generated samples are obtained by solving the following Ordinary Differential Equation (ODE)
+$$
+\begin{equation}
+  \label{eq:flow-ode}
+  \begin{cases}
+  x(0) = x_0 \\
+  \partial_t x(t) = u_t(x(t)), \quad \forall t \in [0,1]
+  \end{cases}
+\end{equation}
+$$
+which is driven by the so-called *velocity field* $u: \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d$.
+
+QBE todo rephrase. As solving an ODE on a discrete space is not possible, the generation process in discrete flow matching is different.
+
+##### From continuous-space to discrete-space
+
+QBE: comparison Algorithm Euler continuous vs discrete? + pixel vs sequence
+
+QBE: discussion "shape" of u
+{/* and if $p_t$ is defined as the law of the ODE solution $x(t)$ at time $t \in [0, 1]$ when $x_0 \sim p_0$, we say that $u$ generates the probability path $(p_t)_{t \in [0, 1]}$.<a href="#cfm-blog" class="dfm-note-ref"></a> */}
+
+It is defined as
+$$
+\begin{equation}
+\label{eq:euler-sampling}
+\mathbf{x}_{t + h} \sim \text{Cat}\left(\mathbf{e}_{\mathbf{x}_t} + h u_t(\mathbf{x}_t)\right ) + o(h),
+\end{equation}
+$$
+where $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$ is the velocity field, $\mathbf{e}_{\mathbf{x}} \in \mathbb{R}^{|\mathcal{S}|}$ is the one-hot vector corresponding to state $\mathbf{x} \in \mathcal{S}$, and $\text{Cat}$ denotes the categorical distribution.
+The velocity $u_t(\mathbf{x})$ can be seen as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
+
+{/* To overcome this challenge and give an intuition of a discrete analog of the ODE, we reason with the discretized version of the ODE @eq:flow-ode, which reads $x(t+h) = x(t) + h u_t(x(t)) + o(h)$. Because we cannot add two sequences in $\mathcal{S}$, we can interpret the term $u_t(\mathbf{x}(t))$ as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$. In both settings, $u$ plays the same role: one Euler step of size $h u_t(x)$ moves the current sample $\mathbf{x}_t$ towards a less noisy $\mathbf{x}_{t+h}$. In our masked setting, this is done by putting higher rates on sequences with fewer masked tokens (see Figure <Ref label="fig:euler-analogy" />). */}
+
+<note-orel>**Q**: *Peut être qu'on peut enlever dans le texte le lien avec la version discrétisée vu que c'est expliqué dans la figure ? Est ce qu'on garde "one Euler step of size $h u_t(x)$ moves the current sample $\mathbf{x}_t$ towards a less noisy $\mathbf{x}_{t+h}$." avant la figure ?*</note-orel>
+
+<figure>
+  <EulerStepAnalogy client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:euler-analogy" />:</strong> One Euler step of size $h$ in continuous and discrete flow matching, on the samples and on the states (toggleable): the deterministic update $x(t) + h u_t(x(t))$ becomes a sampling step $\mathbf{x}_{t+h} \sim \text{Cat}(\mathbf{e}_{\mathbf{x}_t} + h u_t(\mathbf{x}_t))$ for discrete data.
+  </figcaption>
+</figure>
+
+<note-orel>**Q**: *la def est ok à mon avis mais très formelle et pas indispensable si on a compris le sampling, je suis pour la mettre dans un toogle, cf. what's done below.*</note-orel>
+<details>
+<summary> Formal definition of the probability velocity $u_t$. </summary>
+<Statement kind="Definition" label="probability-velocity" title="Probability velocity $u_t$">
+Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, let $(X_t)_{t\in[0,1]}$ be random variables taking values in the space of sequences $\mathcal{S}$, and having laws $(p_t)_{t \in [0, 1]}$.
+Denote $u_t := u(\cdot, t)$.
+In the discrete case, we say that $u$ *generates* the probability path $(p_t)_{t \in [0, 1]}$ if for every sequences $\mathbf{x}, \mathbf{y} \in \mathcal{S}$,
+$$
+\begin{equation}
+\label{eq:prob-velocity}
+\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) = \mathbb{I}(\mathbf{x} = \mathbf{y}) + h u_{t}(\mathbf{x})_{\mathbf{y}} + o(h)
+\end{equation}
+$$
+</Statement>
+If we index the state space as $\mathcal{S} = \{\mathbf{y}_1, \dots, \mathbf{y}_{|\mathcal{S}|}\}$ and choose $k$ such that $\mathbf{y}_k = \mathbf{x}$ (the current state), then the full transition-probability vector reads
+$$
+\begin{equation}
+\label{eq:transition-vector}
+\underbrace{\mathbb{P}(X_{t+h} = \cdot | X_t=\mathbf{x})}_{\in \mathbb{R}^{|\mathcal{S}|}}  =
+\begin{bmatrix}
+  h u_t(\mathbf{x})_{\mathbf{y}_1} \\
+  \vdots \\
+  h u_t(\mathbf{x})_{\mathbf{y}_{k-1}} \\
+  1 + h u_t(\mathbf{x})_{\mathbf{y}_k}  \\
+  h u_t(\mathbf{x})_{\mathbf{y}_{k+1}} \\
+  \vdots \\
+  h u_t(\mathbf{x})_{\mathbf{y}_{|\mathcal{S}|}}
+\end{bmatrix}
++ o(h).
+\end{equation}
+$$
+
+These two equations mean that as $t$ increases to $t+h$, the variable $X_t$ stays in its current state $\mathbf{x}$ with probability $1 + h u_t(\mathbf{x})_{\mathbf{x}}$, or moves to any other state $\mathbf{y} \neq \mathbf{x}$ with probability $h u_t(\mathbf{x})_{\mathbf{y}}$.
+</details>
+
+A fundamental point is that unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**.
+This explains why we are allowed to take $p_0$ equal to a Dirac $\delta_{m\ldots m}$ and still produce different final outputs, which would not be possible with a deterministic sampling.
+
+<note-orel>**Q**: *On garde la proposition dans le coeur de texte ? Je suis pour.*</note-orel>
+<Statement kind="Proposition" label="probability-velocity-mass-conservation" title="Constraints on $u$">
+The probability velocity $u$ must preserve probability mass: for @eq:prob-velocity to define a valid probability, for every $t\in [0, 1]$ $u_t$ must satisfy:
+1. *Positivity*: $u_t(\mathbf{x})_{\mathbf{y}} \ge 0$ for all $\mathbf{y} \neq \mathbf{x}$.
+2. *Normalization*: $\sum_{\mathbf{y} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} = 0$ for all $\mathbf{x} \in \mathcal{S}$ (and so $u_t(\mathbf{x})_{\mathbf{x}} \le 0$).
+</Statement>
+
+
+<details>
+<summary>Justification</summary>
+<div>
+Positivity guarantees nonnegative transition probabilities:
+$$
+\begin{equation}
+\label{eq:velocity-positivity-proof}
+\mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x}) = h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h) \ge 0, \qquad \mathbf{y}\neq\mathbf{x}.
+\end{equation}
+$$
+Normalization guarantees total mass conservation:
+$$
+\begin{equation}
+\label{eq:velocity-normalization-proof}
+\sum_{\mathbf{y}\in\mathcal{S}} \mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x})
+= 1 + h\sum_{\mathbf{y}\in\mathcal{S}}u_t(\mathbf{x})_{\mathbf{y}} + o(h) = 1 + o(h).
+\end{equation}
+$$
+</div>
+</details>
+
+In continuous flow matching, we have the guarantee that a velocity field $u_t$ generates a probability path $(p_t)_{t \in [0, 1]}$ if the pair $(p_t, u_t)$ satisfies the continuity equation $\partial_t p_t + \nabla \cdot (u_t p_t) = 0$.
+The equivalent result for discrete data relies on the so-called Kolmogorov Equation:
+
+<Statement kind="Proposition" label="kolmogorov-equation" title="Kolmogorov equation">
+The probability velocity $u_t$ generates $(p_t)$ in the sense of @eq:prob-velocity if and only if the pair $(u_t, p_t)$ satisfies the Kolmogorov equation:
+$$
+\begin{equation}
+\label{eq:kolmogorov-equation}
+\forall \mathbf{y} \in \mathcal{S}, \quad
+\frac{\mathrm{d}}{\mathrm{d}t} p_t(\mathbf{y}) = \sum_{\mathbf{x} \in \mathcal{S}} u_{t}(\mathbf{x})_{\mathbf{y}} \, p_t(\mathbf{x}) .
+\end{equation}
+$$
+</Statement>
+
+<details>
+<summary>Proof</summary>
+<div>
+We can derive this directly by expanding the marginal probability at $t+h$ using the law of total probability and our velocity definition:
+
+$$
+\begin{align}
+p_{t+h}(\mathbf{y}) &:= \mathbb{P}(X_{t+h} = \mathbf{y}) \notag \\
+&= \sum_{\mathbf{x} \in \mathcal{S}} \mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x})\, \mathbb{P}(X_t = \mathbf{x})  \label{eq:kolmogorov-proof-2} \\
+&= \sum_{\mathbf{x} \in \mathcal{S}} \left(\mathbb{I}(\mathbf{y} = \mathbf{x}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h)\right) p_t(\mathbf{x})  \label{eq:kolmogorov-proof-3} \\
+&= p_t(\mathbf{y}) + h \sum_{\mathbf{x} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}}\, p_t(\mathbf{x}) + o(h) \label{eq:kolmogorov-proof-4}
+\end{align}
+$$
+Rearranging the terms and taking the limit as $h \to 0$ gives the desired result.
+
+
+For the reverse implication (if the equation holds, then $u$ generates $p_t$), let $\tilde{p}_t$ denote the probability path that the velocity field $u_t$ generates, starting from the initial distribution $\tilde{p}_0 = p_0$. By the forward implication proven above, $\tilde{p}_t$ satisfies the Kolmogorov equation.
+By hypothesis, the given probability path $p_t$ also satisfies this exact same linear ordinary differential equation (ODE).
+Because both $p_t$ and $\tilde{p}_t$ are solutions to the same first-order linear ODEs and share the identical initial condition ($p_0 = \tilde{p}_0$), the Picard-Lindelöf uniqueness theorem guarantees that $p_t(\mathbf{y}) = \tilde{p}_t(\mathbf{y})$ for all times $t$ and all states $\mathbf{y} \in \mathcal{S}$. Therefore, the vector field $u_t$ generates the probability path $p_t$.
+
+</div>
+</details>
+
+Now that we are equipped with adequate definitions of probability paths and velocities for the discrete case, together with a way to check that one is associated to the other, we can state the approach of discrete flow matching, which is in fact the same as for continuous flow matching:
+1. Build an explicit probability path $(p_t)$ going from $p_0$ to $p_1$ (@eq:marginal-path) using a conditioning variable, conditional probability paths and conditional velocities.
+2. Build a probability velocity $u_t$ generating $(p_t)$ (@eq:marginal-velocity-def)
+3. Provide an explicit loss to learn $u_t$ with a neural network (@eq:cdfm-2)
+
+Before embarking on this task, we make an important modelling choice.
+Learning probability velocities taking values in the full sequence space $\mathcal{S}=\mathcal{V}^S$ is cumbersome, as the cardinality of the latter is $|\mathcal{V}|^S$, e.g. $10^{81}$ for the sudoku example!
+To make computations tractable, discrete flow matching makes a *factorization assumption*: each transition is applied to every token of the sequence independently, according to a token-wise velocity $u_t^i : \mathcal{S} \times [0, 1] \to \mathbb{R}^{|\mathcal{V}|}$.
+The quantity $u_t^i(\mathbf{x}_t)_v$ then predicts the rate of probability change from the current token $x_t^i$ toward the token $v$, that still depends on the whole noisy sequence  $\mathbf{x}_t$.
+The proposition in the toogle formalizes this assumption.
+
+{/* shows that the probability velocity $u_t$ that generates the path can be written as a sum of these token-wise contributions $u_t^i$. */}
+
+{/* the probability path it builds updates each token in the sequence independently.
+Consequently,*/}
+
+
+<details>
+<summary>Proposition</summary>
+
+<Statement kind="Proposition" label="factorization" title="Factorized velocity">
+Let $(X_t)$ be random variables of laws $p_t$, and assume that the transition probabilities factorize over tokens, namely for $\mathbf{x}, \mathbf{y} \in \mathcal{S}$:
+$$
+\begin{align}
+\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) &:= \mathbb{P}(X_{t+h}^1 = y_1, X_{t+h}^2 = y_2, \dots, X_{t+h}^S = y_S | X_t = \mathbf{x})  \label{eq:factorized-path-1} \\
+&= \prod_{i=1}^S \mathbb{P}(X_{t+h}^i = y^i | X_t = \mathbf{x}) \label{eq:factorized-path-2}
+\end{align}
+$$
+
+Suppose that there is a probability velocity $u_t$ generating $(p_t)$.
+Then, the probability velocity writes as a sum of $S$ *tokenwise* probability velocities $u_t^i$, from $\mathcal{S}$ to $\mathcal{V}$:
+
+$$
+\begin{equation}
+\label{eq:factorized-velocity}
+u_t(\mathbf{x})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i}
+\end{equation}
+$$
+where $\mathbf{x}^{\neq i} \in \mathcal{V}^{S-1}$ denotes the sequence except $\mathbf{x}$ except its $i$-th element $x^i$.
+</Statement>
+
+
+<details>
+<summary>Proof</summary>
+<div>
+We first formally define the token-wise velocity $u_t^i$:
+$$
+\begin{align}
+\mathbb{P}(X_{t+h}^i = y^i | X_t = \mathbf{x})
+&= \sum_{\mathbf{z} \in \mathcal{S}}
+\mathbb{P}(X_{t+h} = \mathbf{z} | X_t = \mathbf{x})
+\mathbb{I}(z^i = y^i) \\
+&= \sum_{\mathbf{z} \in \mathcal{S}}
+\left[\mathbb{I}(\mathbf{x} = \mathbf{z}) + h u_t(\mathbf{x})_{\mathbf{z}} + o(h)\right]
+\mathbb{I}(z^i = y^i) \\
+&= \mathbb{I}(x^i = y^i)
++ h \underbrace{\sum_{\mathbf{z} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{z}}\mathbb{I}(z^i = y^i)}_{=: u_t^i(\mathbf{x})_{y^i}}
++ o(h) \\
+&= \mathbb{I}(x^i = y^i) + h u_t^i(\mathbf{x})_{y^i} + o(h).
+\label{eq:token-transition}
+\end{align}
+$$
+
+Substituting this into our factorized joint probability, we get:
+$$
+\begin{align}
+\mathbb{P}(X_{t+h} = \mathbf{y} | X_t = \mathbf{x}) &= \prod_{i=1}^S \left[ \mathbb{I}(y^i = x^i) + h u_t^i(\mathbf{x})_{y^i} + o(h) \right]  \\
+&\hspace{-8em}{}= \prod_{i=1}^S \mathbb{I}(y^i = x^i) + h \sum_{i=1}^S \left[ \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i} \right] + o(h)  \\
+&\hspace{-8em}{}= \mathbb{I}(\mathbf{y} = \mathbf{x}) + h \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i} + o(h) \label{eq:factorized-path-2-3}
+\end{align}
+$$
+where $\mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})$ equals 1 if $\mathbf{y}$ and $\mathbf{x}$ differ at most at position $i$, and we used $\prod_{i=1}^S \mathbb{I}(y^i = x^i) = \mathbb{I}(\mathbf{y} = \mathbf{x})$.
+
+By comparing this result with the definition of the probability velocity (@eq:prob-velocity), we directly identify:
+$$
+\begin{equation}
+\label{eq:factorized-velocity-2}
+u_t(\mathbf{x})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t^i(\mathbf{x})_{y^i}
+\end{equation}
+$$
+</div>
+</details>
+
+<Statement kind="Example" label="example-utoken" title="">
+
+To understand @eq:factorized-velocity, take the vocabulary $\mathcal{V}=\{A,B\}$, sequence length $S=3$, and current sequence $\mathbf{x}=ABA$.
+We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$. From @eq:factorized-velocity, the sequence can only transition to 4 possible values (its current state, or state differing by a single token), and the probability velocity writes as:
+
+<div class="dfm-local-example">
+  <div class="dfm-local-example__source" aria-label="Current sequence ABA">
+    {/* <span class="dfm-local-example__pos-1">A</span><span class="dfm-local-example__pos-2">B</span><span class="dfm-local-example__pos-3">A</span> */}
+    ABA
+  </div>
+
+  <div class="dfm-local-example__matrix" aria-label="Velocity vector from ABA">
+    <table>
+      <thead>
+        <tr>
+          <th>State $\mathbf{y}$</th>
+          <th>Velocity $u_t(\mathbf{x})_{\mathbf{y}}$</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="dfm-local-example__active">
+          <td><span class="dfm-local-example__state">A<span class="dfm-local-example__pos-2">A</span>A</span></td>
+          <td>$u_t^{\color{#dc2626}{2}}(\mathbf{x})_{\color{#dc2626}{A}}$</td>
+        </tr>
+        <tr>
+          <td><span class="dfm-local-example__state">AAB</span></td>
+          <td>$0$</td>
+        </tr>
+        <tr class="dfm-local-example__active">
+          {/* <td><span class="dfm-local-example__state"><span class="dfm-local-example__pos-1">A</span><span class="dfm-local-example__pos-2">B</span><span class="dfm-local-example__pos-3">A</span></span></td> */}
+          <td><span class="dfm-local-example__state">ABA</span></td>
+          <td>$u_t^{\color{#15803d}{1}}(\mathbf{x})_{\color{#15803d}{A}}+u_t^{\color{#dc2626}{2}}(\mathbf{x})_{\color{#dc2626}{B}}+u_t^{\color{#2563eb}{3}}(\mathbf{x})_{\color{#2563eb}{A}}$</td>
+        </tr>
+        <tr class="dfm-local-example__active">
+          <td><span class="dfm-local-example__state">AB<span class="dfm-local-example__pos-3">B</span></span></td>
+          <td>$u_t^{\color{#2563eb}{3}}(\mathbf{x})_{\color{#2563eb}{B}}$</td>
+        </tr>
+        <tr>
+          <td><span class="dfm-local-example__state">BAA</span></td>
+          <td>$0$</td>
+        </tr>
+        <tr>
+          <td><span class="dfm-local-example__state">BAB</span></td>
+          <td>$0$</td>
+        </tr>
+        <tr class="dfm-local-example__active">
+          <td><span class="dfm-local-example__state"><span class="dfm-local-example__pos-1">B</span>BA</span></td>
+          <td>$u_t^{\color{#15803d}{1}}(\mathbf{x})_{\color{#15803d}{B}}$</td>
+        </tr>
+        <tr>
+          <td><span class="dfm-local-example__state">BBB</span></td>
+          <td>$0$</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <svg class="dfm-local-example__arrows" viewBox="0 0 720 290" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <marker id="dfm-local-example-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+        <path d="M 0 0 L 8 4 L 0 8 z" fill="#6b7280" />
+      </marker>
+    </defs>
+    <g transform="translate(0, 6)">
+      <path d="M 56 145 C 82 72, 92 58, 104 58" />
+      <path d="M 56 145 C 82 122, 92 124, 104 124" />
+      <path d="M 56 145 C 82 146, 92 157, 104 157" />
+      <path d="M 56 145 C 82 210, 92 248, 104 248" />
+    </g>
+  </svg>
+</div>
+
+While $u_t$ outputs a vector in $\mathbb{R}^8$, $u_t^1, u_t^2$ and $u_t^3$ output vectors in $\mathbb{R}^2$ (as $|\mathcal{V}| = 2$).
+</Statement>
+
+</details>
+
+
+{/* Through @eq:factorized-velocity*/}This modeling assumption has several important consequences:
+- for infinitesimally small time steps, a sequence $\mathbf{x}$ can only transition to states $\mathbf{y}$ differing by at most one token (even if we draw all tokens simultaneously, the probability of two or more tokens changing is $o(h)$)
+- learning-wise, it implies *a substantial computational gain*: instead of learning one transition object $u$ on the full sequence space $\mathcal{S}=\mathcal{V}^S$ (exponential in $S$), we can learn $S$ local transition objects $u^i$, each on the vocabulary space $\mathcal{V}$ (linear in $S$)
+- at each sampling step, we draw each token independently following:
+$$
+\begin{equation}
+\label{eq:token-sampling}
+x_{t+h}^i \sim \text{Cat}\left(\mathbf{e}_{x_t^i} + h u_t^i(\mathbf{x}_t)\right)
+\end{equation}
+$$
+
+Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of discrete flow matching, going from source $p_0$ to target $p_1$ distribution!
+
+#### Building the probability path
+
+<note-orel>**Q**: *Je suis pour ici ajouter une figure du style le gif du blogpost continu pour aider à comprendre cette phrase. + J'ai essayé de simplifier et enlever tte mention à z, en parlant directement de x_1, à remettre si vs préférez.*</note-orel>
+
+Similarly to continuous flow matching, there are infinitely many possible choices for a probability path $(p_t)$ going from source $p_0$ to target $p_1$.
+To build a specific one, we borrow the core idea from continuous flow matching: we first choose a choose a conditioning variable $\mathbf{z} = \mathbf{x_1}$ and a conditional probability path $p_t(\cdot | \mathbf{x}_1)$ for which the exact conditional velocity $u_t(\cdot | \mathbf{x}_1)$ that generates this path is known and easy to compute.
+Then, we show that the resulting global velocity (obtained by marginalizing the conditional velocities) is guaranteed to generate a probability path that transports $p_0$ to $p_1$.
+All that's left is to learn the global velocity as a simple conditional expectation from data, which neural networks know how to do!
+
+{/* The conditioning variable $\mathbf{z} \in \mathcal{Z}^S$ that we use to build conditional paths and velocities can be either:
+* **A target sample:** $\mathbf{z} = \mathbf{x}_1$, with $\mathcal{Z} = \mathcal{V}$ (useful when the source $p_0$ is a known, simple distribution like uniform or mask).
+* **A source-target pair:** $\mathbf{z} = (\mathbf{x}_0, \mathbf{x}_1)$, with $\mathcal{Z} = \mathcal{V} \times \mathcal{V}$ (useful when transforming between two arbitrary datasets).
+To simplify the exposition, we will use $\mathbf{z} = \mathbf{x}_1$.
+Having chosen $\mathbf{z}$, we chose a conditional probability path. */}
+
+In order to have factorized velocities (simpler to learn), we chose a conditional path $p_t(\cdot | \mathbf{x}_1)$ to be factorized:
+$$
+\begin{align}
+& p_t(\mathbf{x} | \mathbf{x_1}) = \prod_{i=1}^S  \big( \underbrace{ t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = m) } _{:= q_t(x^j | x_1^j)} \big)  \label{eq:mask-path-1} \\
+\end{align}
+$$
+
+This choice is similar to the linear interpolation path used in continuous flow matching $p_t(x | x_0, x_1) = t x_0 + (1 - t) x_1$, unless we cannot interpolate between two discrete tokens.
+Instead, we use linear interpolation in probability space: at time $t$, the $i$-th token $x^i_t$ equals the target token $x_1^i$ with probability $t$, or the mask token $m$ with probability $1 - t$.
+Therefore, $p_0(\cdot | \mathbf{x}_1)$ is a Dirac at the all-masked sequence, while $p_1(\cdot | \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_1$.
+The interest of this conditional probability path is that we can derive the associated probability velocity in closed-form.
+
+
+<Statement kind="Proposition" label="conditional-velocity" title="Closed-form for conditional velocity">
+Define the following token-wise conditional velocity:
+{/* the token-wise $u_t(x^i | x_1^i)$ conditional velocity (generating the token-wise conditional path $q_t(x^i | x_1^i)$) : */}
+$$
+\begin{equation}
+\label{eq:mask-velocity}
+u_t(x^i | x_1^i)_v := \begin{cases}
+\frac{1}{1-t} & \text{if } v = x_1^i \text{ and } x^i = m, \\[0.3cm]
+-\frac{1}{1-t} & \text{if } v = x^i = m, \\[0.3cm]
+0 & \text{otherwise}.
+\end{cases}
+\end{equation}
+$$
+Then, the velocity field
+$$
+\begin{equation}
+u_t(\mathbf{x} | \mathbf{x}_1)_{\mathbf{y}} := \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t(x^i | x_1^i)_{y^i}
+\end{equation}
+$$
+generates the conditional path $p_t(\mathbf{x} | \mathbf{x}_1)$ in @eq:mask-path-1
+</Statement>
+**Note**: compared to @eq:token-sampling, one may be surprised that $u^i$ in @eq:mask-velocity depends only on $x_i$ and not on $\mathbf{x}$. As the proof will show, this is a byproduct of the conditional probability paths factorizing over each token of the conditioning sequence $\mathbf{x}_1$.
+
+<Statement kind="Example" label="ex-conditional-velocity" title="Example of conditional velocity">
+
+{/* Remember that $u$ is a rate of change of probability: $u_t(x^i | x_1^i)_v$ quantifies the instantaneous probability flow from the current token $x^i$ toward any token $v$.
+In the masked-source setting, */}
+The velocity $u_t(x^i | x_1^i)$ progressively removes mass from $m$ and transfers it to the target token $x_1^i$.
+If $x^i_t$ is already $x_1^i$, then the conditional velocity is $0$: the token remains at its value until the end.
+As an example, for $\mathcal{V} = \{A, B, C, m\}$, and $x_1^i = B$, then the conditional velocity field is given by:
+$$
+u_t(x^i | x_1^i = B)_v = \begin{array}{c|cccc}
+\begin{matrix} x^i  \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & A & B & C & m \\
+\hline
+A & 0 & 0 & 0 & 0 \\[0.1cm]
+B & 0 & 0 & 0 & \tfrac{1}{1-t} \\[0.1cm]
+C & 0 & 0 & 0 & 0 \\[0.1cm]
+m & 0 & 0 & 0 & -\tfrac{1}{1-t}
+\end{array}
+$$
+</Statement>
+
+<details>
+<summary>Proof of proposition <Ref label="prop:conditional-velocity" /></summary>
+<div>
+We will proceed in two steps:
+
+1. For the masked source, we show that the token-wise velocity $u_t(x^i | x_1^i)$ in @eq:mask-velocity generates the token-wise conditional path $q_t(x^i | x_1^i)$ appearing in @eq:mask-path-1, in the sense that it satisfies the token-wise Kolmogorov equation
+$$
+\begin{equation}
+\label{eq:token-kolmogorov}
+\frac{\mathrm{d}}{\mathrm{d}t} q_t(y^{i} | x_1^{i}) = \sum_{v \in \mathcal{V} } u_{t}(v | x_1^{i})_{y^{i}} \, q_t(v | x_1^{i})
+\end{equation}
+$$
+for all $y^i \in \mathcal{V}$ and all $i \in \{1, \dots, S\}$.
+
+2. Once @eq:token-kolmogorov holds, we show that the velocity
+$$
+\begin{equation}
+u_t(\mathbf{x} | \mathbf{x}_1)_{\mathbf{y}} := \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i}) u_t(x^i | x_1^i)_{y^i}
+\end{equation}
+$$
+generates the conditional path $p_t(\mathbf{x} | \mathbf{x}_1)$, as per @eq:kolmogorov-equation.
+
+We start with the first statement. Since $q_t(y^i | x_1^i) := t \mathbb{I}(y^i = x_1^i) + (1 - t) \mathbb{I}(y^i = m)$, we have
+$$
+\begin{equation}
+\label{eq:mask-path-derivative}
+\frac{\mathrm{d}}{\mathrm{d}t} q_t(y^{i} | x_1^{i}) = \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m).
+\end{equation}
+$$
+
+Equivalently, the velocity in @eq:mask-velocity can be written as $u_{t}(v | x_1^{i})_{y^{i}} = \frac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) \mathbb{I}(v = m)$.
+Therefore, the right-hand side of @eq:token-kolmogorov is
+$$
+\begin{align}
+&\sum_{v \in \mathcal{V} } u_t(v | x_1^i)_{y^i} \, q_t(v | x_1^{i})  \label{eq:mask-velocity-rhs-1} \\
+&= \sum_{v \in \mathcal{V} } \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) \mathbb{I}(v = m) \, q_t(v | x_1^{i})  \label{eq:mask-velocity-rhs-2} \\
+&= \tfrac{1}{1 - t} \left( \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m) \right) q_t(m | x_1^{i})  \label{eq:mask-velocity-rhs-3} \\
+&=  \mathbb{I}(y^{i} = x_1^{i}) - \mathbb{I}(y^{i} = m), \label{eq:mask-velocity-rhs-4}
+\end{align}
+$$
+since $q_t(m | x_1^{i}) = 1-t$. This matches @eq:mask-path-derivative, so $(u_t(\cdot | x_1^i), q_t(\cdot | x_1^i))$ satisfies the token-wise Kolmogorov equation.
+
+We now show that, using @eq:token-kolmogorov, the pair $(p_t(\cdot | \mathbf{x}_1), u_t(\cdot | \mathbf{x}_1))$ satisfies the Kolmogorov equation @eq:kolmogorov-equation. Since the conditional path is factorized, we have:
+$$
+\begin{equation}
+\label{eq:conditional-factorized-path}
+p_t(\mathbf{y} | \mathbf{x}_1) = \prod_{i=1}^S q_t(y^i | x_1^i).
+\end{equation}
+$$
+
+Differentiating this product gives:
+$$
+\begin{align}
+\frac{\mathrm{d}}{\mathrm{d}t}p_t(\mathbf{y} | \mathbf{x}_1)
+&= \frac{\mathrm{d}}{\mathrm{d}t}\prod_{i=1}^S q_t(y^i | x_1^i) \label{eq:global-kolmogorov-proof-1} \\
+&= \sum_{i=1}^S
+\left(\frac{\mathrm{d}}{\mathrm{d}t}q_t(y^i | x_1^i)\right)
+\prod_{j\neq i} q_t(y^j | x_1^j). \label{eq:global-kolmogorov-proof-2}
+\end{align}
+$$
+
+Using the token-wise Kolmogorov equation @eq:token-kolmogorov, this becomes:
+$$
+\begin{align}
+\frac{\mathrm{d}}{\mathrm{d}t}p_t(\mathbf{y} | \mathbf{x}_1)
+&= \sum_{i=1}^S
+\left[
+\sum_{v\in\mathcal{V}}
+u_t(v | x_1^i)_{y^i}\,q_t(v | x_1^i)
+\right]
+\prod_{j\neq i} q_t(y^j | x_1^j). \label{eq:global-kolmogorov-proof-3}
+\end{align}
+$$
+
+We now compute the right-hand side of the global Kolmogorov equation using the factorized velocity @eq:factorized-velocity:
+$$
+\begin{align}
+&\sum_{\mathbf{x}\in\mathcal{S}} u_t(\mathbf{x} | \mathbf{x}_1)_{\mathbf{y}}\,p_t(\mathbf{x} | \mathbf{x}_1) \label{eq:global-kolmogorov-proof-4} \\
+&= \sum_{\mathbf{x}\in\mathcal{S}}
+\left[
+\sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i}=\mathbf{x}^{\neq i})\,u_t(x^i | x_1^i)_{y^i}
+\right]
+\prod_{j=1}^S q_t(x^j | x_1^j) \label{eq:global-kolmogorov-proof-5} \\
+&= \sum_{i=1}^S
+\sum_{\mathbf{x}\in\mathcal{S}}
+\mathbb{I}(\mathbf{y}^{\neq i}=\mathbf{x}^{\neq i})\,u_t(x^i | x_1^i)_{y^i}
+\prod_{j=1}^S q_t(x^j | x_1^j). \label{eq:global-kolmogorov-proof-6}
+\end{align}
+$$
+
+For a fixed coordinate $i$, the indicator $\mathbb{I}(\mathbf{y}^{\neq i}=\mathbf{x}^{\neq i})$ forces $x^j=y^j$ for every $j\neq i$. Therefore, the sum over $\mathbf{x}$ reduces to a sum over the single free token $x^i=v$:
+$$
+\begin{align}
+&\sum_{\mathbf{x}\in\mathcal{S}}
+\mathbb{I}(\mathbf{y}^{\neq i}=\mathbf{x}^{\neq i})\,u_t(x^i | x_1^i)_{y^i}
+\prod_{j=1}^S q_t(x^j | x_1^j) \label{eq:global-kolmogorov-proof-7} \\
+&= \sum_{v\in\mathcal{V}}
+u_t(v | x_1^i)_{y^i}\,q_t(v | x_1^i)
+\prod_{j\neq i} q_t(y^j | x_1^j). \label{eq:global-kolmogorov-proof-8}
+\end{align}
+$$
+
+Plugging this back into @eq:global-kolmogorov-proof-6 gives exactly @eq:global-kolmogorov-proof-3. Hence:
+$$
+\begin{equation}
+\label{eq:global-kolmogorov-proof-9}
+\frac{\mathrm{d}}{\mathrm{d}t}p_t(\mathbf{y} | \mathbf{x}_1)
+=
+\sum_{\mathbf{x}\in\mathcal{S}} u_t(\mathbf{x} | \mathbf{x}_1)_{\mathbf{y}}\,p_t(\mathbf{x} | \mathbf{x}_1).
+\end{equation}
+$$
+
+The pair $(p_t(\cdot | \mathbf{x}_1), u_t(\cdot | \mathbf{x}_1))$ satisfies the Kolmogorov equation.
+
+
+</div>
+</details>
+
+
+<details>
+<summary>Values of conditional velocities for and uniform source and interpolation between an arbitrary $p_0$ and $p_1$</summary>
+<div>
+
+**Source-Target Conditioning**:
+Here, we condition on both the start and end points, so $z^i = (x_0^i, x_1^i)$. We choose $q_t$ as:
+$$
+\begin{equation}
+\label{eq:pair-path}
+q_t(x^i | x_0^i, x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \mathbb{I}(x^i = x_0^i)
+\end{equation}
+$$
+
+It means at time $t$, the $i$-th token $x_t^i$ equals the target token $x_1^i$ with probability $t$, or the source token $x_0^i$ with probability $1 - t$. Therefore, $p_0(\cdot | \mathbf{x}_0, \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_0$, while $p_1(\cdot | \mathbf{x}_0, \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_1$.
+
+The conditional velocity field driving this transition is:
+$$
+\begin{equation}
+\label{eq:pair-velocity}
+u_t(x^i | x_0^i, x_1^i)_v = \begin{cases}
+\tfrac{1}{1 - t} & \text{if } v = x_1^i \text{ and } x^i = x_0^i, \\
+-\tfrac{1}{1 - t} & \text{if } v = x^i = x_0^i, \\
+0 & \text{otherwise}.
+\end{cases}
+\end{equation}
+$$
+
+Here, mass moves directly from the source token $x_0^i$ toward the target token $x_1^i$. All rows except the source row are identically zero: once a token is already at state $x_1^i$, no transition occurs.
+Concretely, if $\mathcal{V} = \{A, B, C\}$, $x_0^i = A$, and $x_1^i = B$:
+
+$$
+u_t(x^i | x_0^i = A,\, x_1^i = B)_v = \begin{array}{c|ccc}
+\begin{matrix} x^i \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & A & B & C \\
+\hline
+A & -\tfrac{1}{1-t} & \tfrac{1}{1-t} & 0 \\[0.3cm]
+B & 0 & 0 & 0 \\[0.3cm]
+C & 0 & 0 & 0
+\end{array}
+$$
+
+**Uniform Source**: In this case, we choose $q_t$ as:
+$$
+\begin{equation}
+\label{eq:uniform-path}
+q_t(x^i | x_1^i) = t \mathbb{I}(x^i = x_1^i) + (1 - t) \frac{1}{|\mathcal{V}|}
+\end{equation}
+$$
+
+It means that at time $t$, the $i$-th token $x_t^i$ equals the target token $x_1^i$ with probability $t + (1 - t)\frac{1}{|\mathcal{V}|}$, while each non-target token in the vocabulary $\mathcal{V}$ has probability $(1 - t)\frac{1}{|\mathcal{V}|}$. Therefore, $p_0(\cdot | \mathbf{x}_1)$ is the uniform distribution over sequences, while $p_1(\cdot | \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_1$.
+
+The conditional velocity field driving this transition is:
+$$
+\begin{equation}
+\label{eq:uniform-velocity}
+u_t(x^i | x_1^i)_v = \begin{cases}
+\tfrac{1}{1-t} & \text{if } v = x_1^i \text{ and } x^i \neq x_1^i \\[0.3cm]
+-\tfrac{1}{1-t} & \text{if } v = x^i \neq x_1^i \\[0.3cm]
+0 & \text{otherwise}
+\end{cases}
+\end{equation}
+$$
+
+Unlike the mask source, every non-target token can transition toward $x_1^i$, since the uniform source places initial mass everywhere. Concretely, if $\mathcal{V} = \{A, B, C\}$ and $x_1^i = B$:
+
+$$
+u_t(x^i | x_1^i = B)_v = \begin{array}{c|ccc}
+\begin{matrix} x^i \\[-2pt] \diagdown \\[-2pt] v \end{matrix} & A & B & C \\
+\hline
+A & -\tfrac{1}{1-t} & \tfrac{1}{1-t} & 0 \\[0.1cm]
+B & 0 & 0 & 0 \\[0.1cm]
+C & 0 & \tfrac{1}{1-t} & -\tfrac{1}{1-t}
+\end{array}
+$$
+
+</div>
+</details>
+
+<figure>
+  <DFMLiveFigure
+      title="Discrete flow matching live figure"
+      height="570px"/>
+  <figcaption>
+    <strong>Figure <Counter label="fig:dfm-live" />:</strong> Top: evolution of the conditional path $p_t(\cdot | \mathbf{x}_1)$ defined in @eq:mask-path-1, where the vocabulary is restricted to the characters in $\mathbf{x}_1 \cup \{m\}$. In each cell, white indicates probability zero for sampling that token, while a fully colored cell indicates probability one. Bottom: for a given time $t$, five samples $\mathbf{x}_t | \mathbf{x}_1$ drawn from the conditional probability path.
+  </figcaption>
+</figure>
+
+#### Building the target velocity
+
+Now that we have defined our conditional probability paths and velocities, we can use them to build global, unconditional ones.
+The overall distribution $p_t$ is obtained by marginalizing the conditional paths over target samples $\mathbf{x}_1$ drawn from $p_1$:
+$$
+\begin{equation}
+\label{eq:marginal-path}
+p_t(\mathbf{x}) := \sum_{\mathbf{x}_1} p_t(\mathbf{x} | \mathbf{x}_1) p_1(\mathbf{x}_1)
+\end{equation}
+$$
+As the proof below shows, the path defined by marginalization indeed goes from $p_0$ to $p_1$.
+
+<details>
+<summary>Proof that path $(p_t)$ does go from $p_0$ to $p_1$</summary>
+<div>
+
+We verify the two boundary conditions separately:
+
+**At $t=0$**:
+Recall the conditional path the mask source:
+$$
+\begin{equation}
+q_0(x^i | x_1^i) = \mathbb{I}(x^i = m).
+\end{equation}
+$$
+The value of $x_1^i$ plays no role, so $p_0(\mathbf{x} | \mathbf{x}_1)$ does not depend on $\mathbf{x}_1$:
+$$
+\begin{equation}
+p_0(\mathbf{x} | \mathbf{x}_1) = \prod_{j=1}^S \mathbb{I}(x^j = m) = \delta_{m\ldots m}(\mathbf{x}) = p_0(\mathbf{x}).
+\end{equation}
+$$
+Marginalizing over $\mathbf{x}_1$ then gives:
+$$
+\begin{equation}
+p_{t=0}(\mathbf{x}) = \sum_{\mathbf{x}_1} p_0(\mathbf{x} | \mathbf{x}_1)\,p_1(\mathbf{x}_1) = p_0(\mathbf{x})\sum_{\mathbf{x}_1} p_1(\mathbf{x}_1) = p_0(\mathbf{x}).
+\end{equation}
+$$
+
+**At $t=1$**:
+We have:
+$$
+\begin{align}
+q_1(x^i | x_1^i) &= \mathbb{I}(x^i = x_1^i)  \label{eq:endpoint-path-1} \\
+p_1(\mathbf{x} | \mathbf{x}_1) &= \prod_{j=1}^S \mathbb{I}(x^j = x_1^j) = \mathbb{I}(\mathbf{x} = \mathbf{x}_1) \label{eq:endpoint-path-2}
+\end{align}
+$$
+We conclude:
+$$
+\begin{align}
+p_{t=1}(\mathbf{x})
+&= \sum_{\mathbf{x}_1} p_1(\mathbf{x} | \mathbf{x}_1)\,p_1(\mathbf{x}_1) \\
+&= \sum_{\mathbf{x}_1} \mathbb{I}(\mathbf{x} = \mathbf{x}_1)\, p_1(\mathbf{x}_1) \\
+&= p_1(\mathbf{x}).
+\end{align}
+$$
+
+</div>
+</details>
+
+We now arrive to the heart of discrete flow matching: **building a velocity that transports $p_0$ to $p_1$**.
+
+<Statement kind="Theorem" label="fundamental-theorem-discrete-fm" title="Fundamental theorem of discrete FM">
+The probability velocity obtained by taking the conditional expectation of the conditional velocities,
+$$
+\begin{align}
+u_t(\mathbf{x})_{\mathbf{y}}
+:= \mathbb{E}\!\left[u_t(X_t|X_1)_{\mathbf{y}} | X_t = \mathbf{x}\right]
+&= \sum_{\mathbf{x}_1} u_t(\mathbf{x}|\mathbf{x}_1)_{\mathbf{y}}\,\mathbb{P}(X_1 = \mathbf{x}_1 | X_t = \mathbf{x}) \label{eq:marginal-velocity-def}
+\end{align}
+$$
+generates the probability path $p_t(\mathbf{x}) = \sum_{\mathbf{x}_1} p_t(\mathbf{x}|\mathbf{x}_1)\,p_1(\mathbf{x}_1)$.
+</Statement>
+
+<details>
+<summary>Proof</summary>
+<div>
+We want to show
+$$
+\begin{equation}
+\label{eq:marginal-velocity}
+\mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x})
+= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h).
+\end{equation}
+$$
+Introducing $X_1$ and using the law of total probability,
+$$
+\begin{align}
+\mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-1}
+&= \sum_{\mathbf{x}_1} \mathbb{P}(X_{t+h}=\mathbf{y}, X_1=\mathbf{x}_1| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-2} \\
+&\hspace{-8em}{}= \sum_{\mathbf{x}_1} \mathbb{P}(X_{t+h}=\mathbf{y}| X_t=\mathbf{x}, X_1=\mathbf{x}_1)\,\mathbb{P}(X_1=\mathbf{x}_1| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-3} \\
+&\hspace{-8em}{}= \sum_{\mathbf{x}_1}\Big(\mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x}|\mathbf{x}_1)_{\mathbf{y}} + o(h)\Big)\,\mathbb{P}(X_1=\mathbf{x}_1| X_t=\mathbf{x}) \label{eq:marginal-velocity-proof-4} \\
+&\hspace{-8em}{}= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\sum_{\mathbf{x}_1}u_t(\mathbf{x}|\mathbf{x}_1)_{\mathbf{y}}\,\mathbb{P}(X_1=\mathbf{x}_1| X_t=\mathbf{x}) + o(h) \label{eq:marginal-velocity-proof-5} \\
+&\hspace{-8em}{}= \mathbb{I}(\mathbf{x}=\mathbf{y}) + h\,u_t(\mathbf{x})_{\mathbf{y}} + o(h). \label{eq:marginal-velocity-proof-6}
+\end{align}
+$$
+where we have used in @eq:marginal-velocity-proof-4 the fact that $u_t(\cdot | \mathbf{x}_1)$ generates $p_t(\cdot | \mathbf{x}_1)$.
+
+**Alternative proof**: apply the Kolmogorov equation to each conditional process and average over $\mathbf{x}_1$:
+$$
+\begin{align}
+\frac{\mathrm{d}}{\mathrm{d}t}p_t(\mathbf{y}) \label{eq:marginal-kolmogorov-1}
+&= \sum_{\mathbf{x}_1} p_1(\mathbf{x}_1)\,\frac{\mathrm{d}}{\mathrm{d}t}p_t(\mathbf{y}|\mathbf{x}_1)  \label{eq:marginal-kolmogorov-2} \\
+&= \sum_{\mathbf{x}_1}p_1(\mathbf{x}_1)\sum_{\mathbf{x}}u_t(\mathbf{x}|\mathbf{x}_1)_{\mathbf{y}}\,p_t(\mathbf{x}|\mathbf{x}_1)  \label{eq:marginal-kolmogorov-3} \\
+&= \sum_{\mathbf{x}}\left(\sum_{\mathbf{x}_1}u_t(\mathbf{x}|\mathbf{x}_1)_{\mathbf{y}}\,\mathbb{P}(X_1=\mathbf{x}_1| X_t=\mathbf{x})\right)p_t(\mathbf{x})  \label{eq:marginal-kolmogorov-4} \\
+&= \sum_{\mathbf{x}} u_t(\mathbf{x})_{\mathbf{y}}\,p_t(\mathbf{x}). \label{eq:marginal-kolmogorov-5}
+\end{align}
+$$
+So $u_t$ satisfies the Kolmogorov equation for $p_t$ and therefore generates $p_t$.
+</div>
+</details>
+
+{/* If needed we can add the same figure u,ucond,p,pcond as the one in the CFM blogpost, because it's still valid.*/}
+
+This theorem follows the exact same logic as in continuous FM, and has the same practical consequence: since the target field is identified as a conditional expectation, it can be learned through a regression problem.
+
+In continuous spaces, this is typically introduced via the $L^2$ projection view, as the conditional expectation solves
+$$
+\begin{equation}
+\label{eq:l2-proj}
+u_t(\mathbf{x}) = \underset{u_t \text{ measurable}}{\operatorname{argmin}}\ \mathbb{E}\!\left[\left\|u_t(X_t | X_1) - u(X_t)\right\|^2 \right] .
+\end{equation}
+$$
+In discrete spaces, since we compare nonneg­ative rate vectors that behave like local probabilities, a Kullback-Leibler style objective is more natural.
+More generally, this conditional expectation is the minimizer
+for any Bregman divergence, and KL<a href="#generalized-kl" class="dfm-note-ref"></a> is the Bregman choice adapted to our setting:<a href="#probability-velocity-kl" class="dfm-note-ref"></a>
+$$
+\begin{equation}
+\label{eq:kl-proj}
+u_t(\mathbf{x}) ={} \underset{u}{\operatorname{argmin}}\ \mathbb{E}\!\left[ \mathrm{KL} \left(u(X_t | X_1), u(X_t)\right)  \right]
+\end{equation}
+$$
+
+The exact conditional expectation of @eq:marginal-velocity-def is approximated by a neural network $u_{\theta,t}$, trained by minimizing over $\theta$:
+<PinkEquation>
+
+$$
+\begin{align}
+L_{\text{CDFM}}(\theta)
+&= \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_1 \\ \mathbf{x}_t \sim p_t( \cdot | \mathbf{x}_1)}}\left[ \mathrm{KL}\left(u_t(\mathbf{x}_t | \mathbf{x}_1), u_{\theta,t}(\mathbf{x}_t)\right) \right]  \label{eq:cdfm-2} \\
+& =\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_1 \\ \mathbf{x}_t \sim p_t( \cdot | \mathbf{x}_1)}}\left[ \sum_{i=1}^S \mathrm{KL}\left( u_t(x^i_t | x_1^i), u_{\theta,t}^i(\mathbf{x}_t) \right) \right] \label{eq:cdfm-3}
+\end{align}
+$$
+
+</PinkEquation>
+
+
+
+#### Learning with denoiser parameterization
+
+
+With straight interpolation paths $x_t := (1-t) x_0 + tx_1$, learning the ideal velocity $\mathbb{E}[X_1 - X_0 | X_t=x]$ is mathematically equivalent to learning the ideal denoiser $\mathbb{E}[X_1 | X_t = x]$, since the two are linked via $\mathbb{E}[X_1 - X_0 | X_t=x] = \frac{1}{1 - t} ( \mathbb{E}[X_1 | X_t = x] - x)$.
+The denoiser can be understood as predicting the most plausible clean image $x_1$ given a noisy image $x_t$ at time $t$.
+It turns out the same type of denoiser-velocity equivalence holds in the discrete case:
+$$
+\begin{equation}
+\label{eq:velocity-posterior}
+u_t^i(\mathbf{x})_v = \frac{1}{1 - t} \left( \mathbb{P}(X_1^i = v | X_t = \mathbf{x}) - \mathbb{I}(v = x^i) \right) .
+\end{equation}
+$$
+In this equation, the function $\mathbf{x} \mapsto \mathbb{P}(X_1^i = v | X_t = \mathbf{x})$ can be interpreted as a denoiser: it gives the probability of the $i$-th token in the clean sequence $\mathbf{x}_1$ being $v$, given the full noisy sequence $\mathbf{x}_t$.
+
+
+<details>
+<summary>Proof of velocity-denoiser equivalence</summary>
+<div>
+
+We write the proof for the masked source and start from @eq:mask-velocity.
+In a compact form, it can be rewritten as:
+$$
+\begin{equation}
+\label{eq:mask-velocity-token}
+u_t^i(x^i | x_1^i)_v = \frac{1}{1-t}\,\mathbb{I}(x^i = m)\left(\mathbb{I}(v = x_1^i) - \mathbb{I}(v = m)\right).
+\end{equation}
+$$
+
+**Case 1: $x^i \neq m$ (token already unmasked).**
+
+The indicator $\mathbb{I}(x^i = m)=0$, so $u_t^i(x^i | x_1^i)_v = 0$ for all $x_1^i, v$
+and hence $u_t^i(x)_v = 0$.
+
+It remains to check that @eq:velocity-posterior also gives zero. By Bayes' rule,
+$$
+\begin{equation}
+\label{eq:posterior-bayes}
+\mathbb{P}(X_1^i = v | X_t = \mathbf{x})
+=
+\frac{\mathbb{P}(X_t = \mathbf{x} | X_1^i = v)\,\mathbb{P}(X_1^i = v)}
+{\mathbb{P}(X_t = \mathbf{x})}.
+\end{equation}
+$$
+Under the conditional probability path @eq:mask-path-1,
+$$
+\begin{equation}
+\label{eq:mask-token-path}
+q_t(x^i | x_1^i)
+=
+t\,\mathbb{I}(x^i = x_1^i) + \underbrace{(1-t)\,\mathbb{I}(x^i = m)}_{=0} = t\,\mathbb{I}(x^i = x_1^i)
+\end{equation}
+$$
+since $x^i \neq m$.
+Therefore, if $v \neq x^i$, then
+$$
+\begin{align}
+\mathbb{P}(X_t = \mathbf{x} |X_1^i = v) \label{eq:posterior-zero-1}
+&= \label{eq:posterior-zero-2}
+q_t(x^i | v)\,\mathbb{P}(X_t^{\neq i} = \mathbf{x}^{\neq i} |X_1^i = v)  \label{eq:posterior-zero-3} \\
+&= 0. \label{eq:posterior-zero-4}
+\end{align}
+$$
+and hence $\mathbb{P}(X_1^i = v |X_t = \mathbf{x})=0$.
+Since the conditional probabilities sum to one over $v$ , we conclude that
+$$
+\begin{equation}
+\label{eq:posterior-copy}
+\mathbb{P}(X_1^i = v |X_t = \mathbf{x})=\mathbb{I}(v = x^i).
+\end{equation}
+$$
+Substituting @eq:posterior-copy into @eq:velocity-posterior gives
+$$
+\begin{equation}
+\label{eq:velocity-zero}
+\frac{1}{1-t}
+\left(
+\mathbb{P}(X_1^i = v |X_t = \mathbf{x}) - \mathbb{I}(v = x^i)
+\right)
+= 0.
+\end{equation}
+$$
+Thus both expressions coincide in the case $x^i \neq m$.
+
+**Case 2: $x^i = m$ (token is masked).**
+Taking the expectation over $x_1^i$:
+$$
+\begin{align}
+u_t^i(\mathbf{x})_v \label{eq:velocity-posterior-proof-1}
+&= \mathbb{E}_{x_1^i}\!\left[\frac{1}{1-t}\left(\mathbb{I}(v = x_1^i) - \mathbb{I}(v = m)\right)\right]  \label{eq:velocity-posterior-proof-2} \\
+&= \frac{1}{1-t}\left(\mathbb{P}(X_1^i = v | X_t = \mathbf{x}) - \mathbb{I}(v = m)\right)  \label{eq:velocity-posterior-proof-3} \\
+&= \frac{1}{1-t}\left(\mathbb{P}(X_1^i = v | X_t = \mathbf{x}) - \mathbb{I}(v = x^i)\right), \label{eq:velocity-posterior-proof-4}
+\end{align}
+$$
+where the last equality uses $x^i = m$. Both cases match the claimed formula.
+
+</div>
+</details>
+
+Because the term $\mathbb{I}(v = x^i)$ is a known constant given the current state, learning the velocity field $u$ is mathematically exactly equivalent to learning the denoiser probability $\mathbb{P}(X_1^i = v | X_t = \mathbf{x})$.<a href="#masked-source-denoiser-equivalence" class="dfm-note-ref"></a>
+Consequently, we can train a denoiser $P_{\theta, t}$ directly. Using the KL divergence between the true clean token distribution and the learned one, the loss simplifies to the standard cross-entropy [<a class="cite-ref" href="#ref-5">2</a>, <a class="cite-ref" href="#ref-6">3</a>]:
+<PinkEquation>
+
+$$
+\begin{equation}
+\label{eq:cdm-loss}
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_1 \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right]
+\end{equation}
+$$
+
+</PinkEquation>
+
+<details>
+<summary>Derivation</summary>
+
+<div>
+
+{/* We want to learn the denoiser by minimizing the KL divergence between the true posterior $P_t(X_1^i | X_t = \mathbf{x})$ and the learned one:
+
+$$
+\begin{equation}
+\label{eq:posterior-kl}
+L(\theta) = \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x} \sim p_t}}\left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x}),\, P_{\theta,t}(X_1^i | X_t = \mathbf{x})\right) \right]
+\end{equation}
+$$
+*/}
+
+By the same argument as in @eq:kl-proj, the true denoiser is the KL projection of the conditional clean-token distribution:
+$P_t(X_1^i | X_t = \mathbf{x})$ minimizes in $P$
+$$
+\begin{equation}
+\label{eq:denoiser-kl-proj}
+\mathbb{E}_{\substack{\mathbf{x}_1 \sim p_1 \\ \mathbf{x} \sim p_t(\cdot | \mathbf{x}_1)}} \!\left[ \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x},\, \mathbf{x}_1),\, P(X_1^i | X_t = \mathbf{x})\right) \right]
+\end{equation}
+$$
+
+Thus, we want to minimize:
+
+$$
+\begin{equation}
+\label{eq:posterior-kl-cond}
+L(\theta) \equiv \mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_1 \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \mathrm{KL}\left(P_t(X_1^i | X_t = \mathbf{x},\, \mathbf{x}_1),\, P_{\theta,t}(X_1^i | X_t = \mathbf{x})\right) \right]
+\end{equation}
+$$
+
+Given $\mathbf{x}_1$, the true conditional posterior is a one-hot: $P_t(X_1^i | X_t = \mathbf{x}, \mathbf{x}_1) = \mathbf{e}_{x_1^i}$. The KL between a one-hot and any distribution reduces to a single log term:
+
+$$
+\begin{equation}
+\label{eq:onehot-kl}
+\mathrm{KL}\left(\mathbf{e}_{x_1^i},\, P_{\theta,t}(X_1^i | \mathbf{x})\right) = -\log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x})
+\end{equation}
+$$
+
+which gives directly:
+
+$$
+\begin{equation}
+\label{eq:cdm-loss-2}
+L_{\text{CDM}}(\theta) = -\mathbb{E}_{\substack{t \sim \mathcal{U}(0,1) \\ \mathbf{x}_1 \sim p_1 \\ \mathbf{x} \sim p_t( \cdot | \mathbf{x}_1)}} \left[ \sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | X_t = \mathbf{x}) \right]
+\end{equation}
+$$
+
+</div>
+</details>
+
+<figure>
+  <DFMSampling showModeToggle={false} client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:dfm-sampling" />:</strong> Generation process of a sequence of length $S=4$ with a learned probability velocity $u_{\theta,t}$ or denoiser $P_{\theta,t}(X_1^i | X_t)$.
+    **Key facts**: 1) At each step, all tokens are updated independently 2) Different samples can be generated from the same initial sequence (change the seed!), because sampling is stochastic at each step.
+    **Key empirical observations**: 3) The probability of drawing the mask token $m$ decreases at each step, while the probability of drawing other tokens increases. 4) Once a token is unmasked, it stays at its current value until the end.
+  </figcaption>
+</figure>
+
+To wrap up, we end this section with a table summarizing the important steps in discrete flow matching, put in parallel with their equivalent for continuous flow matching.
+
+<table className="dfm-comparison-table" style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: '2em', marginBottom: '1.25em'}}>
+  <caption><strong>Table <Counter label="table:continuous-discrete-flow-matching" />:</strong> Continuous and discrete flow matching side by side.</caption>
+  <colgroup>
+    <col style={{ width: '47%' }} />
+    <col style={{ width: '53%' }} />
+  </colgroup>
+  <thead>
+    <tr>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Continuous flow matching</th>
+      <th style={{ padding: '12px', borderBottom: '2px solid #ccc' }}>Discrete flow matching</th>
+    </tr>
+  </thead>
+  <tbody>
+    {/* ASPECT 1 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', borderTop: '1px solid #ccc', textAlign: 'center' }}>
+        <strong>1. Define a conditioning variable $\mathbf{z}$ with known distribution $\pi(\mathbf{z})$</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $\mathbf{z}=(\mathbf{x}_0, \mathbf{x}_1)$ with  $\pi(\mathbf{z}) = p_0 \times p_1$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $\mathbf{z}=\mathbf{x}_1$ with $\pi(\mathbf{z}) = p_1$ <br /> (our choice for simplicity; $\mathbf{z} = (\mathbf{x}_0, \mathbf{x}_1)$ is also possible)
+      </td>
+    </tr>
+
+    {/* ASPECT 2 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>2. Define a simple conditional distribution $p_t(\mathbf{x} | \mathbf{z})$</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $p_t(\mathbf{x} | \mathbf{z}) = \delta_{(1 - t)\mathbf{x}_0 + t\mathbf{x}_1}(\mathbf{x})$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | x_1^j)$ <br /> where $q_t = \text{Cat}((1 - t) \mathbf{e}_{m} + t \mathbf{e}_{x_1^j} )$
+      </td>
+    </tr>
+
+    {/* ASPECT 3 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>3. Compute an associated conditional velocity field $u_t(\mathbf{x} | \mathbf{z})$</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        $u_t(\mathbf{x} | \mathbf{z}) = \mathbf{x}_1 - \mathbf{x}_0$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        $u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}} = \sum_{i=1}^S \mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})\, u_t(x^i | x_1^i)_{y^i}$ <br /> with $u_t(x^i | x_1^i) = \frac{1}{1-t}\mathbb{I}(x^i = m)\left(\mathbf{e}_{x_1^i} - \mathbf{e}_{m}\right)$
+      </td>
+    </tr>
+
+    {/* ASPECT 4 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>4. Training objective</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        Use $L^2$: <br /> $\min_\theta \mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{z} \sim \pi \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{z})}}\!\left[\Vert u_{\theta, t}(\mathbf{x}_t) - (\mathbf{x}_1 - \mathbf{x}_0) \Vert^2\right]$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        Use KL: <br /> $\min_\theta \mathbb{E}_{\substack{t \sim \mathcal{U}_{[0,1]} \\ \mathbf{x}_1 \sim p_1 \\ \mathbf{x}_t \sim p_t(\cdot | \mathbf{x}_1)}}\!\left[-\sum_{i=1}^S \log P_{\theta,t}(X_1^i = x_1^i | \mathbf{x}_t)\right]$
+      </td>
+    </tr>
+
+    {/* ASPECT 5 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>5. Sampling</strong> <br /> <em>Sample $\mathbf{x}_0 \sim p_0$, integration scheme for $k=0,\ldots,N-1$</em>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        Numerical Integration (Euler ODE): <br /> $\mathbf{x}_{k+1} = \mathbf{x}_k + \frac{1}{N} u_{\theta,k/N}(\mathbf{x}_k)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}(\mathbf{x}) = \frac{1}{1-t}\!\left(\mathbb{E}_\theta[X_1 | X_t = \mathbf{x}] - \mathbf{x}\right)$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '1px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        Continuous Time Markov Chain: <br /> $x_{k+1}^i \sim \text{Cat}\!\left(\mathbf{e}_{x_k^i} + \frac{1}{N} u_{\theta,k/N}^i(\mathbf{x}_k)\right)$ <br /> <em>If learned denoiser, use:</em> <br /> $u_{\theta,t}^i(\mathbf{x}) = \frac{1}{1-t}\!\left(P_{\theta,t}(X_1^i | \mathbf{x}) - \mathbf{e}_{x^i}\right)$
+      </td>
+    </tr>
+
+    {/* ASPECT 6 */}
+    <tr>
+      <td colSpan={2} style={{ padding: '12px', backgroundColor: '#ffffff', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+        <strong>6. Master Equation</strong>
+      </td>
+    </tr>
+    <tr>
+      <td style={{ padding: '12px', borderBottom: '2px solid #ccc', backgroundColor: '#ffe6cc' }}>
+        Continuity Equation: <br /> $\partial_t p_t + \nabla (u_t p_t) = 0$
+      </td>
+      <td style={{ padding: '12px', borderBottom: '2px solid #ccc', backgroundColor: '#e6f2ff' }}>
+        Kolmogorov Equation: <br /> $\frac{\mathrm{d}}{\mathrm{d}t} p_t(\mathbf{y}) = \sum_{\mathbf{x} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} \, p_t(\mathbf{x})$
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+### To go further: planners in masked flow-matching sampling
+
+*Notes before reading this section*:
+1. We note the denoiser $D_{\theta,t}(\mathbf{x}_t) := P_{\theta,t}(X_1 | X_t = \mathbf{x}_t)$.
+2. Because the noise level $t$ in masked flow-matching can be easily inferred from the number of masked tokens in $\mathbf{x}_t$, the denoiser does not need to know the current time in its predictions.
+Therefore, for any time $t$ and any given sequence $\mathbf{x}$, we write $D_{\theta,t}(\mathbf{x}) = D_{\theta}(\mathbf{x})$.
+
+#### Sampling with a planner
+
+{/* We follow the [discrete flow matching](#discrete-flow-matching) convention: $p_0$ is the source distribution, corresponding here to the fully masked sequence $mm...m$, and $p_1$ is the target distribution, corresponding to the clean data distribution. For the complete theoretical treatment, see [<a class="cite-ref" href="#ref-7">4</a>]. */}
+
+With step size $h$, vanilla masked flow-matching sampling @eq:token-sampling uses $1/h$ time steps. Across a sequence of length $S$, this corresponds to $S/h$ draws from probability vectors over the vocabulary $|\mathcal{V}|$. For $h = 0.01$ and $S = 200$, generating one sample therefore involves $20,000$ such draws, which is computationally expensive. Moreover, some steps $t \to t+h$ can keep the current sequence $\mathbf{x}_t$ unchanged, implying computational waste (it can be easily observed in figure <Ref label = "fig:dfm-sampling" />).
+{/* We can parallelize the sampling of all tokens at each step, so the number of forward passes through the model is $1/h = 100$ steps rather than $S/h$, but it requires more memory.*/}
+
+To make generation more efficient, the standard approach used for large masked flow-matching models is *planner-guided sampling*. Instead of relying on infinitesimal time steps, we fix the total generation steps $N$ and directly use the denoiser to reveal a fixed number of tokens at each step. For $S = 200$ and $N = 50$, we have $NS = 50 \times 200 = 10,000$ draws to do, which is half the cost of the previous example.
+
+<Statement kind="Definition" label="planner" title="Planner $G_\phi$">
+A planner $G_\phi$ maps a partially masked sequence $\mathbf{x}_k$ and a denoised candidate $\mathbf{z} \sim D_\theta(\mathbf{x}_k)$ to a distribution over positions to reveal. At step $k$, with $\mathcal{M}_k = \{i : x_k^i = m\}$ the set of masked positions in $\mathbf{x}_k$, we write:
+$$
+\begin{equation}
+\label{eq:planner-definition}
+G_\phi(\mathbf{z}, \mathbf{x}_k) \in \Delta_S,\qquad
+G_\phi(\mathbf{z}, \mathbf{x}_k)_i = 0 \text{ for } i \notin \mathcal{M}_k.
+\end{equation}
+$$
+</Statement>
+
+In other words, the planner indicates, for each position $i$ in the noisy sequence $\mathbf{x}_k$, the probability of denoising $x_k^i$ into $z^i$. If $x_k^i \neq m$, this probability is zero. For example, if $\mathbf{x}_k=(m,A,m)$ and $\mathbf{z}=(B,A,A)$, then a possible value of $G_\phi(\mathbf{z}, \mathbf{x}_k)$ is $(0.7,0,0.3)$, which means revealing position $1$ into $z^1 = B$ with probability $70\%$ and position $3$ into $z^3 = A$ with probability $30\%$.
+
+<Algorithm label="planner-guided-sampling" title="Planner-Guided Sampling">
+
+**Input:** Planner $G_\phi$, trained denoiser $D_\theta$, total number of sampling steps $N$, schedule $f$ mapping step index to number of tokens to reveal at that step, e.g., $f(k) = S/N$ for all $k$ when $N$ divides $S$.
+
+1. **Initialize:** $\mathbf{x}_0 \leftarrow (m, \dots, m)$ (a sequence of $S$ mask tokens).
+2. **For** $k = 0, 1, \dots, N - 1$:
+    * **Plan:** Sample candidate tokens $\mathbf{z} \sim D_\theta(\mathbf{x}_k)$.
+    * **Select:**
+        1. Initialize $\mathcal{I}\leftarrow \varnothing$.
+        2. **For** $\ell=1,\ldots,f(k)$:
+            * Sample one position $i_\ell$ from $G_\phi(\mathbf{z}, \mathbf{x}_k)$, restricted to positions not already in $\mathcal{I}$.
+            * Add it to the set: $\mathcal{I}\leftarrow \mathcal{I}\cup\{i_\ell\}$.
+    * **Denoise:** Create $\mathbf{x}_{k+1}$ by setting $x_{k+1}^i = z^i$ for all $i \in \mathcal{I}$, and leaving all other positions unchanged.
+3. **Return** fully generated sequence $\mathbf{x}_N$.
+
+</Algorithm>
+
+<Statement kind="Proposition" label="sampling-scheme-equivalence" title="Sampling-scheme equivalence">
+If we choose the uniform random planner that selects positions uniformly at random among the masked tokens, i.e. $G(\mathbf{z}, \mathbf{x}_k)_i = \frac{1}{|\mathcal{M}_k|}$ for each $i \in \mathcal{M}_k$, then planner-guided sampling with $N = S$ steps and $f(k) = 1$ token per step is exactly equivalent to the Euler sampling procedure given in @eq:euler-sampling as $h \to 0$.
+</Statement>
+
+However, we rarely decide to unmask tokens by picking a random position at each step. Instead, we can use heuristic or learned planners that rank positions according to how reliable or informative they seem to reveal.
+
+A simple and widely used strategy in this direction is the soft greedy planner. Instead of unmasking tokens at random, it selects the positions where the denoiser is most confident in its predictions. We then relax this strict selection into a soft probability distribution using a softmax function with a temperature parameter $\tau$:
+$$
+\begin{equation}
+\label{eq:planner}
+G_\tau(\mathbf{z}, \mathbf{x}_k)_t \propto \exp\left(\frac{1}{\tau} \log D_\theta^j(\mathbf{x}_k)_{z^j}\right)
+\end{equation}
+$$
+
+As $\tau \to \infty$, this reduces to uniform random sampling. As $\tau \to 0$, it converges to a strict, hard selection of only the most confident token in the sampled sequence $\mathbf{z}$.
+
+<details>
+<summary>Other planning strategies</summary>
+<div>
+
+**Entropy planner.** Another heuristic is to score each position by the negative entropy of the denoiser distribution. Low entropy means the denoiser is concentrated on a few tokens, so the position is treated as more reliable:
+$$
+\begin{equation}
+s^i(\mathbf{x}_k) = \sum_{v \in \mathcal{V}} D_\theta^i(\mathbf{x}_k)_v \log D_\theta^i(\mathbf{x}_k)_v.
+\end{equation}
+$$
+The planner then applies a softmax over the still-masked positions:
+$$
+\begin{equation}
+\label{eq:entropy-planner}
+G_\tau^{\mathrm{ent}}(\mathbf{z}, \mathbf{x}_k)_i \propto \exp\left(\frac{s^i(\mathbf{x}_k)}{\tau}\right)
+\end{equation}
+$$
+Unlike soft greedy, this planner does not use the sampled token $z^i$ directly; it only uses the shape of the denoiser distribution at position $i$.
+
+**Learned planner.** With a pretrained denoiser, one can also train a separate planner offline. This can be done with a cross-entropy objective of the form:
+{/* Starting from a clean target sequence $\mathbf{x}_1$, we first sample a partially masked sequence $\mathbf{x}_k$ along the flow-matching path, then sample a candidate denoised sequence $\mathbf{z} \sim D_\theta(\mathbf{x}_k)$ with the frozen denoiser. The planner is trained to put more mass on masked positions where the sampled token $z^i$ matches the clean target token $x_1^i$. */}
+$$
+\begin{equation}
+\mathcal{L}_{G}(\phi) =
+\mathbb{E}\!\left[
+\sum_{i=1}^{S}
+\mathbb{I}(x_k^i=m)
+\frac{1}{1-t}
+\mathrm{CE}\!\left(G_\phi^i(\mathbf{x}_k,\mathbf{z}),\, \mathbb{I}[z^i=x_1^i]\right)
+\right].
+\end{equation}
+$$
+The learned planner can then be interpreted as a consistency scorer: positions whose sampled token looks reliable under the current partially denoised context receive more planner mass.
+
+</div>
+</details>
+
+<details>
+<summary>Example: one sampling step with a soft greedy planner</summary>
+<div>
+
+To illustrate one sampling step, take the vocabulary $\mathcal{V}=\{A,B,m\}$ and sequences of length $S=3$.
+Suppose that after one planner step ($k=1$), the current sequence is
+$$
+\begin{equation}
+\label{eq:planner-example-current}
+\mathbf{x}_1 = (A,m,m),
+\end{equation}
+$$
+so positions $2$ and $3$ are still masked.
+The denoiser proposes a full candidate sequence by sampling token-wise:
+$$
+\begin{equation}
+\label{eq:planner-example-candidate}
+\mathbf{z} \sim D_\theta(\mathbf{x}_1), \qquad \text{for example } \mathbf{z}=(A,A,B).
+\end{equation}
+$$
+For this sampled candidate, the planner only looks at the denoiser confidence assigned to the proposed token at each still-masked position, and assigns zero mass to positions that are already unmasked.
+$$
+\begin{align}
+\widetilde{G}(\mathbf{z}, \mathbf{x}_1) \label{eq:planner-example-confidence-1}
+&:=
+\begin{pmatrix}
+0 \\
+D_\theta^2(\mathbf{x}_1)_{z^2 = A} \\
+D_\theta^3(\mathbf{x}_1)_{z^3 = B}
+\end{pmatrix} \label{eq:planner-example-confidence-2} \\
+&=
+\begin{pmatrix}
+0 \\
+0.6 \\
+0.7
+\end{pmatrix}. \label{eq:planner-example-confidence-3}
+\end{align}
+$$
+Setting the temperature to $\tau = 1/3$, the planner scales these scores by a power of $1/\tau = 3$ and normalizes them:
+$$
+\begin{align}
+G_{1/3}(\mathbf{z}, \mathbf{x}_1) \label{eq:planner-example-prob-1}
+&=
+\frac{1}{0.6^3 + 0.7^3}
+\begin{pmatrix}
+0 \\
+0.6^3 \\
+0.7^3
+\end{pmatrix} \label{eq:planner-example-prob-2} \\
+&\approx
+\begin{pmatrix}
+0 \\
+0.386 \\
+0.614
+\end{pmatrix}. \label{eq:planner-example-prob-3}
+\end{align}
+$$
+This means that the planner is more likely to reveal position $3$, because the sampled token $z^3=B$ received higher denoiser confidence than $z^2=A$.
+If we take the limit cases for the temperature, we get:
+$$
+\begin{align}
+G_{0}(\mathbf{z}, \mathbf{x}_1)
+&=
+\begin{pmatrix}
+0 \\
+0 \\
+1
+\end{pmatrix},
+\qquad
+G_{\infty}(\mathbf{z}, \mathbf{x}_1)
+&=
+\begin{pmatrix}
+0 \\
+\frac{1}{2} \\
+\frac{1}{2}
+\end{pmatrix}.
+\end{align}
+$$
+If the planner samples position $3$, then the next sequence is obtained by copying only that proposed token:
+$$
+\begin{equation}
+\label{eq:planner-example-next}
+\mathbf{x}_2 = (A,m,B).
+\end{equation}
+$$
+
+</div>
+</details>
+
+The figure below illustrates the sampling with a planner.
+
+<figure>
+  <DFMSampling denoiser planner client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:dfm-planner-sampling" />:</strong> Flow-matching sampling with the soft greedy planner with Algorithm <Ref label="alg:planner-guided-sampling" />. Try changing the temperature $\tau$ to make the selection more diffuse or more sharply confidence-based.
+</figcaption>
+</figure>
+
+#### Exposure bias
+
+Introducing a planner-aware sampling process creates a mismatch between training and inference.
+During training, the standard objective masks tokens uniformly at random across all positions and orderings.
+During inference, the planner reveals tokens along a specific, confidence-guided trajectory.
+
+This difference matters because uniform masking can put training weight on mask patterns that the planner would almost never visit in practice.
+For example, in a structured sequence where the last token is only predictable after the first two have been revealed, uniform masking may still train the model to predict that last token from $(m,m,m)$ or from $(m,m,B)$, while a confidence-based planner would first reveal easier positions and avoid asking for that token with so little context.
+These hard denoising tasks can inject extra error into the learned denoiser, and those errors can then be amplified during sampling when early wrong predictions are irreversible.
+
+A fix is to reweight the denoising loss @eq:cdm-loss toward the positions the planner would select. This gives the Planner-Aware Path Learning (PAPL) objective [<a class="cite-ref" href="#ref-7">4</a>]:
+<PinkEquation>
+$$
+\begin{equation}
+\label{eq:papl-loss}
+\mathcal{L}_{\text{PAPL}}(\theta) = - \mathbb{E}_{t,\mathbf{x}_1,\mathbf{x}_t} \left[ \sum_{i=1}^S \mathbb{I}(x_t^i = m)(1 + \alpha \operatorname{sg}[w^i]) \log P_{\theta,t}^i(X_1^i = x_1^i | \mathbf{x}_t) \right]
+\end{equation}
+$$
+</PinkEquation>
+
+Here, $w^i = G_\phi(\mathbf{z}, \mathbf{x}_t)_i$ is the normalized planner weight for position $i$, and $\alpha$ controls the strength of this guidance. The stop-gradient $\operatorname{sg}[\cdot]$ detaches these weights: for example, soft greedy weights depend on $\theta$ through $\operatorname{softmax}_i\left(\frac{1}{\tau}\log P_{\theta,t}(X_1^i = z^i | X_t = \mathbf{x}_t)\right)$, but gradients are not propagated through this dependence.
+
+### References
+
+<div style={{ fontSize: '0.92rem', lineHeight: '1.55' }}>
+
+<div class="ref-entry">
+  <span id="ref-2"></span>
+  <div class="ref-main">
+    1. <strong>Structured Denoising Diffusion Models in Discrete State-Spaces</strong> <strong><a href="https://arxiv.org/pdf/2107.03006">[PDF]</a></strong><br />
+    Jacob Austin, Daniel D. Johnson, Jonathan Ho, Daniel Tarlow, Rianne van den Berg. NeurIPS 2021.
+  </div>
+</div>
+
+<div class="ref-entry">
+  <span id="ref-5"></span>
+  <div class="ref-main">
+    2. <strong>Generative Flows on Discrete State-Spaces: Enabling Multimodal Flows with Applications to Protein Co-Design</strong> <strong><a href="https://arxiv.org/pdf/2402.04997">[PDF]</a></strong><br />
+    Andrew Campbell, Jason Yim, Regina Barzilay, Tom Rainforth, Tommi Jaakkola. ICML 2024.
+  </div>
+</div>
+
+<div class="ref-entry">
+  <span id="ref-6"></span>
+  <div class="ref-main">
+    3. <strong>Discrete Flow Matching</strong> <strong><a href="https://arxiv.org/pdf/2407.15595">[PDF]</a></strong><br />
+    Itai Gat, Tal Remez, Neta Shaul, Felix Kreuk, Ricky T. Q. Chen, Gabriel Synnaeve, Yossi Adi, Yaron Lipman. NeurIPS 2024.
+  </div>
+</div>
+
+<div class="ref-entry">
+  <span id="ref-7"></span>
+  <div class="ref-main">
+    4. <strong>Planner Aware Path Learning in Diffusion Language Models Training</strong> <strong><a href="https://arxiv.org/pdf/2509.23405">[PDF]</a></strong><br />
+    Fred Zhangzhi Peng, Zachary Bezemek, Jarrid Rector-Brooks, Shuibai Zhang, Anru R. Zhang, Michael Bronstein, Avishek Joey Bose, Alexander Tong. ICLR 2026.
+  </div>
+</div>
+<div class="ref-entry">
+  <span id="DiGress"></span>
+  <div class="ref-main">
+    5. <strong>DiGress: Discrete Denoising diffusion for graph generation</strong> <strong><a href="https://arxiv.org/pdf/2209.14734">[PDF]</a></strong><br />
+    Clement Vignac, Igor Krawczuk, Antoine Siraudin, Bohan Wang, Volkan Cevher, Pascal Frossard. ICLR 2023.
+  </div>
+</div>
+<div class="ref-entry">
+  <span id="SD3"></span>
+  <div class="ref-main">
+    6. <strong>Scaling Rectified Flow Transformers for High-Resolution Image Synthesis</strong> <strong><a href="https://arxiv.org/pdf/2403.03206">[PDF]</a></strong><br />
+    Patrick Esser, Sumith Kulal, Andreas Blattmann, Rahim Entezari, Jonas Müller, Harry Saini, Yam Levi, Dominik Lorenz, Axel Sauer, Frederic Boesel, Dustin Podell, Tim Dockhorn, Zion English, Kyle Lacey, Alex Goodwin, Yannik Marek, Robin Rombach. ICML 2024.
+  </div>
+</div>
+<div class="ref-entry">
+  <span id="SD-video"></span>
+  <div class="ref-main">
+    7. <strong>Stable Video Diffusion: Scaling Latent Video Diffusion Models to Large Datasets</strong> <strong><a href="https://arxiv.org/pdf/2311.15127">[PDF]</a></strong><br />
+    Andreas Blattmann, Tim Dockhorn, Sumith Kulal, Daniel Mendelevitch, Maciej Kilian, Dominik Lorenz, Yam Levi, Zion English, Vikram Voleti, Adam Letts, Varun Jampani, Robin Rombach. Arxiv 2023.
+  </div>
+</div>
+</div>
+
+### Notes
+
+<div style={{ fontSize: '0.92rem', lineHeight: '1.55' }}>
+
+<div class="dfm-note-entry">
+  <span id="generalized-kl"></span>
+  <div class="dfm-note-main">
+    Here $\mathrm{KL}$ denotes the generalized KL divergence between two positive vectors $a,b \in \mathbb{R}_+^d$, $\mathrm{KL}(a,b) = \sum_{j=1}^d a_j \log(a_j/b_j) - a_j + b_j$.
+  </div>
+</div>
+
+<div class="dfm-note-entry">
+  <span id="probability-velocity-kl"></span>
+  <div class="dfm-note-main">
+    When applying it to probability velocities, we only compare the off-diagonal entries of $u_t(\mathbf{x})$, i.e. the rates $u_t(\mathbf{x})_{\mathbf{y}}$ for $\mathbf{y}\neq\mathbf{x}$.
+    These vectors are indeed positive, and we can skip the diagonal entry since its value is determined by all the other ones due to the zero-sum constraint (Proposition <Ref label="prop:probability-velocity-mass-conservation" />).
+  </div>
+</div>
+
+<div class="dfm-note-entry">
+  <span id="masked-source-denoiser-equivalence"></span>
+  <div class="dfm-note-main">
+    This exact equivalence relies on the masked source, but does not hold for an arbitrary source distribution $p_0$.
+    However, learning a denoiser is still sufficient to recover the velocity field using @eq:marginal-velocity-def, and therefore to generate data samples.
+  </div>
+</div>
+
+</div>
