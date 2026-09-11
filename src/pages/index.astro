@@ -2,11 +2,12 @@
 import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
+import pdfUrl from '../assets/class/notes_genmodels_ens.pdf?url';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
 	const schedule = [
 	{ date: "09/09", description: `Introduction to generative models, maximum likelihood, intro GANs`, material: '<a href="https://people.cs.umass.edu/~domke/courses/sml/10probabilistic.pdf">Intro to probabilistic learning</a>, <a href="https://dl.heeere.com/2025-genmod-02/">Slides Mixtures of Gaussian</a>, <a href="https://people.cs.umass.edu/~domke/courses/sml/11em.pdf">Expectation Maximization</a>' },
-	{ date: "10/09/", description: "Bayes, (Variational) Autoencoders", material: "" },
+	{ date: "10/09/", description: "Intro to probabilsitic thinking: Gaussian models and (Variational) Autoencoders", material:""},
 	{ date: "16/09", description: `Lab 1 (AE, MoG)`, material: "" },
 	{ date: "17/09", description: "GAN/WGAN", material: "" },
 	{ date: "23/09", description: "Lab 2 (GAN)", material: "" },
@@ -79,6 +80,9 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 	  Many thanks to Rémi Emonet who taught the class in 2025 and created most of the current material.
 
 	  <br><br>
+
+    <h3>Lecture notes</h3>
+    <a href={pdfUrl}>Here!</a>
 
       <h3>Validation</h3>
       <ul>
