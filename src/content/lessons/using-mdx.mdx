@@ -6,26 +6,27 @@ heroImage: '../../assets/blog-placeholder-5.jpg'
 tags: ['draft']
 ---
 
-SYNTAX DEMO / HELPER
 
-(look at source for better understanding)
+## HTML Typst include
 
-## Latex-like with KaTeX
+https://1024th.top/posts/typst/typst-html-export
 
+import Test from "./ttypst.html.typ";
 
-inline $\frac{\mathbb{R}}{\pi}$ is ok
-
-(block, need multiple lines)
-
-$$
-\frac{\mathbb{R}}{\pi}
-$$
+<Test />
 
 
 
 ## Typst integration
 
 import T from '../../components/typst/TypstMath.astro'
+
+<T raw v="
+- math $a+b$ inline
+- and $ a+b $ spaced
+"/>
+
+
 
 Simple typst:
 
@@ -76,6 +77,32 @@ $
 ## MDX in Astro
 
 This theme comes with the [@astrojs/mdx](https://docs.astro.build/en/guides/integrations-guide/mdx/) integration installed and configured in your `astro.config.mjs` config file. If you prefer not to use MDX, you can disable support by removing the integration from your config file.
+
+## Highlighted equations
+
+Use `EquationAccent` or `PinkEquation` around a display equation when a derivation needs the same kind of visual color cue as theorem/lemma blocks.
+
+<EquationAccent>
+
+$$
+\begin{align*}
+\log p_\theta(x|z)
+&= \log \mathcal{N}(x; d_\theta(z), I) \\
+&= -\frac{D}{2}\log(2\pi) - \frac{1}{2}\|x - d_\theta(z)\|^2
+\end{align*}
+$$
+
+</EquationAccent>
+
+## Highlighted paragraphs
+
+Use `ParagraphAccent` or `CyanParagraph` around one or more paragraphs when prose needs a visual cue without reusing pink or a theorem color.
+
+<ParagraphAccent>
+
+This is a highlighted paragraph. It follows the same left-border, soft-fill, and shadow language as `PinkEquation`, but uses a cyan accent distinct from theorem, proposition, definition, and lemma blocks.
+
+</ParagraphAccent>
 
 ## Why MDX?
 

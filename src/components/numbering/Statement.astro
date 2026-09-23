@@ -1,0 +1,94 @@
+---
+import Counter from './Counter.astro'
+import katex from 'katex'
+
+type Kind = 'Definition' | 'Lemma' | 'Proposition' | 'Theorem' | 'Corollary' | 'Example'
+
+const typeByKind: Record<Kind, string> = {
+  Definition: 'def',
+  Lemma: 'lemma',
+  Proposition: 'prop',
+  Theorem: 'thm',
+  Corollary: 'cor',
+  Example: 'example',
+}
+
+const { kind, label, title } = Astro.props as {
+  kind: Kind
+  label: string
+  title?: string
+}
+
+const counterLabel = `${typeByKind[kind]}:${label}`
+
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+
+const renderInlineMath = (value: string) =>
+  value
+    .split(/(\$[^$]+\$)/g)
+    .map((part) => {
+      if (!part.startsWith('$') || !part.endsWith('$')) {
+        return escapeHtml(part)
+      }
+
+      const tex = part.slice(1, -1)
+      return katex.renderToString(tex, {
+        displayMode: false,
+        throwOnError: false,
+        strict: false,
+        trust: true,
+      })
+    })
+    .join('')
+
+const titleHtml = title ? renderInlineMath(title) : ''
+---
+
+<div class={`statement statement--${kind.toLowerCase()}`}>
+  <strong class="statement__title">{kind} <Counter label={counterLabel} />{title && <Fragment set:html={` (${titleHtml})`} />}.</strong>{' '}
+  <slot />
+</div>
+
+<style>
+  .statement {
+    margin: 1.25em 0;
+    padding: 0.85em 1em;
+    border-left: 5px solid #d1d5db;
+    background: #f8fafc;
+  }
+
+  .statement--lemma {
+    border-left-color: #f39c12;
+    background: #fff9e6;
+  }
+
+  .statement--proposition {
+    border-left-color: #2970CC;
+    background: #f0f8ff;
+  }
+
+  .statement--definition {
+    border-left-color: #4caf50;
+    background: #e8f5e9;
+  }
+
+  .statement--theorem {
+    border-left-color: #7c3aed;
+    background: #f5f0ff;
+  }
+
+  .statement > :global(p:first-of-type) {
+    display: inline;
+    margin-top: 0;
+  }
+
+  .statement > :global(p:last-child) {
+    margin-bottom: 0;
+  }
+</style>

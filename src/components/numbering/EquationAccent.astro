@@ -1,0 +1,44 @@
+---
+const { tone = 'pink' } = Astro.props as {
+  tone?: 'pink'
+}
+---
+
+<div class={`equation-accent equation-accent--${tone}`}>
+  <slot />
+</div>
+
+<style>
+  .equation-accent {
+    margin: 1.25em 0;
+    padding: 0.75em 1em;
+    border-left: 5px solid #ff2da1;
+    background:
+      linear-gradient(90deg, rgba(255, 45, 161, 0.18), rgba(255, 45, 161, 0.06)),
+      #fff0fa;
+    box-shadow: 0 8px 22px rgba(255, 45, 161, 0.12);
+  }
+
+  .equation-accent--pink {
+    border-left-color: #ff2da1;
+  }
+
+  .equation-accent :global(.katex-display),
+  .equation-accent :global(.typst-display-math) {
+    margin: 0.35em 0;
+  }
+
+  .equation-accent :global(p:first-child) {
+    margin-top: 0;
+  }
+
+  .equation-accent :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  @media (min-width: 721px) {
+    .equation-accent :global(.katex-display > .katex > .katex-html > .tag) {
+      right: calc(-6rem + 1.125rem) !important;
+    }
+  }
+</style>

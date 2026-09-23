@@ -1,0 +1,111 @@
+---
+import Counter from './Counter.astro'
+import katex from 'katex'
+
+const { label, title } = Astro.props as {
+  label: string
+  title?: string
+}
+
+const counterLabel = `alg:${label}`
+
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+
+const renderInlineMath = (value: string) =>
+  value
+    .split(/(\$[^$]+\$)/g)
+    .map((part) => {
+      if (!part.startsWith('$') || !part.endsWith('$')) {
+        return escapeHtml(part)
+      }
+
+      const tex = part.slice(1, -1)
+      return katex.renderToString(tex, {
+        displayMode: false,
+        throwOnError: false,
+        strict: false,
+        trust: true,
+      })
+    })
+    .join('')
+
+const titleHtml = title ? renderInlineMath(title) : ''
+---
+
+<div class="algorithm" id={`alg--${label}`}>
+  <div class="algorithm__caption">
+    <strong>Algorithm <Counter label={counterLabel} /></strong>{title && <Fragment set:html={`&nbsp;&mdash;&nbsp;${titleHtml}`} />}
+  </div>
+  <div class="algorithm__body">
+    <slot />
+  </div>
+</div>
+
+<style>
+  .algorithm {
+    margin: 1.5em 0;
+    padding: 0;
+    font-size: 0.95em;
+    line-height: 1.5;
+    border-top: 1.5px solid #1f2933;
+    border-bottom: 1.5px solid #1f2933;
+  }
+
+  .algorithm__caption {
+    padding: 0.45em 0.9em;
+    border-bottom: 1px solid #1f2933;
+  }
+
+  .algorithm__body {
+    position: relative;
+    padding: 0.7em 0.9em 0.7em 3em;
+  }
+
+  /* "Input:" / "Require:" line and other free paragraphs: not numbered. */
+  .algorithm__body > :global(p) {
+    margin: 0 0 0.35em 0;
+  }
+
+  /* Lists become the numbered algorithm lines, LaTeX `algorithmic`-style:
+     line numbers live in a fixed left gutter, indentation conveys nesting. */
+  .algorithm__body :global(ol),
+  .algorithm__body :global(ul) {
+    list-style: none;
+    margin: 0;
+    padding-left: 1.6em;
+    counter-reset: none;
+  }
+
+  .algorithm__body > :global(ol),
+  .algorithm__body > :global(ul) {
+    padding-left: 0;
+  }
+
+  .algorithm__body :global(li) {
+    margin: 0.1em 0;
+  }
+
+  /* Continuous line numbers across all nesting levels, pinned to the gutter. */
+  .algorithm__body :global(li)::before {
+    counter-increment: algline;
+    content: counter(algline) ':';
+    position: absolute;
+    left: 0;
+    width: 2.2em;
+    padding-right: 0.5em;
+    text-align: right;
+    color: #9aa5b1;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+  }
+
+  .algorithm__body {
+    counter-reset: algline;
+  }
+</style>
