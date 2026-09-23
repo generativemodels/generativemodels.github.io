@@ -4,8 +4,8 @@ import { Mi, Mb, MATH_ITALIC } from "./mathType.jsx";
 // Static figure: the Euler step analogy between continuous and discrete flow
 // matching. Global view: one Euler step of size h on a sample (an image / a
 // sequence). Local view: the same step seen on states (a point of R^d moves
-// along h u_t / the one-hot e_{x_t} in R^|S| becomes a probability vector
-// from which the next state is sampled).
+// along h u_t / a one-hot vector becomes a probability vector from which
+// the next state or token is sampled).
 //
 // Color convention used throughout: purple = current state, green = next
 // state / the velocity, orange = the stochastic sampling.
@@ -58,6 +58,16 @@ function MText({ x, y, segs, anchor = "middle", className = "esa-svg-label", fil
         );
       })}
     </text>
+  );
+}
+
+function MathScripts({ base, sub, sup }) {
+  return (
+    <span className="esa-scripted">
+      <span className="esa-scripted-base">{base}</span>
+      {sup && <span className="esa-scripted-sup">{sup}</span>}
+      {sub && <span className="esa-scripted-sub">{sub}</span>}
+    </span>
   );
 }
 
@@ -444,7 +454,7 @@ function SampleArrow() {
   );
 }
 
-function DiscreteLocal() {
+function DiscreteLocalFull() {
   return (
     <svg className="esa-local-svg esa-local-svg-disc" viewBox="0 0 458 272">
       {/* state labels: sequence = y_i; current and sampled states are colored */}
@@ -499,8 +509,124 @@ function DiscreteLocal() {
   );
 }
 
+// One of the S token-wise velocities, here at position 3. Its vector has
+// one coordinate per vocabulary token, rather than per complete sequence.
+// This local example uses A m m B -> A m B B, independently of the sample row.
+const TOKEN_ROWS = [
+  { name: "A", oneT: 0, p: 0.03, oneTH: 0 },
+  { name: "B", oneT: 0, p: 0.06, oneTH: 1 },
+  { name: "m", oneT: 1, p: 0.91, oneTH: 0 },
+];
+const TOKEN_TOP = 45;
+const TOKEN_STEP = 34;
+const TOKEN_COLH = 3 * TOKEN_STEP - (TOKEN_STEP - CH);
+const tokenRowCenter = (i) => TOKEN_TOP + i * TOKEN_STEP + CH / 2;
+
+function TokenHtmlLabel({ x, y, width = 170, tone = "faint", children }) {
+  return (
+    <foreignObject x={x - width / 2} y={y - 14} width={width} height={28}>
+      <div className={`esa-token-html-label esa-token-html-label-${tone}`}>{children}</div>
+    </foreignObject>
+  );
+}
+
+function TokenVecColumn({ x, field, accent, header, caption }) {
+  return (
+    <g>
+      <path d={`M ${x - 4} ${TOKEN_TOP} h -5 v ${TOKEN_COLH} h 5`} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.2" />
+      <path d={`M ${x + CW + 4} ${TOKEN_TOP} h 5 v ${TOKEN_COLH} h -5`} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.2" />
+      <TokenHtmlLabel x={x + CW / 2} y={TOKEN_TOP - 20}>{header}</TokenHtmlLabel>
+      {TOKEN_ROWS.map((row, i) => (
+        <VecCell key={row.name} x={x} y={TOKEN_TOP + i * TOKEN_STEP} v={row[field]} accent={accent} />
+      ))}
+      <TokenHtmlLabel x={x + CW / 2} y={TOKEN_TOP + TOKEN_COLH + 19} width={190} tone="caption">{caption}</TokenHtmlLabel>
+    </g>
+  );
+}
+
+function DiscreteLocalToken() {
+  const x1 = COL1_X + CW + 12;
+  const x2 = COL2_X - 13;
+  const sampleX1 = COL2_X + CW + 14;
+  const sampleX2 = COL3_X - 14;
+  const sampleY = TOKEN_TOP + TOKEN_COLH / 2;
+  const tokenXt = <MathScripts base={<Mi>x</Mi>} sub={<Mi>t</Mi>} sup="3" />;
+  const tokenXth = <MathScripts base={<Mi>x</Mi>} sub={<><Mi>t</Mi>+<Mi>h</Mi></>} sup="3" />;
+  const eTokenXt = <MathScripts base={<Mb>e</Mb>} sub={tokenXt} />;
+  const eTokenXth = <MathScripts base={<Mb>e</Mb>} sub={tokenXth} />;
+  const tokenVelocity = <MathScripts base={<Mi>u</Mi>} sub={<Mi>t</Mi>} sup="3" />;
+  return (
+    <svg className="esa-local-svg esa-local-svg-disc" viewBox="25 0 458 180">
+      <defs>
+        <marker id="esa-m-token" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto">
+          <path d="M 0 0 L 6 3 L 0 6 z" fill="#7defa0" />
+        </marker>
+        <marker id="esa-m-token-sample" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+          <path d="M 0 0 L 7 3.5 L 0 7 z" fill="#dd8452" />
+        </marker>
+      </defs>
+      {TOKEN_ROWS.map((row, i) => (
+        <MText
+          key={row.name}
+          x={78}
+          y={tokenRowCenter(i) + 4}
+          anchor="end"
+          className="esa-svg-faint"
+          fill={row.oneT ? "#a78bfa" : row.oneTH ? "#7defa0" : undefined}
+          segs={[{ t: row.name, it: 1 }]}
+        />
+      ))}
+      <TokenVecColumn
+        x={COL1_X}
+        field="oneT"
+        accent={PURPLE}
+        header={<>current&nbsp;{tokenXt}</>}
+        caption={eTokenXt}
+      />
+      {TOKEN_ROWS.map((row, i) => (
+        <line
+          key={row.name}
+          x1={x1}
+          y1={tokenRowCenter(2)}
+          x2={x2}
+          y2={tokenRowCenter(i)}
+          stroke="#7defa0"
+          strokeWidth="1.4"
+          opacity={i === 2 ? 1 : 0.8}
+          markerEnd="url(#esa-m-token)"
+        />
+      ))}
+      <TokenHtmlLabel
+        x={(x1 + x2) / 2}
+        y={TOKEN_TOP - 20}
+        width={120}
+        tone="velocity"
+      ><Mi>h</Mi>&nbsp;{tokenVelocity}(<Mb>x</Mb><sub><Mi>t</Mi></sub>)</TokenHtmlLabel>
+      <TokenVecColumn
+        x={COL2_X}
+        field="p"
+        accent={PURPLE}
+        header="probabilities"
+        caption={<>{eTokenXt} + <Mi>h</Mi>&nbsp;{tokenVelocity}(<Mb>x</Mb><sub><Mi>t</Mi></sub>)</>}
+      />
+      <text className="esa-svg-label" x={(sampleX1 + sampleX2) / 2} y={sampleY - 12} textAnchor="middle" fill="#dd8452">
+        sample ∼ Cat
+      </text>
+      <line x1={sampleX1} y1={sampleY} x2={sampleX2 - 5} y2={sampleY} stroke="#dd8452" strokeWidth="1.6" markerEnd="url(#esa-m-token-sample)" />
+      <TokenVecColumn
+        x={COL3_X}
+        field="oneTH"
+        accent={GREEN}
+        header={<>next&nbsp;{tokenXth}</>}
+        caption={eTokenXth}
+      />
+    </svg>
+  );
+}
+
 // ── Figure ──────────────────────────────────────────────────────────
-export default function EulerStepAnalogy({ local = false }) {
+// Set discreteMode="full" in the MDX to show the sequence-space diagram.
+export default function EulerStepAnalogy({ local = false, discreteMode = "token" }) {
   const [showGlobal, setShowGlobal] = useState(true);
   const [showLocal, setShowLocal] = useState(!!local);
 
@@ -579,16 +705,28 @@ export default function EulerStepAnalogy({ local = false }) {
               <StepArrow
                 id="esa-m-disc"
                 formula={
-                  <>
-                    <Mb>x</Mb>
-                    <sub><Mi>t</Mi>+<Mi>h</Mi></sub> ∼ Cat(<Mb>e</Mb>
-                    <sub>
+                  discreteMode === "full" ? (
+                    <>
                       <Mb>x</Mb>
-                      <sub><Mi>t</Mi></sub>
-                    </sub>{" "}
-                    + <Mi>h</Mi> <Mi>u</Mi><sub><Mi>t</Mi></sub>(<Mb>x</Mb>
-                    <sub><Mi>t</Mi></sub>))
-                  </>
+                      <sub><Mi>t</Mi>+<Mi>h</Mi></sub> ∼ Cat(<Mb>e</Mb>
+                      <sub>
+                        <Mb>x</Mb>
+                        <sub><Mi>t</Mi></sub>
+                      </sub>{" "}
+                      + <Mi>h</Mi> <Mi>u</Mi><sub><Mi>t</Mi></sub>(<Mb>x</Mb>
+                      <sub><Mi>t</Mi></sub>))
+                    </>
+                  ) : (
+                    <>
+                      <MathScripts base={<Mi>x</Mi>} sub={<><Mi>t</Mi>+<Mi>h</Mi></>} sup="3" /> ∼ Cat(
+                      <MathScripts
+                        base={<Mb>e</Mb>}
+                        sub={<MathScripts base={<Mi>x</Mi>} sub={<Mi>t</Mi>} sup="3" />}
+                      />{" "}
+                      + <Mi>h</Mi> <MathScripts base={<Mi>u</Mi>} sub={<Mi>t</Mi>} sup="3" />(<Mb>x</Mb>
+                      <sub><Mi>t</Mi></sub>))
+                    </>
+                  )
                 }
                 nature="stochastic"
                 natureClass="esa-sto"
@@ -621,13 +759,21 @@ export default function EulerStepAnalogy({ local = false }) {
             </div>
             <div className="esa-panel">
               <div className="esa-panel-label">
-                Discrete — vectors of <span className="esa-bb">R</span>
-                <sup>
-                  |<span className="esa-cal">S</span>|
-                </sup>{" "}
-                (here |<span className="esa-cal">S</span>| = 3<sup>4</sup> = 81)
+                {discreteMode === "full" ? (
+                  <>
+                    Discrete — vectors of <span className="esa-bb">R</span>
+                    <sup>|<span className="esa-cal">S</span>|</sup>{" "}
+                    (here |<span className="esa-cal">S</span>| = 3<sup>4</sup> = 81)
+                  </>
+                ) : (
+                  <>
+                    Discrete — <Mi>S</Mi> vectors in <span className="esa-bb">R</span>
+                    <sup>|<span className="esa-cal">V</span>|</sup>{" "}
+                    (here |<span className="esa-cal">V</span>| = 3)
+                  </>
+                )}
               </div>
-              <DiscreteLocal />
+              {discreteMode === "full" ? <DiscreteLocalFull /> : <DiscreteLocalToken />}
             </div>
           </div>
         </div>
@@ -785,6 +931,51 @@ const css = `
 }
 .esa-arrow-formula sub sub {
   font-size: 8px;
+}
+.esa-scripted {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: 0.55em 0.55em;
+  align-items: center;
+  vertical-align: -0.18em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.esa-scripted > .esa-scripted-base {
+  grid-column: 1;
+  grid-row: 1 / 3;
+}
+.esa-scripted > .esa-scripted-sup,
+.esa-scripted > .esa-scripted-sub {
+  grid-column: 2;
+  font-size: 0.72em;
+  margin-left: 0.04em;
+}
+.esa-scripted > .esa-scripted-sup {
+  grid-row: 1;
+  align-self: end;
+}
+.esa-scripted > .esa-scripted-sub {
+  grid-row: 2;
+  align-self: start;
+}
+.esa-token-html-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: rgba(255,255,255,0.55);
+  font-family: 'KaTeX_Main', 'STIX Two Math', serif;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.esa-token-html-label-caption {
+  color: rgba(255,255,255,0.8);
+  font-size: 15.5px;
+}
+.esa-token-html-label-velocity {
+  color: #7defa0;
 }
 .esa-arrow-svg {
   width: 90px;

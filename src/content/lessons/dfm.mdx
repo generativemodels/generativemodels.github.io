@@ -276,10 +276,35 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
     text-align: center;
   }
 
+  .dfm-euler-algorithms {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: stretch;
+    margin: 1.5rem 0;
+  }
+
+  .dfm-euler-algorithms > div.algorithm {
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    font-size: 0.82em;
+  }
+
+  .dfm-euler-algorithms .algorithm__body {
+    overflow-x: auto;
+  }
+
   @media (max-width: 720px) {
     .dfm-local-example {
       grid-template-columns: 4rem minmax(22rem, 1fr);
       padding: 0.8rem;
+    }
+
+    .dfm-euler-algorithms {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 `}</style>
@@ -500,7 +525,7 @@ import DFMLiveFigure from '../../components/DFMLiveFigure.astro';
 - **$p_t(\mathbf{x} | \mathbf{z}) = \prod_{j=1}^S q_t(x^j | z^j)$** factorized conditional probability path given the conditioning variable $\mathbf{z}$
 - **$q_t(x | z)$** token-wise conditional distribution given $\mathbf{z}$
 {/* - **$q_t(x | x_0, x_1)$** source-target token-wise conditional distribution: $q_t(x | x_0, x_1) = \kappa_t \mathbb{I}(x = x_1) + (1 - \kappa_t) \mathbb{I}(x = x_0)$ */}
-- **$u_t(\mathbf{x})_{\mathbf{y}}$** probability velocity: the instantaneous rate at which the sequence transitions from $\mathbf{x}$ to $\mathbf{y}$ at time $t$
+- **$u_t(\mathbf{x})_{\mathbf{y}}$** velocity: the instantaneous rate at which the sequence transitions from $\mathbf{x}$ to $\mathbf{y}$ at time $t$
 - **$u_t^i(\mathbf{x})_v$** token-wise velocity at position $i$: the instantaneous rate at which the $i$-th token of $\mathbf{x}$ transitions to $v$ at time $t$
 - **$u_t(\mathbf{x} | \mathbf{z})_{\mathbf{y}}$** conditional velocity field given $\mathbf{z}$
 {/* it relates to the marginal velocity via expectation, formulated as $u_t(\mathbf{x})_{\mathbf{y}} = \mathbb{E}_{\substack{\mathbf{z}}}[u_t(\mathbf{x}|\mathbf{z})_{\mathbf{y}} | X_t = \mathbf{x}] $ */}
@@ -613,14 +638,14 @@ $$
 $$
 which is driven by the so-called *velocity field* $u: \mathbb{R}^d \times [0, 1] \to \mathbb{R}^d$.
 
-QBE todo rephrase. As solving an ODE on a discrete space is not possible, the generation process in discrete flow matching is different.
-
 ##### From continuous-space to discrete-space
 
 QBE: comparison Algorithm Euler continuous vs discrete? + pixel vs sequence
 
 QBE: discussion "shape" of u
 {/* and if $p_t$ is defined as the law of the ODE solution $x(t)$ at time $t \in [0, 1]$ when $x_0 \sim p_0$, we say that $u$ generates the probability path $(p_t)_{t \in [0, 1]}$.<a href="#cfm-blog" class="dfm-note-ref"></a> */}
+
+QBE todo rephrase. As solving an ODE on a discrete space is not possible (since at each time $t$, the current state is $x_t$ should be a discrete sequence), the generation process in discrete flow matching is different.
 
 It is defined as
 $$
@@ -631,22 +656,36 @@ $$
 $$
 where $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$ is the velocity field, $\mathbf{e}_{\mathbf{x}} \in \mathbb{R}^{|\mathcal{S}|}$ is the one-hot vector corresponding to state $\mathbf{x} \in \mathcal{S}$, and $\text{Cat}$ denotes the categorical distribution.
 The velocity $u_t(\mathbf{x})$ can be seen as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$.
+Below is a direct side by side analogy between the continuous and discrete flow matching generation processes.
+
+<div class="dfm-euler-algorithms">
+
+<Algorithm label="euler-continuous-pixels" title="Continuous Flow Matching">
+
+**Input:** Initial image $x_0 \in \mathbb{R}^d$, velocity $u_t$, step size $h$.
+
+1. **For** $k=0,\ldots,N-1$, set $t=kh$ and update $x_{k+1} \leftarrow x_k + h\,u_t(x_k)$.
+2. **Return** the generated image $x_N$.
+
+</Algorithm>
+
+<Algorithm label="euler-discrete-sequences" title="Discrete Flow Matching">
+
+**Input:** Initial sequence $\mathbf{x}_0 \in \mathcal{S}=\mathcal{V}^S$, velocity $u_t$, step size $h$.
+
+1. **For** $k=0,\ldots,N-1$, set $t=kh$ and sample $\mathbf{x}_{k+1} \sim \mathrm{Cat}\!\left(\mathbf{e}_{\mathbf{x}_k}+h\,u_t(\mathbf{x}_k)\right)$.
+2. **Return** the generated sequence $\mathbf{x}_N$.
+
+</Algorithm>
+
+</div>
 
 {/* To overcome this challenge and give an intuition of a discrete analog of the ODE, we reason with the discretized version of the ODE @eq:flow-ode, which reads $x(t+h) = x(t) + h u_t(x(t)) + o(h)$. Because we cannot add two sequences in $\mathcal{S}$, we can interpret the term $u_t(\mathbf{x}(t))$ as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$. In both settings, $u$ plays the same role: one Euler step of size $h u_t(x)$ moves the current sample $\mathbf{x}_t$ towards a less noisy $\mathbf{x}_{t+h}$. In our masked setting, this is done by putting higher rates on sequences with fewer masked tokens (see Figure <Ref label="fig:euler-analogy" />). */}
 
-<note-orel>**Q**: *Peut être qu'on peut enlever dans le texte le lien avec la version discrétisée vu que c'est expliqué dans la figure ? Est ce qu'on garde "one Euler step of size $h u_t(x)$ moves the current sample $\mathbf{x}_t$ towards a less noisy $\mathbf{x}_{t+h}$." avant la figure ?*</note-orel>
-
-<figure>
-  <EulerStepAnalogy client:load />
-  <figcaption>
-    <strong>Figure <Counter label="fig:euler-analogy" />:</strong> One Euler step of size $h$ in continuous and discrete flow matching, on the samples and on the states (toggleable): the deterministic update $x(t) + h u_t(x(t))$ becomes a sampling step $\mathbf{x}_{t+h} \sim \text{Cat}(\mathbf{e}_{\mathbf{x}_t} + h u_t(\mathbf{x}_t))$ for discrete data.
-  </figcaption>
-</figure>
-
 <note-orel>**Q**: *la def est ok à mon avis mais très formelle et pas indispensable si on a compris le sampling, je suis pour la mettre dans un toogle, cf. what's done below.*</note-orel>
 <details>
-<summary> Formal definition of the probability velocity $u_t$. </summary>
-<Statement kind="Definition" label="probability-velocity" title="Probability velocity $u_t$">
+<summary> Formal definition of the velocity $u_t$. </summary>
+<Statement kind="Definition" label="probability-velocity" title="velocity $u_t$">
 Let $u : \mathcal{S} \times [0, 1] \to \mathbb{R}^S$, let $(X_t)_{t\in[0,1]}$ be random variables taking values in the space of sequences $\mathcal{S}$, and having laws $(p_t)_{t \in [0, 1]}$.
 Denote $u_t := u(\cdot, t)$.
 In the discrete case, we say that $u$ *generates* the probability path $(p_t)_{t \in [0, 1]}$ if for every sequences $\mathbf{x}, \mathbf{y} \in \mathcal{S}$,
@@ -683,7 +722,7 @@ This explains why we are allowed to take $p_0$ equal to a Dirac $\delta_{m\ldots
 
 <note-orel>**Q**: *On garde la proposition dans le coeur de texte ? Je suis pour.*</note-orel>
 <Statement kind="Proposition" label="probability-velocity-mass-conservation" title="Constraints on $u$">
-The probability velocity $u$ must preserve probability mass: for @eq:prob-velocity to define a valid probability, for every $t\in [0, 1]$ $u_t$ must satisfy:
+The velocity $u$ must preserve probability mass: for @eq:prob-velocity to define a valid probability, for every $t\in [0, 1]$ $u_t$ must satisfy:
 1. *Positivity*: $u_t(\mathbf{x})_{\mathbf{y}} \ge 0$ for all $\mathbf{y} \neq \mathbf{x}$.
 2. *Normalization*: $\sum_{\mathbf{y} \in \mathcal{S}} u_t(\mathbf{x})_{\mathbf{y}} = 0$ for all $\mathbf{x} \in \mathcal{S}$ (and so $u_t(\mathbf{x})_{\mathbf{x}} \le 0$).
 </Statement>
@@ -710,11 +749,15 @@ $$
 </div>
 </details>
 
+<details>
+<summary>Fundamental equation linking $p_t$ and $u_t$: Kolmogorov equation</summary>
+<div>
+
 In continuous flow matching, we have the guarantee that a velocity field $u_t$ generates a probability path $(p_t)_{t \in [0, 1]}$ if the pair $(p_t, u_t)$ satisfies the continuity equation $\partial_t p_t + \nabla \cdot (u_t p_t) = 0$.
 The equivalent result for discrete data relies on the so-called Kolmogorov Equation:
 
 <Statement kind="Proposition" label="kolmogorov-equation" title="Kolmogorov equation">
-The probability velocity $u_t$ generates $(p_t)$ in the sense of @eq:prob-velocity if and only if the pair $(u_t, p_t)$ satisfies the Kolmogorov equation:
+The velocity $u_t$ generates $(p_t)$ in the sense of @eq:prob-velocity if and only if the pair $(u_t, p_t)$ satisfies the Kolmogorov equation:
 $$
 \begin{equation}
 \label{eq:kolmogorov-equation}
@@ -747,22 +790,13 @@ Because both $p_t$ and $\tilde{p}_t$ are solutions to the same first-order linea
 </div>
 </details>
 
-Now that we are equipped with adequate definitions of probability paths and velocities for the discrete case, together with a way to check that one is associated to the other, we can state the approach of discrete flow matching, which is in fact the same as for continuous flow matching:
-1. Build an explicit probability path $(p_t)$ going from $p_0$ to $p_1$ (@eq:marginal-path) using a conditioning variable, conditional probability paths and conditional velocities.
-2. Build a probability velocity $u_t$ generating $(p_t)$ (@eq:marginal-velocity-def)
-3. Provide an explicit loss to learn $u_t$ with a neural network (@eq:cdfm-2)
+</div>
+</details>
 
-Before embarking on this task, we make an important modelling choice.
 Learning probability velocities taking values in the full sequence space $\mathcal{S}=\mathcal{V}^S$ is cumbersome, as the cardinality of the latter is $|\mathcal{V}|^S$, e.g. $10^{81}$ for the sudoku example!
 To make computations tractable, discrete flow matching makes a *factorization assumption*: each transition is applied to every token of the sequence independently, according to a token-wise velocity $u_t^i : \mathcal{S} \times [0, 1] \to \mathbb{R}^{|\mathcal{V}|}$.
 The quantity $u_t^i(\mathbf{x}_t)_v$ then predicts the rate of probability change from the current token $x_t^i$ toward the token $v$, that still depends on the whole noisy sequence  $\mathbf{x}_t$.
-The proposition in the toogle formalizes this assumption.
-
-{/* shows that the probability velocity $u_t$ that generates the path can be written as a sum of these token-wise contributions $u_t^i$. */}
-
-{/* the probability path it builds updates each token in the sequence independently.
-Consequently,*/}
-
+The proposition in the toogle formalizes this assumption and its consequences. 
 
 <details>
 <summary>Proposition</summary>
@@ -776,8 +810,8 @@ $$
 \end{align}
 $$
 
-Suppose that there is a probability velocity $u_t$ generating $(p_t)$.
-Then, the probability velocity writes as a sum of $S$ *tokenwise* probability velocities $u_t^i$, from $\mathcal{S}$ to $\mathcal{V}$:
+Suppose that there is a velocity $u_t$ generating $(p_t)$.
+Then, the velocity writes as a sum of $S$ *tokenwise* probability velocities $u_t^i$, from $\mathcal{S}$ to $\mathcal{V}$:
 
 $$
 \begin{equation}
@@ -820,7 +854,7 @@ $$
 $$
 where $\mathbb{I}(\mathbf{y}^{\neq i} = \mathbf{x}^{\neq i})$ equals 1 if $\mathbf{y}$ and $\mathbf{x}$ differ at most at position $i$, and we used $\prod_{i=1}^S \mathbb{I}(y^i = x^i) = \mathbb{I}(\mathbf{y} = \mathbf{x})$.
 
-By comparing this result with the definition of the probability velocity (@eq:prob-velocity), we directly identify:
+By comparing this result with the definition of the velocity (@eq:prob-velocity), we directly identify:
 $$
 \begin{equation}
 \label{eq:factorized-velocity-2}
@@ -833,7 +867,7 @@ $$
 <Statement kind="Example" label="example-utoken" title="">
 
 To understand @eq:factorized-velocity, take the vocabulary $\mathcal{V}=\{A,B\}$, sequence length $S=3$, and current sequence $\mathbf{x}=ABA$.
-We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$. From @eq:factorized-velocity, the sequence can only transition to 4 possible values (its current state, or state differing by a single token), and the probability velocity writes as:
+We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$. From @eq:factorized-velocity, the sequence can only transition to 4 possible values (its current state, or state differing by a single token), and the velocity writes as:
 
 <div class="dfm-local-example">
   <div class="dfm-local-example__source" aria-label="Current sequence ABA">
@@ -905,9 +939,6 @@ We represent the vector $u_t(\mathbf{x})$ in $\mathbb{R}^8$. From @eq:factorized
 While $u_t$ outputs a vector in $\mathbb{R}^8$, $u_t^1, u_t^2$ and $u_t^3$ output vectors in $\mathbb{R}^2$ (as $|\mathcal{V}| = 2$).
 </Statement>
 
-</details>
-
-
 {/* Through @eq:factorized-velocity*/}This modeling assumption has several important consequences:
 - for infinitesimally small time steps, a sequence $\mathbf{x}$ can only transition to states $\mathbf{y}$ differing by at most one token (even if we draw all tokens simultaneously, the probability of two or more tokens changing is $o(h)$)
 - learning-wise, it implies *a substantial computational gain*: instead of learning one transition object $u$ on the full sequence space $\mathcal{S}=\mathcal{V}^S$ (exponential in $S$), we can learn $S$ local transition objects $u^i$, each on the vocabulary space $\mathcal{V}$ (linear in $S$)
@@ -919,7 +950,54 @@ x_{t+h}^i \sim \text{Cat}\left(\mathbf{e}_{x_t^i} + h u_t^i(\mathbf{x}_t)\right)
 \end{equation}
 $$
 
-Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of discrete flow matching, going from source $p_0$ to target $p_1$ distribution!
+The following algorithms and figure illustrates the analogy between one Euler step in continuous and discrete flow matching, and makes explicit what this token-wise velocity represents and how to use it to sample sequences.
+
+</details>
+
+<div class="dfm-euler-algorithms">
+
+<Algorithm label="euler-continuous-pixelwise" title="Continuous Euler: pixel by pixel">
+
+**Input:** Initial image $x_0 \in \mathbb{R}^d$, velocity $u_t$, step size $h$.
+
+1. **For** $k=0,\ldots,N-1$, set $t=kh$.
+    * **For each pixel** $j=1,\ldots,d$ in parallel, set $x_{k+1}^j \leftarrow x_k^j + h\,[u_t(x_k)]_j$.
+2. **Return** the generated image $x_N$.
+
+</Algorithm>
+
+<Algorithm label="euler-discrete-tokenwise" title="Discrete Euler: token by token">
+
+**Input:** Initial sequence $\mathbf{x}_0 \in \mathcal{V}^S$, token-wise velocities $u_t^i$, step size $h$.
+
+1. **For** $k=0,\ldots,N-1$, set $t=kh$.
+    * **For each token** $i=1,\ldots,S$ in parallel, sample $x_{k+1}^i \sim \mathrm{Cat}\!\left(\mathbf{e}_{x_k^i}+h\,u_t^i(\mathbf{x}_k)\right)$.
+2. **Return** the generated sequence $\mathbf{x}_N$.
+
+</Algorithm>
+
+</div>
+
+<figure>
+  <EulerStepAnalogy client:load />
+  <figcaption>
+    <strong>Figure <Counter label="fig:euler-analogy" />:</strong> One Euler step of size $h$ in continuous and discrete flow matching, on the samples and on the states (toggleable): the deterministic update $x(t) + h u_t(x(t))$ becomes a sampling step $x_{t+h}^i \sim \text{Cat}(\mathbf{e}_{x_t^i} + h u_t^i(\mathbf{x}_t))$ applied to each token in parallel for discrete data.
+  </figcaption>
+</figure>
+
+
+{/* shows that the velocity $u_t$ that generates the path can be written as a sum of these token-wise contributions $u_t^i$. */}
+
+{/* the probability path it builds updates each token in the sequence independently.
+Consequently,*/}
+
+
+Now that we are equipped with adequate definitions of probability paths and velocities for the discrete case, together with a way to check that one is associated to the other, we can state the approach of discrete flow matching, which is in fact the same as for continuous flow matching:
+1. Build an explicit probability path $(p_t)$ going from $p_0$ to $p_1$ (@eq:marginal-path) using a conditioning variable, conditional probability paths and conditional velocities.
+2. Build a velocity $u_t$ generating $(p_t)$ (@eq:marginal-velocity-def)
+3. Provide an explicit loss to learn $u_t$ with a neural network (@eq:cdfm-2)
+
+{/* Equipped with the links between probability paths and velocities, with our simplifying assumption on independence, we are now ready to build the probability path of discrete flow matching, going from source $p_0$ to target $p_1$ distribution! */}
 
 #### Building the probability path
 
@@ -946,7 +1024,7 @@ $$
 This choice is similar to the linear interpolation path used in continuous flow matching $p_t(x | x_0, x_1) = t x_0 + (1 - t) x_1$, unless we cannot interpolate between two discrete tokens.
 Instead, we use linear interpolation in probability space: at time $t$, the $i$-th token $x^i_t$ equals the target token $x_1^i$ with probability $t$, or the mask token $m$ with probability $1 - t$.
 Therefore, $p_0(\cdot | \mathbf{x}_1)$ is a Dirac at the all-masked sequence, while $p_1(\cdot | \mathbf{x}_1)$ is a Dirac at $\mathbf{x}_1$.
-The interest of this conditional probability path is that we can derive the associated probability velocity in closed-form.
+The interest of this conditional probability path is that we can derive the associated velocity in closed-form.
 
 
 <Statement kind="Proposition" label="conditional-velocity" title="Closed-form for conditional velocity">
@@ -1258,7 +1336,7 @@ $$
 We now arrive to the heart of discrete flow matching: **building a velocity that transports $p_0$ to $p_1$**.
 
 <Statement kind="Theorem" label="fundamental-theorem-discrete-fm" title="Fundamental theorem of discrete FM">
-The probability velocity obtained by taking the conditional expectation of the conditional velocities,
+The velocity obtained by taking the conditional expectation of the conditional velocities,
 $$
 \begin{align}
 u_t(\mathbf{x})_{\mathbf{y}}
@@ -1511,7 +1589,7 @@ $$
 <figure>
   <DFMSampling showModeToggle={false} client:load />
   <figcaption>
-    <strong>Figure <Counter label="fig:dfm-sampling" />:</strong> Generation process of a sequence of length $S=4$ with a learned probability velocity $u_{\theta,t}$ or denoiser $P_{\theta,t}(X_1^i | X_t)$.
+    <strong>Figure <Counter label="fig:dfm-sampling" />:</strong> Generation process of a sequence of length $S=4$ with a learned velocity $u_{\theta,t}$ or denoiser $P_{\theta,t}(X_1^i | X_t)$.
     **Key facts**: 1) At each step, all tokens are updated independently 2) Different samples can be generated from the same initial sequence (change the seed!), because sampling is stochastic at each step.
     **Key empirical observations**: 3) The probability of drawing the mask token $m$ decreases at each step, while the probability of drawing other tokens increases. 4) Once a token is unmasked, it stays at its current value until the end.
   </figcaption>
