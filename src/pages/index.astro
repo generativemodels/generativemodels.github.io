@@ -3,6 +3,7 @@ import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import pdfUrl from '../assets/class/notes_genmodels_ens.pdf?url';
+import labGansUrl from '../../labs/lab_gans.ipynb?url';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
 	const schedule = [
@@ -10,7 +11,7 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 	{ date: "10/09/", description: "Intro to probabilsitic thinking: Gaussian models and (Variational) Autoencoders", material:""},
 	{ date: "16/09", description: `Lab 1 (AE, MoG)`, material: "" },
 	{ date: "17/09", description: "GAN/WGAN", material: "" },
-	{ date: "23/09", description: "Lab 2 (GAN)", material: "" },
+	{ date: "23/09", description: `<a href="${labGansUrl}" download>Lab 2 (GAN)</a>`, material: "<a href='https://colab.research.google.com/github/generativemodels/generativemodels.github.io/blob/main/labs/lab_gans.ipynb' target='_blank'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Open In Colab'/></a>" },
 	{ date: "24/09", description: "Flow matching", material: "" },
 	{ date: "30/09", description: "Lab 3 (FM)", material: "" },
 	{ date: "01/10", description: "Diffusion I", material: "" },
