@@ -17,6 +17,8 @@ const lessons = defineCollection({
 			order: z.number().optional(),
 			tags: z.array(z.string()).optional(),
 			menu: z.string().optional(),
+			// Opt-in: show an estimated reading time (excludes <details> and references).
+			readingTime: z.boolean().optional(),
 			typst: z.union([z.enum(typstable), z.array(z.enum(typstable))]).optional(),
 		}),
 });

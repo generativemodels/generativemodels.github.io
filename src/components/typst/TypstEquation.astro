@@ -1,0 +1,28 @@
+---
+import T from './TypstMath.astro';
+
+const { label, number, v } = Astro.props;
+---
+
+<div id={label} class="typst-equation">
+  <T block v={v} />
+  <span class="typst-equation-label">({number})</span>
+</div>
+
+<style is:global>
+  .typst-equation {
+    scroll-margin-top: 20vh;
+  }
+
+  .typst-equation-label {
+    display: block;
+    margin-top: -0.8rem;
+    text-align: right;
+    font-size: 0.9rem;
+    color: #4b5563;
+  }
+
+  .equation-ref {
+    white-space: nowrap;
+  }
+</style>

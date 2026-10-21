@@ -2,7 +2,10 @@
 import { type CollectionEntry, getCollection, render } from 'astro:content';
 import LessonLayout from '../../layouts/LessonLayout.astro';
 import T from '../../components/typst/TypstMath.astro';
+import EquationAccent from '../../components/numbering/EquationAccent.astro';
+import ParagraphAccent from '../../components/numbering/ParagraphAccent.astro';
 import { typstable } from '../../consts';
+import { resetCounters } from '../../components/numbering/CountersTools';
 
 export async function getStaticPaths() {
 	const lessons = await getCollection('lessons');
@@ -14,9 +17,16 @@ export async function getStaticPaths() {
 type Props = CollectionEntry<'lessons'>;
 
 const lesson = Astro.props;
-const { Content } = await render(lesson);
+resetCounters();
+const { Content, remarkPluginFrontmatter } = await render(lesson);
+const minutesRead = lesson.data.readingTime ? remarkPluginFrontmatter.minutesRead : undefined;
 
-const components = {} as Record<string, any>
+const components = {
+	EquationAccent,
+	PinkEquation: EquationAccent,
+	ParagraphAccent,
+	CyanParagraph: ParagraphAccent,
+} as Record<string, any>
 const typst = typeof lesson.data.typst === 'string' ? [lesson.data.typst] : lesson.data.typst as string[] ?? []
 for (const k of typstable) {
 	if (typst.includes(k)) {
@@ -25,6 +35,6 @@ for (const k of typstable) {
 }
 ---
 
-<LessonLayout {...lesson.data}>
+<LessonLayout {...lesson.data} minutesRead={minutesRead}>
 	<Content components={ components } />
 </LessonLayout>
