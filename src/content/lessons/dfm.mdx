@@ -682,7 +682,7 @@ Below is a direct side by side analogy between the continuous and discrete flow 
 
 {/* To overcome this challenge and give an intuition of a discrete analog of the ODE, we reason with the discretized version of the ODE @eq:flow-ode, which reads $x(t+h) = x(t) + h u_t(x(t)) + o(h)$. Because we cannot add two sequences in $\mathcal{S}$, we can interpret the term $u_t(\mathbf{x}(t))$ as the instantaneous rate at which the random variable $X_t$ transitions from state $\mathbf{x}$ to state $\mathbf{y}$ at time $t$. In both settings, $u$ plays the same role: one Euler step of size $h u_t(x)$ moves the current sample $\mathbf{x}_t$ towards a less noisy $\mathbf{x}_{t+h}$. In our masked setting, this is done by putting higher rates on sequences with fewer masked tokens (see Figure <Ref label="fig:euler-analogy" />). */}
 
-<note-orel>**Q**: *la def est ok à mon avis mais très formelle et pas indispensable si on a compris le sampling, je suis pour la mettre dans un toogle, cf. what's done below.*</note-orel>
+
 <details>
 <summary> Formal definition of the velocity $u_t$. </summary>
 <Statement kind="Definition" label="probability-velocity" title="velocity $u_t$">
@@ -720,7 +720,7 @@ These two equations mean that as $t$ increases to $t+h$, the variable $X_t$ stay
 A fundamental point is that unlike continuous FM, where sampling is deterministic once $x_0$ has been sampled from $p_0$, **sampling in discrete flow matching is inherently stochastic at each step**.
 This explains why we are allowed to take $p_0$ equal to a Dirac $\delta_{m\ldots m}$ and still produce different final outputs, which would not be possible with a deterministic sampling.
 
-<note-orel>**Q**: *On garde la proposition dans le coeur de texte ? Je suis pour.*</note-orel>
+
 <Statement kind="Proposition" label="probability-velocity-mass-conservation" title="Constraints on $u$">
 The velocity $u$ must preserve probability mass: for @eq:prob-velocity to define a valid probability, for every $t\in [0, 1]$ $u_t$ must satisfy:
 1. *Positivity*: $u_t(\mathbf{x})_{\mathbf{y}} \ge 0$ for all $\mathbf{y} \neq \mathbf{x}$.
@@ -796,7 +796,7 @@ Because both $p_t$ and $\tilde{p}_t$ are solutions to the same first-order linea
 Learning probability velocities taking values in the full sequence space $\mathcal{S}=\mathcal{V}^S$ is cumbersome, as the cardinality of the latter is $|\mathcal{V}|^S$, e.g. $10^{81}$ for the sudoku example!
 To make computations tractable, discrete flow matching makes a *factorization assumption*: each transition is applied to every token of the sequence independently, according to a token-wise velocity $u_t^i : \mathcal{S} \times [0, 1] \to \mathbb{R}^{|\mathcal{V}|}$.
 The quantity $u_t^i(\mathbf{x}_t)_v$ then predicts the rate of probability change from the current token $x_t^i$ toward the token $v$, that still depends on the whole noisy sequence  $\mathbf{x}_t$.
-The proposition in the toogle formalizes this assumption and its consequences. 
+The proposition in the toogle formalizes this assumption and its consequences.
 
 <details>
 <summary>Proposition</summary>
@@ -1001,7 +1001,6 @@ Now that we are equipped with adequate definitions of probability paths and velo
 
 #### Building the probability path
 
-<note-orel>**Q**: *Je suis pour ici ajouter une figure du style le gif du blogpost continu pour aider à comprendre cette phrase. + J'ai essayé de simplifier et enlever tte mention à z, en parlant directement de x_1, à remettre si vs préférez.*</note-orel>
 
 Similarly to continuous flow matching, there are infinitely many possible choices for a probability path $(p_t)$ going from source $p_0$ to target $p_1$.
 To build a specific one, we borrow the core idea from continuous flow matching: we first choose a choose a conditioning variable $\mathbf{z} = \mathbf{x_1}$ and a conditional probability path $p_t(\cdot | \mathbf{x}_1)$ for which the exact conditional velocity $u_t(\cdot | \mathbf{x}_1)$ that generates this path is known and easy to compute.

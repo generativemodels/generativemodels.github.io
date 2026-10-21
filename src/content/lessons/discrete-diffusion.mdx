@@ -514,7 +514,7 @@ This blog post is a __pedagogical introduction__ to the adaptation of diffusion 
 {/* As continuous-space diffusion models have been developed into two major branches, namely the *variational* [<a class="cite-ref" href="#NonequilibriumThermodynamics">10</a>, <a class="cite-ref" href="#DDPM">11</a>] and the *score-based* ones [<a class="cite-ref" href="#GenerativeScore">9</a>, <a class="cite-ref" href="#SDEDiffusion">12</a>], we present discrete diffusion through these two formalisms. In [section 1](#variational-discrete-diffusion), we show how the variational perspective leverages *discrete-time* transitions and variational principles to frame data generation. In [section 2](#score-based-discrete-diffusion), we focus on *continuous-time* transitions and score-based methods for discrete data. Finally, in [section 3](#equivalence-between-viewpoints), we first show how these two different viewpoints are in fact equivalent from both the training and sampling perspectives, then show the equivalence of discrete diffusion and discrete flow matching.<a href="#dfm-blog" class="dfm-note-ref"></a> */}
 
 
-<note-orel> **Q** *Ordre des deux paragraphes ici convient ?* </note-orel>
+{/* <note-orel> **Q** *Ordre des deux paragraphes ici convient ?* </note-orel> */}
 
 As continuous-space diffusion models have been developed into two major branches, namely the *variational* [<a class="cite-ref" href="#NonequilibriumThermodynamics">10</a>, <a class="cite-ref" href="#DDPM">11</a>] and the *score-based* ones [<a class="cite-ref" href="#GenerativeScore">9</a>, <a class="cite-ref" href="#SDEDiffusion">12</a>], we present discrete diffusion through these two formalisms.
 We first introduce [variational discrete diffusion](#variational-discrete-diffusion); the reader already familiar with this technique can jump directly to the [score-based perspective](#score-based-discrete-diffusion).
@@ -1558,7 +1558,7 @@ where $\sigma(t) = -\dot{\alpha}_t / \alpha_t$. Since $\alpha_t$ is decreasing, 
 #### Reverse process
 
 In the previous section, we have described the forward process of score-based discrete diffusion models. To generate new data samples, we need to reverse the forward process.
-<note-orel> **Q**: *Remove the next sentence ? (redundant)* </note-orel>
+{/* <note-orel> **Q**: *Remove the next sentence ? (redundant)* </note-orel> */}
 Similarly to continuous-space diffusion, where the reverse process is obtained by reversing the forward SDE, in discrete space, the reverse process is obtained by reversing the forward Markov chain, and is also a continuous-time Markov chain.
 
 <Statement kind="Proposition" label="reverse-rate" title="Reverse process">
