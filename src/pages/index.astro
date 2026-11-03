@@ -3,6 +3,7 @@ import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import pdfUrl from '../assets/class/notes_genmodels_ens.pdf?url';
+import pdfUrlInterro from '../assets/class/interros.pdf?url';
 import labGansUrl from '../../labs/lab_gans.ipynb?url';
 import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 
@@ -85,7 +86,7 @@ import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 	  <br><br>
 
     <h3>Lecture notes</h3>
-    <a href={pdfUrl}>Here!</a>
+    <a href={pdfUrl}>Here!</a> And past quizzes are <a href={pdfUrlInterro}>here!</a>
 
       <h3>Validation</h3>
       <ul>
